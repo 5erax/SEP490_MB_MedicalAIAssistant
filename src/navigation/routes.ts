@@ -12,18 +12,27 @@ export const ROUTES = {
     PATIENT_PROFILE: "/(setup)/patient-profile",
   },
   PATIENT: {
-    TABS: "/(patient)/(tabs)",
-    HOME: "/(patient)/(tabs)/home",
-    MAP: "/(patient)/(tabs)/map",
-    CHAT: "/(patient)/(tabs)/chat",
-    RECORDS: "/(patient)/(tabs)/records",
-    PROFILE: "/(patient)/(tabs)/profile",
+    HOME: "/(patient)/home",
+    TABS: "/(patient)/home",
+    MAP: "/(patient)/map",
+    CHAT: "/(patient)/chat",
+    RECORDS: "/(patient)/records",
+    PROFILE: "/(patient)/profile",
     SYMPTOM: "/(patient)/symptom",
     SYMPTOM_RESULT: "/(patient)/symptom/result",
     FACILITY_DETAIL: "/(patient)/facilities/[id]",
     MEDICATION: "/(patient)/medication",
     MEDICATION_RESULT: "/(patient)/medication/result",
     SETTINGS: "/(patient)/settings",
+  },
+  DOCTOR: {
+    DASHBOARD: "/(doctor)/dashboard",
+  },
+  STAFF: {
+    DASHBOARD: "/(staff)/dashboard",
+  },
+  ADMIN: {
+    DASHBOARD: "/(admin)/dashboard",
   },
   OPERATOR: {
     STAFF_UNSUPPORTED: "/(operator)/staff",

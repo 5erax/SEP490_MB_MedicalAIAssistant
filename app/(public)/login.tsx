@@ -3,7 +3,7 @@
  * APIs:
  * - POST /api/authentication/login
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,6 +20,7 @@ import { authService } from "@/src/services";
 import { AuthSession } from "@/src/types";
 import { useAuth } from "@/src/providers";
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
+import { getInitialRouteForSession } from "@/src/navigation";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 
 type LoginErrors = {
@@ -53,7 +54,7 @@ function validateLoginForm(email: string, password: string) {
 }
 
 export default function LoginScreen() {
-  const { setSession } = useAuth();
+  const { isRestoring, session, setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -62,6 +63,12 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const disabled = useMemo(() => submitting || !email.trim() || !password, [email, password, submitting]);
+
+  useEffect(() => {
+    if (!isRestoring && session) {
+      router.replace(getInitialRouteForSession(session));
+    }
+  }, [isRestoring, session]);
 
   async function handleLogin() {
     const nextErrors = validateLoginForm(email, password);
@@ -85,7 +92,7 @@ export default function LoginScreen() {
       }
 
       await setSession(session);
-      router.replace("/(tabs)");
+      router.replace(getInitialRouteForSession(session));
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {

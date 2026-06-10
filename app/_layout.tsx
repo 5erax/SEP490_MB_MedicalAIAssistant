@@ -20,6 +20,10 @@ export default function RootLayout() {
       <NavigationThemeProvider value={createNavigationTheme(appColorScheme)}>
         <Stack>
           <Stack.Screen name="(public)" options={{ headerShown: false }} />
+          <Stack.Screen name="(patient)" options={{ headerShown: false }} />
+          <Stack.Screen name="(doctor)" options={{ headerShown: false }} />
+          <Stack.Screen name="(staff)" options={{ headerShown: false }} />
+          <Stack.Screen name="(admin)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>

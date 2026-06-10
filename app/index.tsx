@@ -1,5 +1,5 @@
 import { AuthGate } from "@/src/components/auth";
 
-export default function HomeScreen() {
+export default function AppIndex() {
   return <AuthGate />;
 }
