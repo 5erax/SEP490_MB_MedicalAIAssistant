@@ -1,3 +1,8 @@
+/**
+ * Screen: LoginScreen
+ * APIs:
+ * - POST /api/authentication/login
+ */
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,

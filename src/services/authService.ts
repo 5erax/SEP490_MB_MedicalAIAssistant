@@ -20,6 +20,11 @@ export type RegisterPayload = {
 };
 
 export const authService = {
+  /**
+   * Screen: LoginScreen
+   * Workflow: Authentication
+   * Endpoint: POST /api/authentication/login
+   */
   login(payload: LoginPayload) {
     return apiRequest<AuthSession>(ENDPOINTS.AUTH.LOGIN, {
       method: "POST",
