@@ -14,11 +14,12 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { authService } from "@/src/services";
 import { AuthSession } from "@/src/types";
 import { useAuth } from "@/src/providers";
-import { ApiMessage, AppText, Button, Card, TextField } from "@/src/components/ui";
+import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 
 type LoginErrors = {
@@ -94,125 +95,128 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.brandRow}>
-          <View style={styles.brandMark}>
-            <AppText variant="h3" color={colors.ink}>
-              +
-            </AppText>
-          </View>
-          <AppText variant="bodyStrong">MediMate AI</AppText>
-        </View>
-
-        <View style={styles.heroPanel}>
-          <AppText variant="eyebrow" color={colors.lime}>
-            MediMate AI
-          </AppText>
-          <AppText variant="h2" color={colors.white} style={styles.heroTitle}>
-            Mot noi gon gang cho hanh trinh di kham
-          </AppText>
-          <AppText color="rgba(255,255,255,0.76)" style={styles.heroCopy}>
-            Nhap trieu chung, luu ho so, xem chuyen khoa phu hop va chuan bi tot hon truoc khi den co so y te.
-          </AppText>
-
-          <View style={styles.stepList}>
-            {["Ho so ca nhan", "Goi y chuyen khoa", "Theo doi sau kham"].map((item, index) => (
-              <View key={item} style={styles.stepItem}>
-                <AppText variant="caption" color={colors.lime}>
-                  {String(index + 1).padStart(2, "0")}
-                </AppText>
-                <AppText variant="bodyStrong" color={colors.white}>
-                  {item}
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.hero}>
+            <View style={styles.brandRow}>
+              <View style={styles.brandMark}>
+                <AppText variant="h3" color={colors.ink}>
+                  +
                 </AppText>
               </View>
-            ))}
-          </View>
-        </View>
-
-        <Card style={styles.formCard}>
-          <View style={styles.header}>
-            <AppText variant="eyebrow" color={colors.limeDark}>
-              MediMate AI
-            </AppText>
-            <AppText variant="h2" style={styles.title}>
-              Dang nhap de tiep tuc cham soc suc khoe cua ban.
-            </AppText>
-            <AppText color={colors.muted}>
-              Mo ho so ca nhan, xem lai thong tin da luu va tiep tuc cac buoc theo doi phu hop.
-            </AppText>
-          </View>
-
-          <ApiMessage type="error" message={apiError} />
-
-          <View style={styles.form}>
-            <TextField
-              label="Email"
-              value={email}
-              onChangeText={(value) => {
-                setEmail(value);
-                if (errors.email) setErrors((current) => ({ ...current, email: undefined }));
-              }}
-              placeholder="you@example.com"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              error={errors.email}
-              editable={!submitting}
-            />
-
-            <View style={styles.passwordWrap}>
-              <TextField
-                label="Mat khau"
-                value={password}
-                onChangeText={(value) => {
-                  setPassword(value);
-                  if (errors.password) setErrors((current) => ({ ...current, password: undefined }));
-                }}
-                placeholder="Nhap mat khau"
-                secureTextEntry={!showPassword}
-                textContentType="password"
-                autoCapitalize="none"
-                autoCorrect={false}
-                error={errors.password}
-                editable={!submitting}
-                style={styles.passwordInput}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "An mat khau" : "Hien mat khau"}
-                onPress={() => setShowPassword((current) => !current)}
-                style={styles.passwordToggle}
-              >
-                <AppText variant="caption" color={colors.teal}>
-                  {showPassword ? "An" : "Hien"}
+              <View>
+                <AppText variant="bodyStrong" color={colors.white}>
+                  MediMate AI
                 </AppText>
-              </Pressable>
+                <AppText variant="caption" color="rgba(255,255,255,0.62)">
+                  Suc khoe ca nhan
+                </AppText>
+              </View>
             </View>
 
-            <View style={styles.inlineNote}>
-              <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
-                Thong tin dang nhap chi duoc dung de mo tai khoan cua ban.
+            <View style={styles.heroCopyGroup}>
+              <AppText variant="eyebrow" color={colors.lime}>
+                Welcome back
+              </AppText>
+              <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
+                Tiep tuc hanh trinh cham soc suc khoe.
+              </AppText>
+              <AppText color="rgba(255,255,255,0.74)" style={styles.heroCopy}>
+                Dang nhap de mo ho so ca nhan, goi y chuyen khoa va cac buoc theo doi phu hop.
               </AppText>
             </View>
 
-            <Button fullWidth disabled={disabled} onPress={handleLogin}>
-              {submitting ? (
-                <View style={styles.loadingLabel}>
-                  <ActivityIndicator color={colors.ink} size="small" />
-                  <AppText variant="bodyStrong">Dang dang nhap...</AppText>
+            <View style={styles.heroChips}>
+              {["Bao mat", "AI ho tro", "Ho so suc khoe"].map((item) => (
+                <View key={item} style={styles.heroChip}>
+                  <AppText variant="caption" color={colors.lime}>
+                    {item}
+                  </AppText>
                 </View>
-              ) : (
-                "Dang nhap"
-              )}
-            </Button>
+              ))}
+            </View>
           </View>
-        </Card>
-      </ScrollView>
+
+          <View style={styles.formCard}>
+            <View style={styles.header}>
+              <AppText variant="h2" style={styles.title}>
+                Dang nhap
+              </AppText>
+              <AppText color={colors.muted}>Nhap thong tin tai khoan MediMate AI cua ban.</AppText>
+            </View>
+
+            <ApiMessage type="error" message={apiError} />
+
+            <View style={styles.form}>
+              <TextField
+                label="Email"
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  if (errors.email) setErrors((current) => ({ ...current, email: undefined }));
+                }}
+                placeholder="you@example.com"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                error={errors.email}
+                editable={!submitting}
+              />
+
+              <View style={styles.passwordWrap}>
+                <TextField
+                  label="Mat khau"
+                  value={password}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    if (errors.password) setErrors((current) => ({ ...current, password: undefined }));
+                  }}
+                  placeholder="Nhap mat khau"
+                  secureTextEntry={!showPassword}
+                  textContentType="password"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  error={errors.password}
+                  editable={!submitting}
+                  style={styles.passwordInput}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "An mat khau" : "Hien mat khau"}
+                  onPress={() => setShowPassword((current) => !current)}
+                  style={styles.passwordToggle}
+                >
+                  <AppText variant="caption" color={colors.teal}>
+                    {showPassword ? "An" : "Hien"}
+                  </AppText>
+                </Pressable>
+              </View>
+
+              <Button fullWidth disabled={disabled} onPress={handleLogin} style={styles.submitButton}>
+                {submitting ? (
+                  <View style={styles.loadingLabel}>
+                    <ActivityIndicator color={colors.ink} size="small" />
+                    <AppText variant="bodyStrong">Dang dang nhap...</AppText>
+                  </View>
+                ) : (
+                  "Dang nhap"
+                )}
+              </Button>
+
+              <View style={styles.inlineNote}>
+                <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
+                  Thong tin dang nhap chi duoc dung de mo tai khoan cua ban.
+                </AppText>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
@@ -222,17 +226,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  safeArea: {
+    flex: 1,
+  },
   content: {
     flexGrow: 1,
-    gap: spacing.xl,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing["3xl"],
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     paddingBottom: spacing["4xl"],
+  },
+  hero: {
+    gap: spacing["2xl"],
+    minHeight: 300,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    borderRadius: radius.xl,
+    backgroundColor: colors.ink,
+    padding: spacing.xl,
   },
   brandRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   brandMark: {
     alignItems: "center",
@@ -245,37 +262,40 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lime,
     ...shadows.hard,
   },
-  heroPanel: {
+  heroCopyGroup: {
     gap: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
-    borderRadius: radius.xl,
-    backgroundColor: colors.ink,
-    padding: spacing.xl,
-  },
-  heroTitle: {
-    maxWidth: 320,
-  },
-  heroCopy: {
     maxWidth: 330,
   },
-  stepList: {
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+  heroTitle: {
+    fontSize: 34,
+    lineHeight: 39,
   },
-  stepItem: {
-    alignItems: "center",
+  heroCopy: {
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  heroChips: {
     flexDirection: "row",
-    gap: spacing.md,
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  heroChip: {
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.16)",
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.08)",
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   formCard: {
     gap: spacing.xl,
-    padding: spacing.xl,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing["2xl"],
+    ...shadows.soft,
   },
   header: {
     gap: spacing.sm,
@@ -284,7 +304,7 @@ const styles = StyleSheet.create({
     ...(typography.h2 as object),
   },
   form: {
-    gap: spacing.lg,
+    gap: spacing.xl,
   },
   passwordWrap: {
     position: "relative",
@@ -301,6 +321,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.sm,
+  },
+  submitButton: {
+    marginTop: spacing.xs,
   },
   inlineNote: {
     borderRadius: radius.md,
