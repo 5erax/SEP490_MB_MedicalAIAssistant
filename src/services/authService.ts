@@ -32,6 +32,11 @@ export const authService = {
     });
   },
 
+  /**
+   * Screen: RegisterScreen
+   * Workflow: Authentication
+   * Endpoint: POST /api/authentication/register
+   */
   register(payload: RegisterPayload) {
     return apiRequest<AuthSession>(ENDPOINTS.AUTH.REGISTER, {
       method: "POST",

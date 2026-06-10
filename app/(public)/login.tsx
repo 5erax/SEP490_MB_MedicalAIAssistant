@@ -20,15 +20,14 @@ import { authService } from "@/src/services";
 import { AuthSession } from "@/src/types";
 import { useAuth } from "@/src/providers";
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
-import { getInitialRouteForSession } from "@/src/navigation";
+import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
+import { isValidEmail } from "@/src/utils";
 
 type LoginErrors = {
   email?: string;
   password?: string;
 };
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeLoginSession(response: Awaited<ReturnType<typeof authService.login>>) {
   return (response.data ?? response) as AuthSession;
@@ -40,7 +39,7 @@ function validateLoginForm(email: string, password: string) {
 
   if (!trimmedEmail) {
     errors.email = "Vui lòng nhập email.";
-  } else if (!EMAIL_PATTERN.test(trimmedEmail)) {
+  } else if (!isValidEmail(trimmedEmail)) {
     errors.email = "Email chưa đúng định dạng.";
   }
 
@@ -220,6 +219,17 @@ export default function LoginScreen() {
                   Thông tin đăng nhập chỉ được dùng để mở tài khoản của bạn.
                 </AppText>
               </View>
+
+              <View style={styles.bottomLink}>
+                <AppText variant="caption" color={colors.muted}>
+                  Chưa có tài khoản?
+                </AppText>
+                <Pressable onPress={() => router.push(ROUTES.PUBLIC.REGISTER)} accessibilityRole="button">
+                  <AppText variant="caption" color={colors.teal}>
+                    Tạo tài khoản miễn phí
+                  </AppText>
+                </Pressable>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -343,6 +353,13 @@ const styles = StyleSheet.create({
   loadingLabel: {
     alignItems: "center",
     flexDirection: "row",
+    gap: spacing.sm,
+  },
+  bottomLink: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     gap: spacing.sm,
   },
 });
