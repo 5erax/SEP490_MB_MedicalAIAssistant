@@ -1,6 +1,8 @@
 import { StyleSheet, View } from "react-native";
+import { router } from "expo-router";
 
-import { AppText, Badge, Card, Screen } from "@/src/components/ui";
+import { AppText, Badge, Button, Card, Screen } from "@/src/components/ui";
+import { ROUTES } from "@/src/navigation";
 import { useAuth } from "@/src/providers";
 import { colors, spacing } from "@/src/theme/tokens";
 import { getSessionRoles } from "@/src/utils/roles";
@@ -15,8 +17,13 @@ function getDisplayName(session: ReturnType<typeof useAuth>["session"]) {
 }
 
 export function RolePlaceholderScreen({ title, role }: RolePlaceholderScreenProps) {
-  const { session } = useAuth();
+  const { clearSession, session } = useAuth();
   const roles = getSessionRoles(session);
+
+  async function handleLogout() {
+    await clearSession();
+    router.replace(ROUTES.PUBLIC.LOGIN);
+  }
 
   return (
     <Screen contentContainerStyle={styles.content}>
@@ -57,6 +64,10 @@ export function RolePlaceholderScreen({ title, role }: RolePlaceholderScreenProp
           </AppText>
           <AppText color={colors.muted}>{roles.length ? roles.join(", ") : "patient mặc định"}</AppText>
         </View>
+
+        <Button variant="dark" fullWidth onPress={handleLogout} style={styles.logoutButton}>
+          Đăng xuất
+        </Button>
       </Card>
     </Screen>
   );
@@ -91,5 +102,8 @@ const styles = StyleSheet.create({
   },
   row: {
     gap: spacing.sm,
+  },
+  logoutButton: {
+    marginTop: spacing.sm,
   },
 });
