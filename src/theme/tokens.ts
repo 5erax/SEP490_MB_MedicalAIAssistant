@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 export const colors = {
   bg: "#f7f8f3",
   workspaceBg: "#f4f7ef",
@@ -45,40 +47,53 @@ export const radius = {
   pill: 999,
 } as const;
 
+const fontFamily = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default: "system-ui",
+});
+
 export const typography = {
   h1: {
+    fontFamily,
     fontSize: 36,
     lineHeight: 40,
     fontWeight: "800",
     letterSpacing: 0,
   },
   h2: {
+    fontFamily,
     fontSize: 28,
     lineHeight: 34,
     fontWeight: "800",
     letterSpacing: 0,
   },
   h3: {
+    fontFamily,
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "700",
   },
   body: {
+    fontFamily,
     fontSize: 15,
     lineHeight: 24,
     fontWeight: "400",
   },
   bodyStrong: {
+    fontFamily,
     fontSize: 15,
     lineHeight: 24,
     fontWeight: "700",
   },
   caption: {
+    fontFamily,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "700",
   },
   eyebrow: {
+    fontFamily,
     fontSize: 11,
     lineHeight: 15,
     fontWeight: "800",
@@ -113,4 +128,3 @@ export const appTheme = {
 } as const;
 
 export type AppTheme = typeof appTheme;
-

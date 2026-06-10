@@ -46,7 +46,7 @@ apiClient.interceptors.response.use(
   (response) => {
     const payload = response.data as ApiResponse | undefined;
     if (payload?.success === false) {
-      throw new ApiError(payload.message || "Yeu cau that bai.", response.status, payload);
+      throw new ApiError(payload.message || "Yêu cầu thất bại.", response.status, payload);
     }
 
     return response;

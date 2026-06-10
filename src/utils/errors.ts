@@ -21,11 +21,10 @@ export function getErrorMessage(error: unknown) {
       formatApiErrors(payload?.errors) ||
       payload?.title ||
       error.message ||
-      "Yeu cau that bai. Vui long thu lai."
+      "Yêu cầu thất bại. Vui lòng thử lại."
     );
   }
 
   if (error instanceof Error) return error.message;
-  return "Da co loi xay ra. Vui long thu lai.";
+  return "Đã có lỗi xảy ra. Vui lòng thử lại.";
 }
-

@@ -38,15 +38,15 @@ function validateLoginForm(email: string, password: string) {
   const trimmedEmail = email.trim();
 
   if (!trimmedEmail) {
-    errors.email = "Vui long nhap email.";
+    errors.email = "Vui lòng nhập email.";
   } else if (!EMAIL_PATTERN.test(trimmedEmail)) {
-    errors.email = "Email chua dung dinh dang.";
+    errors.email = "Email chưa đúng định dạng.";
   }
 
   if (!password) {
-    errors.password = "Vui long nhap mat khau.";
+    errors.password = "Vui lòng nhập mật khẩu.";
   } else if (password.length < 6) {
-    errors.password = "Mat khau can co toi thieu 6 ky tu.";
+    errors.password = "Mật khẩu cần có tối thiểu 6 ký tự.";
   }
 
   return errors;
@@ -81,13 +81,13 @@ export default function LoginScreen() {
       const session = normalizeLoginSession(response);
 
       if (!session?.accessToken) {
-        throw new Error("Backend chua tra access token. Vui long thu lai.");
+        throw new Error("Backend chưa trả access token. Vui lòng thử lại.");
       }
 
       await setSession(session);
       router.replace("/(tabs)");
     } catch (error) {
-      setApiError(error instanceof Error ? error.message : "Dang nhap that bai. Vui long thu lai.");
+      setApiError(error instanceof Error ? error.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +113,7 @@ export default function LoginScreen() {
                   MediMate AI
                 </AppText>
                 <AppText variant="caption" color="rgba(255,255,255,0.62)">
-                  Suc khoe ca nhan
+                  Sức khỏe cá nhân
                 </AppText>
               </View>
             </View>
@@ -123,15 +123,15 @@ export default function LoginScreen() {
                 Welcome back
               </AppText>
               <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
-                Tiep tuc hanh trinh cham soc suc khoe.
+                Tiếp tục hành trình chăm sóc sức khỏe.
               </AppText>
               <AppText color="rgba(255,255,255,0.74)" style={styles.heroCopy}>
-                Dang nhap de mo ho so ca nhan, goi y chuyen khoa va cac buoc theo doi phu hop.
+                Đăng nhập để mở hồ sơ cá nhân, gợi ý chuyên khoa và các bước theo dõi phù hợp.
               </AppText>
             </View>
 
             <View style={styles.heroChips}>
-              {["Bao mat", "AI ho tro", "Ho so suc khoe"].map((item) => (
+              {["Bảo mật", "AI hỗ trợ", "Hồ sơ sức khỏe"].map((item) => (
                 <View key={item} style={styles.heroChip}>
                   <AppText variant="caption" color={colors.lime}>
                     {item}
@@ -144,9 +144,9 @@ export default function LoginScreen() {
           <View style={styles.formCard}>
             <View style={styles.header}>
               <AppText variant="h2" style={styles.title}>
-                Dang nhap
+                Đăng nhập
               </AppText>
-              <AppText color={colors.muted}>Nhap thong tin tai khoan MediMate AI cua ban.</AppText>
+              <AppText color={colors.muted}>Nhập thông tin tài khoản MediMate AI của bạn.</AppText>
             </View>
 
             <ApiMessage type="error" message={apiError} />
@@ -170,13 +170,13 @@ export default function LoginScreen() {
 
               <View style={styles.passwordWrap}>
                 <TextField
-                  label="Mat khau"
+                  label="Mật khẩu"
                   value={password}
                   onChangeText={(value) => {
                     setPassword(value);
                     if (errors.password) setErrors((current) => ({ ...current, password: undefined }));
                   }}
-                  placeholder="Nhap mat khau"
+                  placeholder="Nhập mật khẩu"
                   secureTextEntry={!showPassword}
                   textContentType="password"
                   autoCapitalize="none"
@@ -187,12 +187,12 @@ export default function LoginScreen() {
                 />
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "An mat khau" : "Hien mat khau"}
+                  accessibilityLabel={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   onPress={() => setShowPassword((current) => !current)}
                   style={styles.passwordToggle}
                 >
                   <AppText variant="caption" color={colors.teal}>
-                    {showPassword ? "An" : "Hien"}
+                    {showPassword ? "Ẩn" : "Hiện"}
                   </AppText>
                 </Pressable>
               </View>
@@ -201,16 +201,16 @@ export default function LoginScreen() {
                 {submitting ? (
                   <View style={styles.loadingLabel}>
                     <ActivityIndicator color={colors.ink} size="small" />
-                    <AppText variant="bodyStrong">Dang dang nhap...</AppText>
+                    <AppText variant="bodyStrong">Đang đăng nhập...</AppText>
                   </View>
                 ) : (
-                  "Dang nhap"
+                  "Đăng nhập"
                 )}
               </Button>
 
               <View style={styles.inlineNote}>
                 <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
-                  Thong tin dang nhap chi duoc dung de mo tai khoan cua ban.
+                  Thông tin đăng nhập chỉ được dùng để mở tài khoản của bạn.
                 </AppText>
               </View>
             </View>
