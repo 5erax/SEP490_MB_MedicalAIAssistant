@@ -19,6 +19,7 @@ export default function RootLayout() {
     <AppProviders colorScheme={appColorScheme}>
       <NavigationThemeProvider value={createNavigationTheme(appColorScheme)}>
         <Stack>
+          <Stack.Screen name="(public)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
