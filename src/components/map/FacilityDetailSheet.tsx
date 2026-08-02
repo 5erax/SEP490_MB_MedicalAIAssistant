@@ -213,6 +213,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
       <DoctorDetailSheet
         doctor={selectedDoctor}
         facilityName={current.facilityName}
+        facilityPhone={current.phone}
         visible={Boolean(selectedDoctor)}
         onClose={() => setSelectedDoctor(null)}
       />
