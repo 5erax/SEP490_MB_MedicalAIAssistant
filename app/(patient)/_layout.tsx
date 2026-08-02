@@ -1,9 +1,8 @@
-// Minimal bottom-tab shell for the patient area (Home + Map for now). More
-// tabs (Chat, Profile, ...) are added as their modules land — Modules 4 and
-// 13 respectively — instead of building a full tab bar ahead of the screens
-// that would populate it.
+// Minimal bottom-tab shell for the patient area (Home/Map/Chat so far). More
+// tabs (Profile, ...) are added as their modules land — Module 13 — instead
+// of building a full tab bar ahead of the screens that would populate it.
 import { Tabs } from "expo-router";
-import { LayoutGrid, MapPin } from "lucide-react-native";
+import { LayoutGrid, MapPin, MessageCircle } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -29,6 +28,13 @@ export default function PatientLayout() {
         options={{
           title: "Bản đồ",
           tabBarIcon: ({ color, size }) => <MapPin color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat AI",
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
         }}
       />
     </Tabs>
