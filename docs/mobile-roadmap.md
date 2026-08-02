@@ -9,7 +9,7 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] Authentication
 - [x] Dashboard
 - [x] Nearby Clinics / Map
-- [ ] AI Consultation
+- [x] AI Consultation
 - [ ] Medical Facility
 - [ ] Doctor
 - [ ] Appointment

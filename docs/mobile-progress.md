@@ -320,3 +320,70 @@ tiếp với code Web tương ứng trước khi build; các điểm khác biệ
    để xác nhận bản đồ MapLibre render đúng, marker bấm được, camera
    fly-to/fit-bounds hoạt động như mô tả — phần này chưa được chạy thử
    trực tiếp trong quá trình build.
+
+---
+
+## Module 4: AI Consultation
+
+**Chức năng đã hoàn thành**
+- Chat AI tự do (authenticated), gated Premium giống Web (`access:
+  "premium"`).
+- Trạng thái chào mừng với 4 gợi ý câu hỏi nhanh; gửi tin nhắn, hiệu ứng
+  "đang soạn phản hồi"; fallback message khi API lỗi (không throw ra UI).
+- Xóa hội thoại (native `Alert.alert` xác nhận — không dựng Dialog tuỳ
+  chỉnh vì đây là ngữ cảnh phù hợp cho confirm dialog gốc hệ điều hành).
+- Lối tắt sang Tư vấn chuyên khoa / Bản đồ / Kiểm tra thuốc (Module 11,
+  route chưa tồn tại nên dùng `as never` tạm thời).
+- Thêm tab "Chat AI" vào bottom tab bar Patient.
+
+**API đã tích hợp**
+- `POST /api/web-chatbot/message` (auth: true) — dùng chung endpoint với
+  chatbot khách trên Web, khác nhau ở cờ auth.
+
+**UI đã hoàn thành**
+- `app/(patient)/chat.tsx` (bọc `PremiumGate`).
+- `src/components/chat/`: `ChatScreen`, `ChatMessageBubble` (+
+  `TypingBubble`), `WelcomePrompts`.
+- `src/components/auth/PremiumGate.tsx` — gate Premium tái sử dụng được
+  cho Module 11 (Kiểm tra thuốc) sau này.
+
+**Route:** `/(patient)/chat`.
+
+**Service:** dùng lại `webChatbotService.message(text, true)` đã có sẵn
+trong `domainServices.ts` (không tạo service trùng lặp).
+
+**State:** state cục bộ trong `ChatScreen` (danh sách tin nhắn không lưu
+lại giữa các phiên — khớp hành vi Web: hội thoại chỉ tồn tại trên màn hình
+hiện tại, không có API lưu lịch sử chat).
+
+**Known Issues**
+- **Không port `MapConsultationAssistant`**: Web nhúng một trợ lý AI theo
+  ngữ cảnh cơ sở y tế + chuyên khoa (gọi
+  `consultationSessionsApi.generateQuestions`) ngay trong trang bản đồ.
+  Đây là widget phụ, không phải trang độc lập; quyết định phạm vi: Module
+  4 tập trung vào Chat AI tự do (giá trị chính, dùng được ngay), còn tính
+  năng tư vấn theo cơ sở cụ thể có thể bổ sung sau như một cải tiến của
+  Module 3/4 nếu team xác nhận cần. Chưa gọi API
+  `consultationSessionsApi.*` ở Mobile.
+- `PremiumGate` hiện hiển thị thẻ nâng cấp nội bộ thay vì điều hướng sang
+  `/pricing` như Web, vì Subscription (Module 8) chưa tồn tại trên Mobile.
+- Nút "Kiểm tra thuốc" trong composer trỏ tới route chưa tồn tại (Module
+  11) — dùng cast tạm `as never`, sẽ hoạt động khi Module 11 hoàn thành.
+- Web lưu prefill tin nhắn qua `sessionStorage` (`medimate.chat.prefill`)
+  khi điều hướng từ nơi khác vào Chat — Mobile chưa có nguồn nào ghi giá
+  trị này (không có landing chat), nên bỏ qua tương tự cách xử lý ở
+  Module 2.
+
+**Hướng dẫn test trên Mobile**
+1. Đăng nhập bằng tài khoản **không có gói Premium** → vào tab "Chat AI"
+   → xác nhận thấy thẻ nâng cấp, không thấy khung chat.
+2. Đăng nhập bằng tài khoản **có Premium** (hoặc set thủ công cờ
+   `isPremium`/`planName` trong response backend để test) → xác nhận vào
+   được khung chat.
+3. Bấm 1 gợi ý nhanh → xác nhận tin nhắn gửi đi và có phản hồi (hoặc
+   fallback message nếu API lỗi, không crash).
+4. Gửi vài tin nhắn → xác nhận danh sách tự cuộn xuống cuối.
+5. Bấm "Xóa hội thoại" → xác nhận hộp thoại xác nhận gốc hệ điều hành hiện
+   ra, chỉ xoá khi bấm đúng nút xác nhận.
+6. Bấm lối tắt "Tư vấn chuyên khoa"/"Tìm cơ sở y tế" → xác nhận điều hướng
+   đúng màn.
