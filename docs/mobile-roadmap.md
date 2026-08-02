@@ -7,7 +7,7 @@ kế UI riêng theo chuẩn Mobile UX. Admin không nằm trong phạm vi này.
 Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 
 - [x] Authentication
-- [ ] Dashboard
+- [x] Dashboard
 - [ ] Nearby Clinics / Map
 - [ ] AI Consultation
 - [ ] Medical Facility
