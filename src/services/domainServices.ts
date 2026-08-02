@@ -35,29 +35,9 @@ export const medicalDepartmentsService = {
   },
 };
 
-export const medicalFacilitiesService = {
-  list(pageNumber = 1, pageSize = 50) {
-    return apiRequest(`${ENDPOINTS.MEDICAL_FACILITIES.BASE}?${withPagination(pageNumber, pageSize)}`);
-  },
-  active() {
-    return apiRequest(ENDPOINTS.MEDICAL_FACILITIES.ACTIVE);
-  },
-  get(id: string) {
-    return apiRequest(ENDPOINTS.MEDICAL_FACILITIES.BY_ID(id));
-  },
-};
-
-export const doctorsService = {
-  list(pageNumber = 1, pageSize = 50) {
-    return apiRequest(`${ENDPOINTS.DOCTORS.BASE}?${withPagination(pageNumber, pageSize)}`);
-  },
-  active() {
-    return apiRequest(ENDPOINTS.DOCTORS.ACTIVE);
-  },
-  get(id: string) {
-    return apiRequest(ENDPOINTS.DOCTORS.BY_ID(id));
-  },
-};
+// Real medical-facilities / doctors services live in facilityService.ts /
+// doctorService.ts (built for the Nearby Clinics / Map + Doctor modules) —
+// see those files instead of duplicating placeholder services here.
 
 export const patientProfilesService = {
   list(pageNumber = 1, pageSize = 50) {

@@ -6,13 +6,19 @@ import { ClinicalAnalysisResult, ClinicalDepartment, ClinicalFacility } from "@/
 
 export type GeoPoint = { latitude: number; longitude: number };
 
+// Distance helpers only need coordinates, so they accept any facility-like
+// shape with lat/lng — shared between symptomAnalysis's ClinicalFacility
+// (Dashboard) and facility.ts's NormalizedFacility (Map), which otherwise
+// differ (departments: ClinicalDepartment[] vs string[]).
+type HasCoordinates = { latitude: number | null; longitude: number | null };
+
 function coordinateOrNull(value: unknown, min: number, max: number) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric < min || numeric > max) return null;
   return numeric;
 }
 
-export function getFacilityCoordinates(facility: ClinicalFacility): GeoPoint | null {
+export function getFacilityCoordinates(facility: HasCoordinates): GeoPoint | null {
   const latitude = coordinateOrNull(facility.latitude, -90, 90);
   const longitude = coordinateOrNull(facility.longitude, -180, 180);
   if (latitude == null || longitude == null) return null;
@@ -30,7 +36,7 @@ function distanceKmBetween(first: GeoPoint, second: GeoPoint) {
   return radiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function getFacilityDistanceKm(facility: ClinicalFacility, userLocation: GeoPoint | null) {
+export function getFacilityDistanceKm(facility: HasCoordinates, userLocation: GeoPoint | null) {
   const facilityLocation = getFacilityCoordinates(facility);
   if (!facilityLocation || !userLocation) return null;
   return distanceKmBetween(userLocation, facilityLocation);
