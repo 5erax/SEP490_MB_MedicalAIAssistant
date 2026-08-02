@@ -33,6 +33,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <Pressable
+      accessibilityRole="button"
       {...props}
       disabled={disabled}
       onPress={(event) => {

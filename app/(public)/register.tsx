@@ -15,10 +15,13 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
-import { ROUTES } from "@/src/navigation";
-import { authService, RegisterPayload } from "@/src/services";
+import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
+import { authService, normalizeAuthSession, RegisterPayload } from "@/src/services";
+import { useAuth } from "@/src/providers";
+import { useToast } from "@/src/hooks/useToast";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
 
@@ -46,6 +49,12 @@ const initialForm: RegisterForm = {
   confirmPassword: "",
 };
 
+const PASSWORD_HINT = "Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường, số và ký tự đặc biệt.";
+
+// Matches Web's SignupPage validation exactly: required fields + email
+// format + confirm-password match + accepted terms. Web has no client-side
+// minimum password length (only a hint) — the backend is the source of
+// truth for password policy, so mobile does not invent a stricter gate.
 function validateRegisterForm(form: RegisterForm, accepted: boolean) {
   const errors: RegisterErrors = {};
 
@@ -58,22 +67,30 @@ function validateRegisterForm(form: RegisterForm, accepted: boolean) {
   if (!form.userName.trim()) errors.userName = "Vui lòng nhập tên đăng nhập.";
   if (!form.password) {
     errors.password = "Vui lòng nhập mật khẩu.";
-  } else if (form.password.length < 6) {
-    errors.password = "Mật khẩu cần có tối thiểu 6 ký tự.";
   }
   if (!form.confirmPassword) {
     errors.confirmPassword = "Vui lòng nhập lại mật khẩu.";
   } else if (form.confirmPassword !== form.password) {
     errors.confirmPassword = "Mật khẩu nhập lại chưa khớp.";
   }
-  if (form.dateOfBirth.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(form.dateOfBirth.trim())) {
-    errors.dateOfBirth = "Ngày sinh cần có định dạng YYYY-MM-DD.";
-  }
   if (!accepted) {
     errors.accepted = "Bạn cần đồng ý điều khoản sử dụng và lưu ý y tế.";
   }
 
   return errors;
+}
+
+function formatDateOfBirth(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateOfBirthLabel(value: string) {
+  if (!value) return "Chọn ngày sinh";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
 }
 
 function buildRegisterPayload(form: RegisterForm): RegisterPayload {
@@ -90,10 +107,13 @@ function buildRegisterPayload(form: RegisterForm): RegisterPayload {
 }
 
 export default function RegisterScreen() {
+  const { setSession } = useAuth();
+  const { showToast } = useToast();
   const [form, setForm] = useState<RegisterForm>(initialForm);
   const [accepted, setAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -107,6 +127,10 @@ export default function RegisterScreen() {
     }
   }
 
+  // Matches Web's SignupPage: register returns an AuthSession, so the app
+  // auto-logs the user in and routes to their post-auth destination
+  // (including the first-login patient-profile-setup redirect) instead of
+  // bouncing back to the login screen.
   async function handleRegister() {
     const nextErrors = validateRegisterForm(form, accepted);
     setErrors(nextErrors);
@@ -118,8 +142,16 @@ export default function RegisterScreen() {
 
     setSubmitting(true);
     try {
-      await authService.register(buildRegisterPayload(form));
-      router.replace(ROUTES.PUBLIC.LOGIN);
+      const response = await authService.register(buildRegisterPayload(form));
+      const session = normalizeAuthSession(response);
+
+      if (!session?.accessToken) {
+        throw new Error("Backend chưa trả access token. Vui lòng thử lại.");
+      }
+
+      await setSession(session);
+      showToast({ type: "success", title: "Tạo tài khoản thành công", message: "Đang mở workspace của bạn." });
+      router.replace(getInitialRouteForSession(session));
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Tạo tài khoản thất bại. Vui lòng thử lại.");
     } finally {
@@ -244,15 +276,35 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
-              <TextField
-                label="Ngày sinh"
-                value={form.dateOfBirth}
-                onChangeText={(value) => updateField("dateOfBirth", value)}
-                placeholder="YYYY-MM-DD"
-                keyboardType="numbers-and-punctuation"
-                error={errors.dateOfBirth}
-                editable={!submitting}
-              />
+              <View style={styles.fieldGroup}>
+                <AppText variant="caption" color={colors.muted}>
+                  Ngày sinh
+                </AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setShowDatePicker(true)}
+                  style={styles.dateInput}
+                  disabled={submitting}
+                >
+                  <AppText color={form.dateOfBirth ? colors.ink : colors.subtle}>
+                    {formatDateOfBirthLabel(form.dateOfBirth)}
+                  </AppText>
+                </Pressable>
+                {showDatePicker ? (
+                  <DateTimePicker
+                    value={form.dateOfBirth ? new Date(form.dateOfBirth) : new Date(2000, 0, 1)}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "inline" : "default"}
+                    maximumDate={new Date()}
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(Platform.OS === "ios");
+                      if (event.type === "set" && selectedDate) {
+                        updateField("dateOfBirth", formatDateOfBirth(selectedDate));
+                      }
+                    }}
+                  />
+                ) : null}
+              </View>
 
               <View style={styles.passwordWrap}>
                 <TextField
@@ -265,6 +317,7 @@ export default function RegisterScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   error={errors.password}
+                  hint={errors.password ? undefined : PASSWORD_HINT}
                   editable={!submitting}
                   style={styles.passwordInput}
                 />
@@ -308,7 +361,7 @@ export default function RegisterScreen() {
                   ) : null}
                 </View>
                 <AppText variant="caption" color={colors.muted} style={styles.consentText}>
-                  Tôi đồng ý với điều khoản sử dụng và hiểu MediMate AI không thay thế bác sĩ.
+                  Tôi đã đọc thông tin quyền riêng tư và hiểu nội dung MediMate AI chỉ mang tính tham khảo, không thay thế chẩn đoán của bác sĩ.
                 </AppText>
               </Pressable>
               {errors.accepted ? (
@@ -451,6 +504,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.ink,
     backgroundColor: colors.lime,
+  },
+  dateInput: {
+    minHeight: 48,
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.md,
   },
   passwordWrap: {
     position: "relative",

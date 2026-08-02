@@ -2,6 +2,7 @@
  * Screen: LoginScreen
  * APIs:
  * - POST /api/authentication/login
+ * - POST /api/authentication/google (when Google Sign-In is configured)
  */
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -16,23 +17,23 @@ import {
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { authService } from "@/src/services";
-import { AuthSession } from "@/src/types";
+import { authService, normalizeAuthSession } from "@/src/services";
 import { useAuth } from "@/src/providers";
+import { useToast } from "@/src/hooks/useToast";
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
 import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
+import { isGoogleAuthConfigured } from "@/src/config/env";
 
 type LoginErrors = {
   email?: string;
   password?: string;
 };
 
-function normalizeLoginSession(response: Awaited<ReturnType<typeof authService.login>>) {
-  return (response.data ?? response) as AuthSession;
-}
-
+// Matches Web: only required + email-format are enforced client-side.
+// Password length is not gated here — Web only shows a hint, backend is
+// the source of truth for password policy.
 function validateLoginForm(email: string, password: string) {
   const errors: LoginErrors = {};
   const trimmedEmail = email.trim();
@@ -45,15 +46,17 @@ function validateLoginForm(email: string, password: string) {
 
   if (!password) {
     errors.password = "Vui lòng nhập mật khẩu.";
-  } else if (password.length < 6) {
-    errors.password = "Mật khẩu cần có tối thiểu 6 ký tự.";
   }
 
   return errors;
 }
 
+const PASSWORD_HINT = "Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường, số và ký tự đặc biệt.";
+
 export default function LoginScreen() {
   const { isRestoring, session, setSession } = useAuth();
+  const { showToast } = useToast();
+  const googleLoginEnabled = isGoogleAuthConfigured();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -84,14 +87,15 @@ export default function LoginScreen() {
         email: email.trim(),
         password,
       });
-      const session = normalizeLoginSession(response);
+      const nextSession = normalizeAuthSession(response);
 
-      if (!session?.accessToken) {
+      if (!nextSession?.accessToken) {
         throw new Error("Backend chưa trả access token. Vui lòng thử lại.");
       }
 
-      await setSession(session);
-      router.replace(getInitialRouteForSession(session));
+      await setSession(nextSession);
+      showToast({ type: "success", title: "Đăng nhập thành công", message: "Đang mở không gian phù hợp với tài khoản của bạn." });
+      router.replace(getInitialRouteForSession(nextSession));
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
@@ -157,6 +161,14 @@ export default function LoginScreen() {
 
             <ApiMessage type="error" message={apiError} />
 
+            {!googleLoginEnabled ? (
+              <View style={styles.inlineNote}>
+                <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
+                  Đăng nhập Google chưa được cấu hình cho ứng dụng di động. Bạn vẫn có thể đăng nhập bằng email và mật khẩu.
+                </AppText>
+              </View>
+            ) : null}
+
             <View style={styles.form}>
               <TextField
                 label="Email"
@@ -188,6 +200,7 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   error={errors.password}
+                  hint={errors.password ? undefined : PASSWORD_HINT}
                   editable={!submitting}
                   style={styles.passwordInput}
                 />
@@ -203,6 +216,17 @@ export default function LoginScreen() {
                 </Pressable>
               </View>
 
+              <View style={styles.forgotRow}>
+                <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
+                  Thông tin đăng nhập chỉ được dùng để mở tài khoản của bạn.
+                </AppText>
+                <Pressable onPress={() => router.push(ROUTES.PUBLIC.FORGOT_PASSWORD)} accessibilityRole="button">
+                  <AppText variant="caption" color={colors.teal}>
+                    Quên mật khẩu?
+                  </AppText>
+                </Pressable>
+              </View>
+
               <Button fullWidth disabled={disabled} onPress={handleLogin} style={styles.submitButton}>
                 {submitting ? (
                   <View style={styles.loadingLabel}>
@@ -213,12 +237,6 @@ export default function LoginScreen() {
                   "Đăng nhập"
                 )}
               </Button>
-
-              <View style={styles.inlineNote}>
-                <AppText variant="caption" color={colors.subtle} style={styles.noteText}>
-                  Thông tin đăng nhập chỉ được dùng để mở tài khoản của bạn.
-                </AppText>
-              </View>
 
               <View style={styles.bottomLink}>
                 <AppText variant="caption" color={colors.muted}>
@@ -347,7 +365,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
+  forgotRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   noteText: {
+    flexShrink: 1,
     fontWeight: "600",
   },
   loadingLabel: {

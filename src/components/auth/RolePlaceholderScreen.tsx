@@ -1,8 +1,7 @@
 import { StyleSheet, View } from "react-native";
-import { router } from "expo-router";
 
 import { AppText, Badge, Button, Card, Screen } from "@/src/components/ui";
-import { ROUTES } from "@/src/navigation";
+import { useLogout } from "@/src/hooks/useLogout";
 import { useAuth } from "@/src/providers";
 import { colors, spacing } from "@/src/theme/tokens";
 import { getSessionRoles } from "@/src/utils/roles";
@@ -17,13 +16,9 @@ function getDisplayName(session: ReturnType<typeof useAuth>["session"]) {
 }
 
 export function RolePlaceholderScreen({ title, role }: RolePlaceholderScreenProps) {
-  const { clearSession, session } = useAuth();
+  const { session } = useAuth();
+  const { logout, loggingOut } = useLogout();
   const roles = getSessionRoles(session);
-
-  async function handleLogout() {
-    await clearSession();
-    router.replace(ROUTES.PUBLIC.LOGIN);
-  }
 
   return (
     <Screen contentContainerStyle={styles.content}>
@@ -65,8 +60,8 @@ export function RolePlaceholderScreen({ title, role }: RolePlaceholderScreenProp
           <AppText color={colors.muted}>{roles.length ? roles.join(", ") : "patient mặc định"}</AppText>
         </View>
 
-        <Button variant="dark" fullWidth onPress={handleLogout} style={styles.logoutButton}>
-          Đăng xuất
+        <Button variant="dark" fullWidth disabled={loggingOut} onPress={logout} style={styles.logoutButton}>
+          {loggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
         </Button>
       </Card>
     </Screen>
