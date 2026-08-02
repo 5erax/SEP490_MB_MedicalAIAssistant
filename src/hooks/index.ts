@@ -2,6 +2,7 @@ export * from './useAuthSession';
 export * from './useClinicalRecommendation';
 export * from './useDebouncedValue';
 export * from './useFacilities';
+export * from './useFacilityReviews';
 export * from './useLogout';
 export * from './useSymptomIntake';
 export * from './useToast';

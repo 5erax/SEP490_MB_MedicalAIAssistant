@@ -11,6 +11,14 @@ export const env = {
   // @react-native-google-signin for the idToken flow against our backend.
   // Left unset until the team registers Android/iOS OAuth clients.
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "",
+  // Same unsigned Cloudinary upload preset Web's .env.production uses
+  // (VITE_CLOUDINARY_*) — an unsigned preset is designed to be public/
+  // client-exposed (restricted server-side by Cloudinary settings, not by
+  // secrecy), so reusing the real values here (rather than leaving them
+  // unset) is required for the review-photo upload feature to work at all.
+  cloudinaryCloudName: process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || "dnfcv21cy",
+  cloudinaryUploadPreset: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "medimate_unsigned",
+  cloudinaryFolder: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_FOLDER || "medical-facilities",
 };
 
 // Mirrors Web's isGoogleOAuthEnabledForCurrentOrigin() (src/services/googleOAuthConfig.js):
