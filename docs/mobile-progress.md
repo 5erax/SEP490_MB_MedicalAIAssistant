@@ -457,3 +457,45 @@ trả về để map sang thông báo tiếng Việt — logic dễ vỡ nhưng 
 5. Bấm "Chỉnh sửa đánh giá" → đổi sao/nhận xét → lưu → xác nhận cập nhật
    đúng, không tạo bản ghi trùng.
 6. Thử thêm ảnh thứ 6 → xác nhận bị chặn với thông báo "tối đa 5 ảnh".
+
+---
+
+## Module 6: Doctor
+
+**Chức năng đã hoàn thành**
+- Tab "Bác sĩ" thật trong bottom sheet chi tiết cơ sở y tế (thay teaser số
+  lượng ở Module 3 bằng danh sách đầy đủ).
+- Chi tiết bác sĩ (bottom sheet riêng): ảnh, học hàm/học vị, chuyên khoa,
+  vai trò (Bác sĩ/Phó khoa/Trưởng khoa/Chuyên gia đầu ngành/Cố vấn chuyên
+  môn), số năm kinh nghiệm.
+- Nút "Đặt lịch" hiển thị nhưng vô hiệu hoá — khớp đúng trạng thái thật
+  của Web ("Chưa hỗ trợ đặt lịch"), không tự thêm chức năng Web chưa có.
+
+**API đã tích hợp:** `GET /api/doctors?facilityId=&isActive=true&PageNumber=&PageSize=`
+(đã gọi từ Module 3, giờ lưu đầy đủ mảng bác sĩ thay vì chỉ đếm số lượng).
+
+**UI đã hoàn thành**
+- `src/components/doctor/{DoctorListItem,DoctorDetailSheet,index}.tsx`.
+- Cập nhật `src/components/map/FacilityDetailSheet.tsx`: tab bar 3 mục
+  (Tổng quan/Bác sĩ/Đánh giá), nút "Xem danh sách bác sĩ" ở tab Tổng quan
+  giờ chuyển tab thay vì hiện toast tạm.
+
+**State:** `src/utils/doctorHelpers.ts` — port `getDoctorImageUrl`,
+`getDoctorName`, `getDoctorSpecialty`, `getDoctorRoleLabel` nguyên vẹn từ
+Web.
+
+**Known Issues**
+- Web không có trang duyệt bác sĩ độc lập ngoài ngữ cảnh 1 cơ sở y tế cụ
+  thể — Mobile giữ đúng kiến trúc này (không tạo route `/doctors` riêng).
+- Đặt lịch khám: chưa có API/tính năng thật ở cả Web lẫn Mobile — nút chỉ
+  mang tính hiển thị trạng thái "chưa hỗ trợ", không phải lỗi thiếu sót.
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/map`, chọn 1 cơ sở, mở tab "Bác sĩ" → xác nhận danh sách bác sĩ
+   đang hoạt động hiển thị đúng (ảnh/tên/học hàm/chuyên khoa/kinh nghiệm).
+2. Bấm vào 1 bác sĩ → xác nhận bottom sheet chi tiết mở đúng thông tin,
+   nút "Chưa hỗ trợ đặt lịch" hiển thị nhưng không bấm được.
+3. Từ tab "Tổng quan", bấm "Xem danh sách bác sĩ" → xác nhận chuyển sang
+   tab "Bác sĩ" đúng (không còn toast tạm).
+4. Cơ sở không có bác sĩ nào → xác nhận empty state "Hiện chưa có bác sĩ
+   nào được công khai cho cơ sở này."
