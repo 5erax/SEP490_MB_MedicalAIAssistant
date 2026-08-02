@@ -387,3 +387,73 @@ hiện tại, không có API lưu lịch sử chat).
    ra, chỉ xoá khi bấm đúng nút xác nhận.
 6. Bấm lối tắt "Tư vấn chuyên khoa"/"Tìm cơ sở y tế" → xác nhận điều hướng
    đúng màn.
+
+---
+
+## Module 5: Medical Facility
+
+**Chức năng đã hoàn thành**
+- Thêm tab "Đánh giá" vào bottom sheet chi tiết cơ sở y tế (Module 3):
+  điểm trung bình, biểu đồ phân bố 1-5 sao, danh sách đánh giá công khai.
+- Viết đánh giá mới (1-5 sao + nhận xét tối đa 1000 ký tự + tối đa 5 ảnh)
+  — yêu cầu đăng nhập (điều hướng sang Login nếu chưa), tự phát hiện đã có
+  đánh giá của mình để chuyển sang chế độ xem/sửa thay vì tạo trùng.
+  Chỉnh sửa đánh giá của chính mình.
+- Upload ảnh trực tiếp lên Cloudinary (không qua backend) bằng
+  `expo-image-picker`, cùng preset unsigned Web đang dùng thật.
+
+**API đã tích hợp**
+- `GET /api/feedback-reviews/facility/{facilityId}` (public, không cần
+  đăng nhập)
+- `POST /api/feedback-reviews` (auth)
+- `PUT /api/feedback-reviews/{id}` (auth)
+- Cloudinary unsigned upload (`POST https://api.cloudinary.com/v1_1/{cloud}/image/upload`)
+
+**UI đã hoàn thành**
+- `src/components/reviews/`: `StarRatingInput`/`StarRatingDisplay`,
+  `RatingDistribution`, `ReviewCard`, `ReviewForm`, `ReviewsSection`.
+- Tích hợp vào `src/components/map/FacilityDetailSheet.tsx` (Module 3)
+  qua tab bar Tổng quan/Đánh giá — không tạo màn hình/route riêng vì Web
+  cũng gắn chặt đánh giá vào trang chi tiết cơ sở, không phải trang độc
+  lập.
+
+**Hook:** `useFacilityReviews(facilityId)` — fetch, submit (create/update),
+quản lý state form + upload ảnh, port đúng logic merge lại danh sách sau
+khi gửi đánh giá (tìm theo id trong danh sách mới tải, chèn đầu danh sách
+nếu chưa thấy — xử lý độ trễ kiểm duyệt như Web).
+
+**Service:** `feedbackReviewService.ts` (chỉ phần user-facing:
+`byFacility`/`create`/`update` — `list`/`setStatus`/`remove` thuộc Admin,
+không port), `cloudinaryUploadService.ts` (port từ Web, dùng RN
+FormData `{uri, name, type}` thay vì browser `File`).
+
+**State:** `src/utils/reviewHelpers.ts` — port nguyên vẹn toàn bộ logic
+xác định chủ sở hữu đánh giá (`isReviewByCurrentUser`), format tác giả/
+ngày/ảnh, và đặc biệt `getReviewMessageText` (dò chuỗi tiếng Anh backend
+trả về để map sang thông báo tiếng Việt — logic dễ vỡ nhưng giữ nguyên
+để khớp hành vi thật của backend, không tự "dọn dẹp" khác Web).
+
+**Known Issues**
+- Cấu hình Cloudinary (`cloudName`/`uploadPreset`/`folder`) đặt giá trị
+  mặc định trùng với `.env.production` thật của Web (`dnfcv21cy`/
+  `medimate_unsigned`/`medical-facilities`) vì đây là unsigned preset —
+  thiết kế để lộ phía client, không phải bí mật; nếu không đặt đúng giá
+  trị thật thì tính năng upload ảnh sẽ không hoạt động được. Có thể ghi
+  đè qua `EXPO_PUBLIC_CLOUDINARY_*` nếu team đổi cấu hình sau này.
+- Chưa kiểm thử được luồng gửi đánh giá thật (CORS chặn API thật trong
+  sandbox trình duyệt) — cần test trên thiết bị thật.
+- Danh sách bác sĩ tại cơ sở vẫn chỉ là teaser số lượng (Module 6).
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/map`, chọn 1 cơ sở, mở tab "Đánh giá" → xác nhận điểm trung bình
+   + biểu đồ phân bố + danh sách hiển thị đúng.
+2. Chưa đăng nhập → xác nhận thấy CTA "Đăng nhập", không thấy form viết
+   đánh giá.
+3. Đăng nhập → viết đánh giá: chọn sao, nhập nhận xét, thêm 1-2 ảnh từ
+   thư viện ảnh → gửi → xác nhận đánh giá xuất hiện ngay trong danh sách,
+   đúng nội dung/ảnh.
+4. Gửi lại đánh giá lần 2 cho cùng cơ sở → xác nhận hệ thống chuyển sang
+   chế độ "đánh giá của bạn" + nút "Chỉnh sửa" thay vì tạo đánh giá mới.
+5. Bấm "Chỉnh sửa đánh giá" → đổi sao/nhận xét → lưu → xác nhận cập nhật
+   đúng, không tạo bản ghi trùng.
+6. Thử thêm ảnh thứ 6 → xác nhận bị chặn với thông báo "tối đa 5 ảnh".

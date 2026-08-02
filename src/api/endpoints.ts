@@ -12,6 +12,7 @@ const SUBSCRIPTION_PLANS_BASE = "/api/subscription-plans";
 const AI_CONFIGS_BASE = "/api/ai-configs";
 const WEB_CHATBOT_BASE = "/api/web-chatbot";
 const SYMPTOM_ANALYSIS_BASE = "/api/symptom-analysis";
+const FEEDBACK_REVIEWS_BASE = "/api/feedback-reviews";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -42,6 +43,11 @@ export const ENDPOINTS = {
   },
   FACILITY_DEPARTMENTS: {
     ACTIVE: `${FACILITY_DEPARTMENTS_BASE}/active`,
+  },
+  FEEDBACK_REVIEWS: {
+    BASE: FEEDBACK_REVIEWS_BASE,
+    BY_ID: (id: string | number) => byId(FEEDBACK_REVIEWS_BASE, id),
+    BY_FACILITY: (facilityId: string) => `${FEEDBACK_REVIEWS_BASE}/facility/${facilityId}`,
   },
   SYMPTOM_ANALYSIS: {
     SUGGEST_CLINICAL_QUESTIONS: `${SYMPTOM_ANALYSIS_BASE}/suggest-clinical-questions`,

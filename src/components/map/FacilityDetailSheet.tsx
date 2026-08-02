@@ -13,6 +13,9 @@ import { doctorManagementApi } from "@/src/services/doctorService";
 import { medicalFacilitiesApi } from "@/src/services/facilityService";
 import { NormalizedFacility } from "@/src/types/facility";
 import { getArrayData, getObjectData, mergeFacilityDetail } from "@/src/utils/facilityNormalize";
+import { ReviewsSection } from "@/src/components/reviews";
+
+type DetailTab = "overview" | "reviews";
 
 type FacilityDetailSheetProps = {
   facility: NormalizedFacility | null;
@@ -27,9 +30,11 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
   const [error, setError] = useState("");
   const [doctorCount, setDoctorCount] = useState<number | null>(null);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTab>("overview");
 
   useEffect(() => {
     if (!visible || !facility) return;
+    setActiveTab("overview");
     setDetail(facility);
     setError("");
     setDoctorCount(null);
@@ -90,80 +95,102 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
-          <Badge tone="info">{current.facilityTypeLabel}</Badge>
-
-          <View style={styles.infoRow}>
-            <MapPin size={16} color={colors.subtle} />
-            <AppText color={colors.muted} style={styles.infoText}>
-              {current.address}
-            </AppText>
-          </View>
-          {current.phone ? (
-            <View style={styles.infoRow}>
-              <Phone size={16} color={colors.subtle} />
-              <AppText color={colors.muted}>{current.phone}</AppText>
-            </View>
-          ) : null}
-          {current.website ? (
-            <View style={styles.infoRow}>
-              <Globe size={16} color={colors.subtle} />
-              <AppText color={colors.muted} style={styles.infoText} numberOfLines={1}>
-                {current.website}
-              </AppText>
-            </View>
-          ) : null}
-          <View style={styles.infoRow}>
-            <Stethoscope size={16} color={colors.subtle} />
-            <AppText color={colors.muted} style={styles.infoText}>
-              {current.departments.join(", ")}
-            </AppText>
-          </View>
-          <AppText variant="caption" color={colors.subtle}>
-            Giờ mở cửa: {current.openingHours}
-          </AppText>
-
-          {loading ? <LoadingState title="Đang tải thông tin chi tiết..." /> : null}
-          {error ? (
-            <AppText variant="caption" color={colors.danger}>
-              {error}
-            </AppText>
-          ) : null}
-
-          <View style={styles.doctorsTeaser}>
-            <AppText variant="bodyStrong">Bác sĩ tại cơ sở</AppText>
-            <AppText color={colors.muted}>
-              {doctorsLoading ? "Đang tải danh sách bác sĩ..." : doctorCount === null ? "Chưa có dữ liệu." : `${doctorCount} bác sĩ đang hoạt động.`}
-            </AppText>
-            <Button
-              variant="secondary"
-              size="sm"
-              onPress={() => showToast({ type: "info", message: "Danh sách bác sĩ chi tiết sẽ có ở bản cập nhật tiếp theo." })}
+        <View style={styles.tabBar}>
+          {(["overview", "reviews"] as DetailTab[]).map((tab) => (
+            <Pressable
+              key={tab}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeTab === tab }}
+              onPress={() => setActiveTab(tab)}
+              style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
             >
-              Xem danh sách bác sĩ
-            </Button>
-          </View>
+              <AppText variant="bodyStrong" color={activeTab === tab ? colors.ink : colors.subtle}>
+                {tab === "overview" ? "Tổng quan" : "Đánh giá"}
+              </AppText>
+            </Pressable>
+          ))}
+        </View>
 
-          <View style={styles.actions}>
-            <Button variant="secondary" onPress={openDirections} disabled={current.latitude == null}>
-              <View style={styles.actionInline}>
-                <Navigation size={16} color={colors.ink} />
-                <AppText variant="bodyStrong">Chỉ đường</AppText>
+        <ScrollView contentContainerStyle={styles.content}>
+          {activeTab === "overview" ? (
+            <>
+              <Badge tone="info">{current.facilityTypeLabel}</Badge>
+
+              <View style={styles.infoRow}>
+                <MapPin size={16} color={colors.subtle} />
+                <AppText color={colors.muted} style={styles.infoText}>
+                  {current.address}
+                </AppText>
               </View>
-            </Button>
-            <Button variant="secondary" onPress={callFacility} disabled={!current.phone}>
-              <View style={styles.actionInline}>
-                <Phone size={16} color={colors.ink} />
-                <AppText variant="bodyStrong">Gọi</AppText>
+              {current.phone ? (
+                <View style={styles.infoRow}>
+                  <Phone size={16} color={colors.subtle} />
+                  <AppText color={colors.muted}>{current.phone}</AppText>
+                </View>
+              ) : null}
+              {current.website ? (
+                <View style={styles.infoRow}>
+                  <Globe size={16} color={colors.subtle} />
+                  <AppText color={colors.muted} style={styles.infoText} numberOfLines={1}>
+                    {current.website}
+                  </AppText>
+                </View>
+              ) : null}
+              <View style={styles.infoRow}>
+                <Stethoscope size={16} color={colors.subtle} />
+                <AppText color={colors.muted} style={styles.infoText}>
+                  {current.departments.join(", ")}
+                </AppText>
               </View>
-            </Button>
-            <Button variant="secondary" onPress={shareFacility}>
-              <View style={styles.actionInline}>
-                <Share2 size={16} color={colors.ink} />
-                <AppText variant="bodyStrong">Chia sẻ</AppText>
+              <AppText variant="caption" color={colors.subtle}>
+                Giờ mở cửa: {current.openingHours}
+              </AppText>
+
+              {loading ? <LoadingState title="Đang tải thông tin chi tiết..." /> : null}
+              {error ? (
+                <AppText variant="caption" color={colors.danger}>
+                  {error}
+                </AppText>
+              ) : null}
+
+              <View style={styles.doctorsTeaser}>
+                <AppText variant="bodyStrong">Bác sĩ tại cơ sở</AppText>
+                <AppText color={colors.muted}>
+                  {doctorsLoading ? "Đang tải danh sách bác sĩ..." : doctorCount === null ? "Chưa có dữ liệu." : `${doctorCount} bác sĩ đang hoạt động.`}
+                </AppText>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onPress={() => showToast({ type: "info", message: "Danh sách bác sĩ chi tiết sẽ có ở bản cập nhật tiếp theo." })}
+                >
+                  Xem danh sách bác sĩ
+                </Button>
               </View>
-            </Button>
-          </View>
+
+              <View style={styles.actions}>
+                <Button variant="secondary" onPress={openDirections} disabled={current.latitude == null}>
+                  <View style={styles.actionInline}>
+                    <Navigation size={16} color={colors.ink} />
+                    <AppText variant="bodyStrong">Chỉ đường</AppText>
+                  </View>
+                </Button>
+                <Button variant="secondary" onPress={callFacility} disabled={!current.phone}>
+                  <View style={styles.actionInline}>
+                    <Phone size={16} color={colors.ink} />
+                    <AppText variant="bodyStrong">Gọi</AppText>
+                  </View>
+                </Button>
+                <Button variant="secondary" onPress={shareFacility}>
+                  <View style={styles.actionInline}>
+                    <Share2 size={16} color={colors.ink} />
+                    <AppText variant="bodyStrong">Chia sẻ</AppText>
+                  </View>
+                </Button>
+              </View>
+            </>
+          ) : (
+            <ReviewsSection facilityId={current.facilityId} />
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -196,6 +223,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.paperSoft,
+  },
+  tabBar: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
+  },
+  tabButtonActive: {
+    borderBottomColor: colors.limeDark,
   },
   content: {
     padding: spacing.lg,
