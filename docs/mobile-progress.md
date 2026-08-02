@@ -124,3 +124,96 @@ tiếp với code Web tương ứng trước khi build; các điểm khác biệ
    → xác nhận quay về Login và không thể back lại vào workspace.
 8. Kill app, mở lại → xác nhận session được khôi phục từ SecureStore/
    AsyncStorage (không bị đăng xuất ngoài ý muốn) nếu token còn hạn.
+
+---
+
+## Module 2: Dashboard
+
+**Chức năng đã hoàn thành**
+- Tư vấn chuyên khoa: nhập triệu chứng → AI tạo câu hỏi làm rõ → trả lời
+  Yes/Không (hoặc nhiều lựa chọn) → gợi ý chuyên khoa + danh sách cơ sở y
+  tế xếp hạng theo chuyên khoa/khoảng cách/đánh giá.
+- Dùng vị trí thiết bị (tuỳ chọn) để tính khoảng cách tới cơ sở y tế.
+- Nhắc hoàn thiện hồ sơ cho bệnh nhân đăng nhập lần đầu (dismiss theo phiên
+  ứng dụng).
+- Lịch sử gợi ý chuyên khoa (bottom sheet, pull-to-refresh, xem chi tiết
+  từng phiên).
+- Khôi phục tiến trình nhập liệu khi rời màn rồi quay lại (chưa mất dữ liệu
+  đang nhập/câu trả lời) trong cùng phiên ứng dụng.
+
+**API đã tích hợp**
+- `POST /api/symptom-analysis/suggest-clinical-questions`
+- `POST /api/symptom-analysis/submit-clinical-question-answers`
+- `GET /api/symptom-analysis/my-sessions` (+ tự động gộp nhiều trang)
+- `GET /api/symptom-analysis/{sessionId}`
+- Đã có sẵn, chưa dùng ở UI (dành cho Module sau): `POST
+  /api/symptom-analysis/submit-diagnosis` (dùng ở AI Consultation).
+
+**UI đã hoàn thành**
+- `app/(patient)/home.tsx` — thay placeholder bằng màn Dashboard thật.
+- `src/components/dashboard/`: `IntakeForm`, `QuestionFlow`, `AnswerButtons`
+  (Yes/Không + boolean-list), `ResultPanel`, `AnalysisHistorySheet`,
+  `ProfileNudgeCard`, `SpecialtyIntakeScreen` (orchestrator).
+- Stepper 3 bước (Mô tả/Làm rõ/Kết quả), skeleton loading khi AI đang tạo
+  câu hỏi (`Skeleton`/`SkeletonGroup` — component UI mới, tái sử dụng được
+  cho các module sau), progress bar câu hỏi, haptic feedback khi chọn đáp
+  án, bottom sheet lịch sử có pull-to-refresh.
+
+**Route:** `/(patient)/home` (giữ nguyên, chỉ thay nội dung).
+
+**Hook**
+- `useSymptomIntake()` (`src/hooks/useSymptomIntake.ts`) — port state
+  machine 1:1 từ `useSymptomIntake.js` (Web).
+- `useUserLocation()` (`src/hooks/useUserLocation.ts`) — tương đương
+  `requestUserLocation()` của Web, dùng `expo-location` thay Geolocation
+  API trình duyệt.
+
+**Service**
+- `symptomAnalysisService.ts` — port `symptomAnalysisApi` 1:1 (kể cả cache
+  "clinical-map" phục vụ bàn giao sang Map, dùng AsyncStorage thay
+  sessionStorage).
+- `src/utils/clinicalQuestions.ts` — port nguyên vẹn phần logic phức tạp
+  nhất của Web: suy luận Yes/Không vs multi-choice, dịch Anh→Việt câu hỏi
+  lâm sàng, mã hoá/giải mã "boolean choice key".
+- `src/utils/facilityRanking.ts` — port thuật toán xếp hạng cơ sở y tế
+  (điểm theo chuyên khoa khớp, khoảng cách, đánh giá, trạng thái hoạt
+  động...).
+
+**State**
+- State cục bộ trong `useSymptomIntake` + cache resumable ở module-level
+  (tương đương cơ chế của Web, reset khi khởi động lại app thay vì đóng
+  tab trình duyệt).
+
+**Known Issues**
+- **Khác biệt UX có chủ đích so với Web**: Web tự động điều hướng sang
+  `/map` ngay sau khi trả lời xong (người dùng gần như không nhìn thấy
+  panel kết quả). Mobile hiển thị panel kết quả trước, người dùng bấm rõ
+  ràng "Mở bản đồ" mới điều hướng — tránh chuyển màn đột ngột, đúng chuẩn
+  UX mobile. Dữ liệu/flow/đích đến (Map kèm `source/facilityId/
+  departmentId/sessionId`) giữ nguyên như Web.
+- Nút "Mở bản đồ" trỏ tới `/(patient)/map` — màn này thuộc Module 3 (Nearby
+  Clinics/Map), sẽ được tạo ở bước tiếp theo ngay sau module này.
+- Không port `sessionStorage` prefill triệu chứng từ landing page quick-
+  prompt của Web vì Mobile hiện chưa có widget tương đương (không có
+  landing chat trong phạm vi 14 module).
+- Không gọi `trackUxEvent` (Web dùng cho analytics nội bộ) vì repo Mobile
+  chưa có service analytics nào.
+- Không tự động refresh token khi 401 — giữ nguyên hành vi Web (Web cũng
+  không có).
+
+**Hướng dẫn test trên Mobile**
+1. Đăng nhập bằng tài khoản Patient thật.
+2. Nhập triệu chứng (vd: "đau bụng âm ỉ sau ăn, buồn nôn nhẹ") → gửi → xác
+   nhận skeleton loading rồi hiển thị câu hỏi làm rõ.
+3. Trả lời hết câu hỏi (thử cả trường hợp câu hỏi dạng Yes/Không và dạng
+   nhiều lựa chọn nếu backend trả về) → xác nhận nút "Xem gợi ý" chỉ bật
+   khi trả lời đủ.
+4. Xác nhận panel kết quả hiển thị đúng chuyên khoa + danh sách cơ sở xếp
+   hạng; bấm "Dùng vị trí của tôi" → xác nhận quyền vị trí + khoảng cách
+   cập nhật trong danh sách.
+5. Bấm "Lịch sử" → xác nhận danh sách phiên tải được, kéo để làm mới, bấm
+   vào 1 phiên xem chi tiết.
+6. Rời màn Dashboard (chuyển tab khác) rồi quay lại giữa chừng luồng câu
+   hỏi → xác nhận tiến trình không bị mất.
+7. Test tài khoản patient đăng nhập lần đầu, chưa hoàn thiện hồ sơ → xác
+   nhận thẻ nhắc hồ sơ hiển thị và có thể "Để sau"/"Cập nhật hồ sơ".

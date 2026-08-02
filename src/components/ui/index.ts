@@ -5,5 +5,6 @@ export * from "./Button";
 export * from "./Card";
 export * from "./EmptyState";
 export * from "./Screen";
+export * from "./Skeleton";
 export * from "./TextField";
 

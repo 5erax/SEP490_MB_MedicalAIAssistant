@@ -40,7 +40,13 @@
         }
       ],
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MediMate AI dùng vị trí của bạn để xếp hạng cơ sở y tế theo khoảng cách gần nhất."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

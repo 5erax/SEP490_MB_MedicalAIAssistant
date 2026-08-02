@@ -5,11 +5,13 @@ const AUTH_BASE = "/api/authentication";
 const USERS_BASE = "/api/users";
 const DEPARTMENTS_BASE = "/api/medical-departments";
 const FACILITIES_BASE = "/api/medical-facilities";
+const FACILITY_DEPARTMENTS_BASE = "/api/facility-departments";
 const DOCTORS_BASE = "/api/doctors";
 const PATIENT_PROFILES_BASE = "/api/patient-profiles";
 const SUBSCRIPTION_PLANS_BASE = "/api/subscription-plans";
 const AI_CONFIGS_BASE = "/api/ai-configs";
 const WEB_CHATBOT_BASE = "/api/web-chatbot";
+const SYMPTOM_ANALYSIS_BASE = "/api/symptom-analysis";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -37,6 +39,16 @@ export const ENDPOINTS = {
     ACTIVE: `${FACILITIES_BASE}/active`,
     BY_ID: (id: string | number) => byId(FACILITIES_BASE, id),
     STATUS: (id: string | number) => status(FACILITIES_BASE, id),
+  },
+  FACILITY_DEPARTMENTS: {
+    ACTIVE: `${FACILITY_DEPARTMENTS_BASE}/active`,
+  },
+  SYMPTOM_ANALYSIS: {
+    SUGGEST_CLINICAL_QUESTIONS: `${SYMPTOM_ANALYSIS_BASE}/suggest-clinical-questions`,
+    SUBMIT_CLINICAL_QUESTION_ANSWERS: `${SYMPTOM_ANALYSIS_BASE}/submit-clinical-question-answers`,
+    SUBMIT_DIAGNOSIS: `${SYMPTOM_ANALYSIS_BASE}/submit-diagnosis`,
+    MY_SESSIONS: `${SYMPTOM_ANALYSIS_BASE}/my-sessions`,
+    BY_SESSION: (sessionId: string) => byId(SYMPTOM_ANALYSIS_BASE, sessionId),
   },
   DOCTORS: {
     BASE: DOCTORS_BASE,
