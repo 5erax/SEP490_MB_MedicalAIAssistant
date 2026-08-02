@@ -12,7 +12,7 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] AI Consultation
 - [x] Medical Facility
 - [x] Doctor
-- [ ] Appointment
+- [x] Appointment
 - [ ] Subscription
 - [ ] Payment
 - [ ] Recovery Plan

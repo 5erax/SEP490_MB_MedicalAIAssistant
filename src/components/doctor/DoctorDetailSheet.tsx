@@ -1,22 +1,28 @@
 // Ported from the doctor-detail sidebar view in Web's NearbyClinicPage.jsx
-// (sidebarView === "doctor-detail"). Booking is intentionally a disabled
-// button — Web has no booking flow yet ("Chưa hỗ trợ đặt lịch").
+// (sidebarView === "doctor-detail"). Web's booking button is a static
+// disabled "Chưa hỗ trợ đặt lịch" — mobile keeps the same unavailable
+// state but makes it tappable (see AppointmentUnavailableSheet, Module 7)
+// since a silently inert button reads poorly on touch UIs.
+import { useState } from "react";
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Clock3, Stethoscope, Star, UserRound, X } from "lucide-react-native";
+import { CalendarClock, Stethoscope, Star, UserRound, X } from "lucide-react-native";
 
 import { AppText, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { Doctor } from "@/src/types/doctor";
 import { getDoctorImageUrl, getDoctorName, getDoctorRoleLabel, getDoctorSpecialty } from "@/src/utils/doctorHelpers";
+import { AppointmentUnavailableSheet } from "@/src/components/appointment";
 
 type DoctorDetailSheetProps = {
   doctor: Doctor | null;
   facilityName: string;
+  facilityPhone?: string;
   visible: boolean;
   onClose: () => void;
 };
 
-export function DoctorDetailSheet({ doctor, facilityName, visible, onClose }: DoctorDetailSheetProps) {
+export function DoctorDetailSheet({ doctor, facilityName, facilityPhone, visible, onClose }: DoctorDetailSheetProps) {
+  const [bookingSheetVisible, setBookingSheetVisible] = useState(false);
   if (!doctor) return null;
   const imageUrl = getDoctorImageUrl(doctor);
   const roleLabel = getDoctorRoleLabel(doctor);
@@ -88,14 +94,20 @@ export function DoctorDetailSheet({ doctor, facilityName, visible, onClose }: Do
             ) : null}
           </View>
 
-          <Button variant="secondary" fullWidth disabled style={styles.bookingButton}>
+          <Button variant="secondary" fullWidth onPress={() => setBookingSheetVisible(true)} style={styles.bookingButton}>
             <View style={styles.bookingButtonInline}>
-              <Clock3 size={17} color={colors.subtle} />
-              <AppText color={colors.subtle}>Chưa hỗ trợ đặt lịch</AppText>
+              <CalendarClock size={17} color={colors.ink} />
+              <AppText variant="bodyStrong">Đặt lịch khám</AppText>
             </View>
           </Button>
         </ScrollView>
       </View>
+
+      <AppointmentUnavailableSheet
+        visible={bookingSheetVisible}
+        onClose={() => setBookingSheetVisible(false)}
+        facilityPhone={facilityPhone}
+      />
     </Modal>
   );
 }

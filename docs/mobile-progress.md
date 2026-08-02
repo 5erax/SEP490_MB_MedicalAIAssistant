@@ -499,3 +499,44 @@ Web.
    tab "Bác sĩ" đúng (không còn toast tạm).
 4. Cơ sở không có bác sĩ nào → xác nhận empty state "Hiện chưa có bác sĩ
    nào được công khai cho cơ sở này."
+
+---
+
+## Module 7: Appointment
+
+**Ghi chú quan trọng trước khi đọc**: Đã xác minh kỹ (đối chiếu Swagger
+backend đầu phiên làm việc + toàn bộ code Web) rằng **Web hiện không có
+bất kỳ API, trang, hay luồng đặt lịch khám nào**. Backend không có domain
+"Appointment" nào trong OpenAPI. Web chỉ có một nút "Đặt lịch" bị vô hiệu
+hoá vĩnh viễn trong màn chi tiết bác sĩ với nhãn "Chưa hỗ trợ đặt lịch".
+Theo đúng quy tắc "bám sát Web, không tự phát minh Business Logic mới",
+Module 7 KHÔNG xây dựng chức năng đặt lịch giả. Phạm vi thực tế của module
+này là làm rõ và làm cho trạng thái "chưa khả dụng" đó hữu ích hơn trên
+thiết bị di động (không chỉ là một nút mờ bất động).
+
+**Chức năng đã hoàn thành**
+- Nút "Đặt lịch khám" trong màn chi tiết bác sĩ (Module 6) giờ có thể bấm
+  được (trước đây chỉ là nút disabled tĩnh) → mở bottom sheet giải thích
+  rõ tính năng chưa khả dụng, kèm 2 lối tắt thay thế: gọi trực tiếp cơ sở
+  y tế (nếu có số điện thoại) hoặc mở Chat AI để được tư vấn thêm.
+
+**UI đã hoàn thành**
+- `src/components/appointment/AppointmentUnavailableSheet.tsx` — component
+  tái sử dụng được, sẵn sàng cho bất kỳ điểm chạm "đặt lịch" nào khác nếu
+  team thêm sau này (vd. từ trang cơ sở y tế).
+- Cập nhật `src/components/doctor/DoctorDetailSheet.tsx`: nút booking đổi
+  từ disabled sang tappable, mở sheet thay vì im lặng.
+
+**Known Issues**
+- Đây không phải một tính năng "thiếu sót cần bổ sung sau" — nó phản ánh
+  đúng thực trạng sản phẩm hiện tại của cả Web lẫn Mobile. Nếu backend bổ
+  sung API đặt lịch trong tương lai, cần một module riêng để port đúng
+  luồng thật lúc đó.
+
+**Hướng dẫn test trên Mobile**
+1. Mở chi tiết 1 bác sĩ bất kỳ → bấm "Đặt lịch khám" → xác nhận bottom
+   sheet giải thích hiện ra (không phải nút mờ vô tri).
+2. Nếu cơ sở có số điện thoại → bấm "Gọi cơ sở y tế" → xác nhận mở ứng
+   dụng gọi điện đúng số.
+3. Bấm "Trò chuyện với AI" → xác nhận điều hướng sang tab Chat AI (hoặc
+   thẻ nâng cấp Premium nếu tài khoản chưa có gói).
