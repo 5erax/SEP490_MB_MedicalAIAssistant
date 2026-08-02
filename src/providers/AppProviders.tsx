@@ -1,7 +1,9 @@
 import { ReactNode } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppThemeProvider } from "@/src/theme/ThemeProvider";
 import { AuthProvider } from "./AuthProvider";
+import { ToastProvider } from "./ToastProvider";
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -10,9 +12,13 @@ type AppProvidersProps = {
 
 export function AppProviders({ children, colorScheme }: AppProvidersProps) {
   return (
-    <AppThemeProvider colorScheme={colorScheme}>
-      <AuthProvider>{children}</AuthProvider>
-    </AppThemeProvider>
+    <SafeAreaProvider>
+      <AppThemeProvider colorScheme={colorScheme}>
+        <AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </AuthProvider>
+      </AppThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

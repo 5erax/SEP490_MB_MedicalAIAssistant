@@ -39,24 +39,23 @@ export function hasRole(roles: unknown = [], role: string) {
   return normalizedRoles.some((current) => {
     if (current === wanted) return true;
     if (wanted === "admin") return ["administrator", "superadmin"].includes(current);
-    if (wanted === "staff") return ["doctor", "clinician", "medicalstaff"].includes(current);
+    if (wanted === "doctor") return ["clinician"].includes(current);
     return false;
   });
 }
 
+// Ported 1:1 from src/utils/roles.js (Web) — shouldSetupPatientProfile().
 export function shouldSetupPatientProfile(session?: AuthSession | null) {
   const roles = getSessionRoles(session);
   const isFirstLogin = session?.isFirstLogin === true || session?.firstLogin === true;
+  const isProfileCompleted = session?.isProfileCompleted === true;
 
-  return isFirstLogin && !hasRole(roles, "admin") && !hasRole(roles, "staff");
-}
-
-export function getPostLoginRoute(session?: AuthSession | null) {
-  const roles = getSessionRoles(session);
-
-  if (shouldSetupPatientProfile(session)) return "/(setup)/patient-profile";
-  if (hasRole(roles, "admin")) return "/(patient)/(tabs)";
-  if (hasRole(roles, "staff")) return "/(patient)/(tabs)";
-  return "/(patient)/(tabs)";
+  return (
+    isFirstLogin
+    && !isProfileCompleted
+    && hasRole(roles, "patient")
+    && !hasRole(roles, "admin")
+    && !hasRole(roles, "doctor")
+  );
 }
 

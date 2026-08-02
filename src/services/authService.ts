@@ -1,5 +1,6 @@
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
+import { ApiResponse } from "@/src/types/api";
 import { AuthSession } from "@/src/types/auth";
 import { UserProfile } from "@/src/types/user";
 
@@ -18,6 +19,26 @@ export type RegisterPayload = {
   gender?: number;
   dateOfBirth?: string | null;
 };
+
+// Ported 1:1 from src/services/authService.js (Web) — normalizeAuthResponse().
+// Derives firstLogin/isFirstLogin/isProfileCompleted the same way; unlike
+// Web this has no storage side effect — callers persist via useAuth().setSession.
+export function normalizeAuthSession(response: ApiResponse<AuthSession>): AuthSession | null {
+  const authData = response?.data;
+  if (!authData?.accessToken) return null;
+
+  const isProfileCompleted = authData.isProfileCompleted === true;
+  const isFirstLogin = isProfileCompleted
+    ? false
+    : authData.firstLogin === true || authData.isFirstLogin === true;
+
+  return {
+    ...authData,
+    firstLogin: isFirstLogin,
+    isFirstLogin,
+    isProfileCompleted,
+  };
+}
 
 export const authService = {
   /**
@@ -51,6 +72,11 @@ export const authService = {
     });
   },
 
+  /**
+   * Screen: LoginScreen (Google button)
+   * Workflow: Authentication
+   * Endpoint: POST /api/authentication/google
+   */
   googleLogin(credential: string) {
     return apiRequest<AuthSession>(ENDPOINTS.AUTH.GOOGLE, {
       method: "POST",
