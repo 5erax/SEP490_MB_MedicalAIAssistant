@@ -46,7 +46,8 @@
         {
           "locationWhenInUsePermission": "MediMate AI dùng vị trí của bạn để xếp hạng cơ sở y tế theo khoảng cách gần nhất."
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native"
     ],
     "experiments": {
       "typedRoutes": true,

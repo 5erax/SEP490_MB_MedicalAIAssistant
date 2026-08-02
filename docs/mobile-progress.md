@@ -217,3 +217,106 @@ tiếp với code Web tương ứng trước khi build; các điểm khác biệ
    hỏi → xác nhận tiến trình không bị mất.
 7. Test tài khoản patient đăng nhập lần đầu, chưa hoàn thiện hồ sơ → xác
    nhận thẻ nhắc hồ sơ hiển thị và có thể "Để sau"/"Cập nhật hồ sơ".
+
+---
+
+## Module 3: Nearby Clinics / Map
+
+**Chức năng đã hoàn thành**
+- Bản đồ + danh sách cơ sở y tế đang hoạt động, không yêu cầu đăng nhập
+  (khớp Web: route `/map` là public).
+- Tìm kiếm (debounce 400ms) + lọc theo loại cơ sở (Bệnh viện/Phòng khám/Nhà
+  thuốc/Cấp cứu/Khác), hoàn toàn client-side như Web.
+- Nhận bàn giao kết quả gợi ý từ Dashboard ("Mở bản đồ"): đọc `source=
+  clinical&facilityId&departmentId&sessionId`, khôi phục kết quả từ cache
+  (in-memory + AsyncStorage), xử lý đủ 4 trạng thái `locked/loading/ready/
+  error` như Web.
+- Chi tiết cơ sở (bottom sheet): thông tin đầy đủ, số lượng bác sĩ đang hoạt
+  động (teaser), chỉ đường (mở Google Maps), gọi điện, chia sẻ.
+- "Dùng vị trí của tôi" (expo-location) để tính khoảng cách hiển thị trong
+  danh sách.
+- Bottom tab bar mới cho khu vực Patient (Tư vấn/Bản đồ) — trước đây Map chỉ
+  vào được qua nút "Mở bản đồ" của Dashboard.
+- Pull-to-refresh trên danh sách cơ sở.
+
+**API đã tích hợp**
+- `GET /api/medical-facilities/active`
+- `GET /api/facility-departments/active`
+- `GET /api/medical-facilities/{id}` (chi tiết khi mở bottom sheet)
+- `GET /api/doctors?facilityId=&isActive=true&...` (chỉ lấy số lượng, danh
+  sách bác sĩ đầy đủ thuộc Module 6)
+
+**UI đã hoàn thành**
+- `app/(patient)/map.tsx` (không bọc `AuthGate` — khớp Web).
+- `app/(patient)/_layout.tsx` chuyển từ `Stack` sang `Tabs` (Tư vấn/Bản đồ).
+- `src/components/map/`: `MapScreen`, `FacilityListItem`, `FacilityFilters`,
+  `FacilityDetailSheet`, `ClinicalSummaryCard`, `FacilityMapView.native.tsx`
+  (bản đồ MapLibre thật) + `FacilityMapView.web.tsx` (stub cho môi trường
+  không hỗ trợ native module).
+
+**Route:** `/(patient)/map`.
+
+**Hook**
+- `useFacilities()` — fetch + normalize danh sách cơ sở, xử lý lỗi từng
+  phần (Promise.allSettled) như Web.
+- `useClinicalRecommendation()` — state machine 4 trạng thái cho luồng bàn
+  giao từ Dashboard.
+- `useDebouncedValue()` — hook debounce dùng chung, tái sử dụng được cho
+  các ô tìm kiếm ở module sau.
+
+**Service**
+- `facilityService.ts` (`medicalFacilitiesApi`, `facilityDepartmentsApi`),
+  `doctorService.ts` (`doctorManagementApi.list`, dùng chung cho Module 6).
+- Đã xoá `medicalFacilitiesService`/`doctorsService` placeholder trùng lặp
+  trong `domainServices.ts` (thay bằng service thật ở trên).
+
+**State**
+- `src/utils/facilityNormalize.ts` — port `normalizeFacility`,
+  `normalizeFacilityType`, `TYPE_LABELS`, `mergeFacilityDetail`.
+- `src/utils/clinicalFacilityMerge.ts` — port logic ghép danh sách cơ sở
+  được gợi ý (giữ nguyên thứ tự gợi ý, không tính điểm lại) với danh sách
+  cơ sở đang hoạt động.
+- `src/utils/facilityRanking.ts` (Module 2) tổng quát hoá để dùng chung cho
+  cả `ClinicalFacility` và `NormalizedFacility`.
+
+**Known Issues**
+- **Yêu cầu build native để kiểm thử bản đồ thật**: `@maplibre/maplibre-
+  react-native` không chạy trên Expo Go lẫn bản xem trước web (đã xác nhận
+  qua tài liệu + type definition của package) — cần `expo prebuild` +
+  custom dev client hoặc EAS build để thấy bản đồ thật. Đã kiểm chứng toàn
+  bộ phần còn lại (danh sách, lọc, chi tiết, tab bar, xử lý lỗi/rỗng) qua
+  bản dựng web; component bản đồ chỉ được xác minh qua type-check nghiêm
+  ngặt với type definition thật của thư viện (không chạy được trong sandbox
+  này), không phải qua chạy thử trực tiếp — cần đội ngũ xác nhận lại trên
+  thiết bị/dev client thật trước khi coi là hoàn toàn ổn định.
+- Không port `MapConsultationAssistant` (chat AI nhúng trong bản đồ của
+  Web) — thuộc phạm vi Module 4 (AI Consultation).
+- Đánh giá cơ sở y tế (feedback reviews, CRUD đầy đủ có ảnh) chưa port ở
+  module này — Web gộp chung vào trang Map nhưng nghiệp vụ thuộc Module 5
+  (Medical Facility) theo đúng breakdown 14 module.
+- Danh sách bác sĩ đầy đủ tại cơ sở chỉ hiển thị số lượng (teaser) — danh
+  sách chi tiết/lọc theo khoa thuộc Module 6 (Doctor).
+- Khách (chưa đăng nhập) hiện chưa có đường dẫn điều hướng tới `/map` vì
+  route gốc `/` luôn yêu cầu đăng nhập (`AuthGate` không có children) —
+  đây là quyết định kiến trúc điều hướng rộng hơn phạm vi module này, cần
+  bàn riêng nếu muốn Mobile hỗ trợ duyệt Map như khách giống Web.
+- `tsconfig.json` thêm `moduleSuffixes` để `tsc` hiểu quy ước
+  `.native.tsx`/`.web.tsx` của Metro (trước đó `tsc` báo lỗi resolve module
+  dù Metro build đúng).
+
+**Hướng dẫn test trên Mobile**
+1. Mở `/map` mà KHÔNG đăng nhập → xác nhận vẫn xem được danh sách/bản đồ
+   (không bị redirect sang Login).
+2. Từ Dashboard, phân tích triệu chứng xong bấm "Mở bản đồ" → xác nhận
+   Map hiển thị đúng chuyên khoa + danh sách cơ sở đã gợi ý, đúng thứ tự.
+3. Tìm kiếm theo tên/địa chỉ/chuyên khoa, đổi bộ lọc loại cơ sở → xác nhận
+   danh sách cập nhật đúng.
+4. Bấm vào 1 cơ sở → xác nhận bottom sheet hiện đủ thông tin, số bác sĩ,
+   và 3 nút Chỉ đường/Gọi/Chia sẻ hoạt động.
+5. Bấm "Dùng vị trí của tôi" → xác nhận khoảng cách xuất hiện trong danh
+   sách.
+6. Kéo để làm mới danh sách cơ sở.
+7. **Bắt buộc test trên dev client/thiết bị thật** (không phải Expo Go)
+   để xác nhận bản đồ MapLibre render đúng, marker bấm được, camera
+   fly-to/fit-bounds hoạt động như mô tả — phần này chưa được chạy thử
+   trực tiếp trong quá trình build.
