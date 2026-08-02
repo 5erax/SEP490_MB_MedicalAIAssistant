@@ -11,7 +11,7 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] Nearby Clinics / Map
 - [x] AI Consultation
 - [x] Medical Facility
-- [ ] Doctor
+- [x] Doctor
 - [ ] Appointment
 - [ ] Subscription
 - [ ] Payment

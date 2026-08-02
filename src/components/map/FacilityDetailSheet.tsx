@@ -1,12 +1,11 @@
 // Ported from openFacilityDetail() in Web's NearbyClinicPage.jsx — fetches
 // the full facility record + active doctors at that facility in parallel,
-// merges the fresh detail over the list-derived facility. The Doctors tab's
-// full browsing UI is Module 6 — this sheet only shows a count teaser.
+// merges the fresh detail over the list-derived facility.
 import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Globe, MapPin, Navigation, Phone, Share2, Stethoscope, X } from "lucide-react-native";
 
-import { AppText, Badge, Button, LoadingState } from "@/src/components/ui";
+import { AppText, Badge, Button, EmptyState, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useToast } from "@/src/hooks/useToast";
 import { doctorManagementApi } from "@/src/services/doctorService";
@@ -14,8 +13,16 @@ import { medicalFacilitiesApi } from "@/src/services/facilityService";
 import { NormalizedFacility } from "@/src/types/facility";
 import { getArrayData, getObjectData, mergeFacilityDetail } from "@/src/utils/facilityNormalize";
 import { ReviewsSection } from "@/src/components/reviews";
+import { DoctorDetailSheet, DoctorListItem } from "@/src/components/doctor";
+import { Doctor } from "@/src/types/doctor";
 
-type DetailTab = "overview" | "reviews";
+type DetailTab = "overview" | "doctors" | "reviews";
+
+const TAB_LABELS: Record<DetailTab, string> = {
+  overview: "Tổng quan",
+  doctors: "Bác sĩ",
+  reviews: "Đánh giá",
+};
 
 type FacilityDetailSheetProps = {
   facility: NormalizedFacility | null;
@@ -28,16 +35,17 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
   const [detail, setDetail] = useState<NormalizedFacility | null>(facility);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [doctorCount, setDoctorCount] = useState<number | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
 
   useEffect(() => {
     if (!visible || !facility) return;
     setActiveTab("overview");
     setDetail(facility);
     setError("");
-    setDoctorCount(null);
+    setDoctors([]);
 
     setLoading(true);
     setDoctorsLoading(true);
@@ -55,7 +63,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
       setLoading(false);
 
       if (doctorResult.status === "fulfilled") {
-        setDoctorCount(getArrayData(doctorResult.value).length);
+        setDoctors(getArrayData(doctorResult.value) as Doctor[]);
       }
       setDoctorsLoading(false);
     });
@@ -96,7 +104,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
         </View>
 
         <View style={styles.tabBar}>
-          {(["overview", "reviews"] as DetailTab[]).map((tab) => (
+          {(["overview", "doctors", "reviews"] as DetailTab[]).map((tab) => (
             <Pressable
               key={tab}
               accessibilityRole="button"
@@ -105,7 +113,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
               style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
             >
               <AppText variant="bodyStrong" color={activeTab === tab ? colors.ink : colors.subtle}>
-                {tab === "overview" ? "Tổng quan" : "Đánh giá"}
+                {TAB_LABELS[tab]}
               </AppText>
             </Pressable>
           ))}
@@ -156,13 +164,9 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
               <View style={styles.doctorsTeaser}>
                 <AppText variant="bodyStrong">Bác sĩ tại cơ sở</AppText>
                 <AppText color={colors.muted}>
-                  {doctorsLoading ? "Đang tải danh sách bác sĩ..." : doctorCount === null ? "Chưa có dữ liệu." : `${doctorCount} bác sĩ đang hoạt động.`}
+                  {doctorsLoading ? "Đang tải danh sách bác sĩ..." : `${doctors.length} bác sĩ đang hoạt động.`}
                 </AppText>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onPress={() => showToast({ type: "info", message: "Danh sách bác sĩ chi tiết sẽ có ở bản cập nhật tiếp theo." })}
-                >
+                <Button variant="secondary" size="sm" onPress={() => setActiveTab("doctors")}>
                   Xem danh sách bác sĩ
                 </Button>
               </View>
@@ -188,11 +192,30 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
                 </Button>
               </View>
             </>
+          ) : activeTab === "doctors" ? (
+            <View style={styles.doctorList}>
+              {doctorsLoading ? (
+                <LoadingState title="Đang tải danh sách bác sĩ..." />
+              ) : doctors.length === 0 ? (
+                <EmptyState title="Chưa có bác sĩ" description="Hiện chưa có bác sĩ nào được công khai cho cơ sở này." />
+              ) : (
+                doctors.map((doctor) => (
+                  <DoctorListItem key={doctor.id} doctor={doctor} onPress={() => setSelectedDoctor(doctor)} />
+                ))
+              )}
+            </View>
           ) : (
             <ReviewsSection facilityId={current.facilityId} />
           )}
         </ScrollView>
       </View>
+
+      <DoctorDetailSheet
+        doctor={selectedDoctor}
+        facilityName={current.facilityName}
+        visible={Boolean(selectedDoctor)}
+        onClose={() => setSelectedDoctor(null)}
+      />
     </Modal>
   );
 }
@@ -250,6 +273,9 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
+  },
+  doctorList: {
+    gap: spacing.md,
   },
   doctorsTeaser: {
     gap: spacing.sm,
