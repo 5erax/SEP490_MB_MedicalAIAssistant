@@ -56,7 +56,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "MediMate AI cần quyền truy cập ảnh để bạn đính kèm hình vào đánh giá cơ sở y tế."
+          "photosPermission": "MediMate AI cần quyền truy cập ảnh để bạn đính kèm hình vào đánh giá cơ sở y tế hoặc xem trước ảnh thuốc.",
+          "cameraPermission": "MediMate AI cần quyền dùng camera để chụp ảnh xem trước nhãn thuốc."
         }
       ],
       [
