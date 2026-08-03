@@ -1,5 +1,60 @@
 # Mobile Progress Log - MediMate AI User Scope
 
+## 2026-08-03 - Native Map Tile And Performance Audit
+
+Branch: `main`
+
+Module: Nearby Clinics / Medical Facility Map.
+
+Goal:
+
+- Explain why Mobile map tiles looked incomplete compared with Web.
+- Keep Expo Go stable while upgrading the native MapLibre path used by custom
+  dev clients and app builds.
+- Improve map FPS, marker rendering, camera animation, and clustering for
+  Android mid-range devices.
+
+Files added:
+
+- `docs/mobile-map-quality-audit.md`
+
+Files changed:
+
+- `src/components/map/FacilityMapViewMapLibre.tsx`
+- `docs/mobile-progress.md`
+
+API integrated:
+
+- No API changes.
+
+Map provider/tile findings:
+
+- Web uses `react-map-gl/maplibre` with CARTO Positron vector style.
+- Mobile Expo Go cannot load MapLibre native modules, so it correctly uses the
+  SVG fallback; that fallback has no vector/raster tiles, labels, roads,
+  buildings, or landmarks.
+- Mobile custom dev client/native build now uses the same Web-aligned style URL
+  by default and can be overridden with `EXPO_PUBLIC_MAP_STYLE_URL`.
+
+Performance completed:
+
+- Replaced repeated React facility markers in the native MapLibre path with
+  `GeoJSONSource + Layer`.
+- Enabled native clustering with cluster labels.
+- Added min/max zoom, HCMC bounds, 60 FPS preference, and native camera ease
+  animations.
+- Cluster tap expands camera to the native cluster expansion zoom.
+- Facility tap selects only the target facility and eases camera to zoom 16.
+
+Verification:
+
+- `npx tsc --noEmit`
+
+Known issues:
+
+- Expo Go will still show the fallback preview by design. Real tile quality
+  requires `npx expo run:android` or an EAS/custom dev build.
+
 Source of truth: `SEP490_FE_MedicalAIAssistant` on `main`.
 
 Audit date: 2026-08-03.
