@@ -18,16 +18,15 @@ This file tracks the USER features that Mobile still needs to reach functional p
     - `GET /api/lab-tests/my-sessions`
     - `GET /api/lab-tests/{sessionId}`
 
-- [ ] Recovery Plan
-  - Mobile screen is still a placeholder and does not match Web behavior.
-  - Missing create recovery plan request.
-  - Missing request list and request detail.
-  - Missing cancel request.
-  - Missing provide-more-information flow.
-  - Missing recovery plan list and detail.
-  - Missing start recovery plan action.
-  - Missing realtime/SignalR sync used by Web.
-  - APIs to integrate:
+- [x] Recovery Plan — done, PR #27.
+  - Real quota, request (create/list/detail/cancel/provide-more-info), and
+    plan (list/detail/start) flows, native single-screen redesign with
+    sheets for create/request-detail/plan-detail.
+  - [skip] Realtime/SignalR sync — deliberate scope cut, background
+    enhancement on Web (silent auto-refetch, no toast); pull-to-refresh +
+    reloadAll() after every action cover the same need. Follow-up if
+    needed later.
+  - APIs integrated:
     - `GET /api/me/subscription-usage`
     - `POST /api/recovery-plan-requests`
     - `GET /api/recovery-plan-requests/me`
@@ -77,8 +76,8 @@ This file tracks the USER features that Mobile still needs to reach functional p
 
 ## Recommended Build Order
 
-1. Medical Records / Lab Tests
-2. Recovery Plan
+1. ~~Medical Records / Lab Tests~~ — done, PR #26.
+2. ~~Recovery Plan~~ — done, PR #27 (realtime sync deliberately skipped).
 3. Subscription / Usage / Payment resync
 4. Medication detail and reminders parity
 5. AI Consultation resync

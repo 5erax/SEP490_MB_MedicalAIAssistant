@@ -475,3 +475,66 @@ Verification:
 Known issues:
 
 - Full authenticated upload → analyze → poll → detail flow needs a real device/Expo Go — `expo-secure-store` has no web implementation, so session persistence can't be exercised in browser-based testing against this backend (same limitation noted in every prior module).
+
+## 2026-08-03 - Recovery Plan Rebuild
+
+Branch: `feature/mobile-recovery-plan-rebuild`
+
+Module: Rebuild, second item from the parity audit's Recommended Build Order.
+
+Goal:
+
+- Web's Recovery Plan moved from a static "not available" placeholder (what Module 10 originally ported) to a real feature: subscription usage quota, recovery plan requests, recovery plans, SignalR realtime.
+- Rebuild the mobile module to match, as a native single-screen redesign rather than a port of Web's desktop split-panel layout.
+
+Files added:
+
+- `src/components/recovery/{CreateRequestSheet,PlanCard,PlanDetailSheet,QuotaCard,RequestCard,RequestDetailSheet}.tsx`
+- `src/hooks/useRecoveryPlan.ts`
+- `src/services/{recoveryPlanService,subscriptionUsageService}.ts`
+- `src/types/recoveryPlan.ts`
+- `src/utils/recoveryPlanPresentation.ts`
+
+Files changed:
+
+- `src/api/endpoints.ts` (SUBSCRIPTION_USAGE, RECOVERY_PLAN_REQUESTS, RECOVERY_PLANS)
+- `src/components/recovery/RecoveryPlanScreen.tsx` (full rewrite, was the static placeholder)
+- `src/components/recovery/index.ts`
+- `src/hooks/index.ts`
+
+UI completed:
+
+- Quota card: remaining/limit progress bar, cycle dates, exhausted banner, subscription-needed CTA to Pricing.
+- Primary "Yêu cầu kế hoạch mới" CTA, disabled when quota is exhausted/unavailable — same gating logic as Web.
+- Requests list (paginated) + detail sheet: cancel (cancellable statuses match Web), provide-more-information form (replaces the note, not a chat thread).
+- Plans list (paginated) + detail sheet: phase → nutrient-target → food-source hierarchy as an expandable accordion per phase, start-plan action when `readyToStart`.
+- Pull-to-refresh + manual reload after every user action, in place of Web's SignalR realtime sync.
+
+API integrated:
+
+- `GET /api/me/subscription-usage`
+- `POST /api/recovery-plan-requests` (with `Idempotency-Key` header)
+- `GET /api/recovery-plan-requests/me`
+- `GET /api/recovery-plan-requests/{id}`
+- `POST /api/recovery-plan-requests/{id}/cancel`
+- `POST /api/recovery-plan-requests/{id}/provide-more-information`
+- `GET /api/recovery-plans/me`
+- `GET /api/recovery-plans/{id}`
+- `POST /api/recovery-plans/{id}/start`
+
+Hooks/services/context/navigation:
+
+- `useRecoveryPlan()`: independently loaded quota/requests/plans sections, create-request submission with idempotency-key retry safety, cancel, provide-more-information, start-plan, `reloadAll()`.
+- No route/navigation changes — `/(patient)/recovery-plan` already existed from Module 10 and already pointed at `RecoveryPlanScreen`.
+
+Verification:
+
+- `npx tsc --noEmit`
+- `npx expo lint`
+- `npx expo export --platform web`
+- Browser preview: `/recovery-plan` correctly redirects to Login via `AuthGate` when unauthenticated, no console errors.
+
+Known issues:
+
+- **Deliberate scope cut: SignalR realtime.** Web's `recoveryPlanRealtime.js` silently auto-refetches on `RecoveryPlanRequestChanged`/`RecoveryPlanChanged` hub events (no toast, just a connection-status line + debounced refetch) — a background enhancement, not core functionality; the page works fully without it. This pass ships pull-to-refresh + `reloadAll()` after every user action instead of taking on a native SignalR dependency. Follow-up if a real device confirms this experience feels stale.
+- Full authenticated quota/request/plan flow needs a real device/Expo Go — same `expo-secure-store` web-testing limitation noted in every prior module.
