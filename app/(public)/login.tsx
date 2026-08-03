@@ -22,7 +22,7 @@ import { useAuth } from "@/src/providers";
 import { useToast } from "@/src/hooks/useToast";
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
 import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
-import { colors, radius, spacing, typography } from "@/src/theme/tokens";
+import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
 import { isGoogleAuthConfigured } from "@/src/config/env";
 

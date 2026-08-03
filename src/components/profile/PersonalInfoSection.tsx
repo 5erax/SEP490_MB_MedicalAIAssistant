@@ -3,7 +3,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useState } from "react";
 
 import { AppText, Button, Card, EmptyState, LoadingState, TextField } from "@/src/components/ui";
-import { colors, spacing } from "@/src/theme/tokens";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { PersonalProfileErrors, PersonalProfileForm } from "@/src/utils/profileValidation";
 
 const GENDER_OPTIONS: { value: PersonalProfileForm["gender"]; label: string }[] = [
