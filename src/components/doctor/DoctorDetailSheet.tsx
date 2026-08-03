@@ -176,8 +176,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
+    borderRadius: radius.sm,
+    backgroundColor: colors.paper,
     padding: spacing.lg,
   },
   infoRow: {

@@ -46,9 +46,9 @@ export function FacilityListItem({ facility, selected, onPress }: FacilityListIt
 const styles = StyleSheet.create({
   card: {
     gap: spacing.xs,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
     padding: spacing.lg,
   },

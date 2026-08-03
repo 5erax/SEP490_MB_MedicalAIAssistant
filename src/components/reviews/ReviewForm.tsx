@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.sm,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
     borderStyle: "dashed",
   },
