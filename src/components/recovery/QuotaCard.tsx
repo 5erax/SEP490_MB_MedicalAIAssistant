@@ -5,7 +5,7 @@ import { Sparkles } from "lucide-react-native";
 import { AppText, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { ROUTES } from "@/src/navigation/routes";
-import { SubscriptionUsageQuota } from "@/src/types/recoveryPlan";
+import { SubscriptionUsageQuota } from "@/src/types/subscription";
 import { formatDateOnly } from "@/src/utils/recoveryPlanPresentation";
 
 type QuotaCardProps = {

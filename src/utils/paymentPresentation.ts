@@ -43,6 +43,26 @@ export function formatDateTime(value: unknown) {
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
+// Ported from canReconcilePayment (Web) — only pending PayOS payments with
+// a known order code can be reconciled.
+export function canReconcilePayment(payment: Payment | null | undefined) {
+  const statusValue = String(payment?.statusName ?? (payment as { status?: string })?.status ?? "").toLowerCase();
+  const provider = String(payment?.provider ?? "").toLowerCase();
+  const orderCode = String(payment?.transactionReference ?? "").trim();
+  return statusValue === "pending" && provider === "payos" && Boolean(orderCode);
+}
+
+export function getReconcileErrorMessage(error: unknown) {
+  const status = (error as ApiError)?.status;
+  if (status === 401) return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+  if (status === 403) return "Giao dịch này không thuộc tài khoản hiện tại.";
+  if (status === 404) return "PayOS không tìm thấy giao dịch này.";
+  if (status === 409) return "Dữ liệu giao dịch không khớp. Vui lòng liên hệ hỗ trợ.";
+  if (status === 429) return "Đang kiểm tra quá thường xuyên. Vui lòng thử lại sau ít phút.";
+  if (status === 502) return "Chưa kết nối được PayOS. Vui lòng thử lại sau.";
+  return "Không thể kiểm tra trạng thái giao dịch lúc này. Vui lòng thử lại.";
+}
+
 export function getHistoryErrorMessage(error: unknown) {
   if ((error as ApiError)?.status === 401) {
     return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để xem lịch sử thanh toán.";

@@ -101,7 +101,12 @@ export function ProfileScreen() {
           ) : null}
 
           {activeTab === "package" ? (
-            <SubscriptionSummarySection state={profile.subscriptionState} subscription={profile.subscription} onRetry={profile.reload} />
+            <SubscriptionSummarySection
+              state={profile.subscriptionState}
+              subscription={profile.subscription}
+              usageList={profile.usageList}
+              onRetry={profile.reload}
+            />
           ) : null}
 
           {activeTab === "security" ? <SecuritySection /> : null}

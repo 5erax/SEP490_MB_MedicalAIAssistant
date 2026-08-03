@@ -93,6 +93,7 @@ export const ENDPOINTS = {
     PAYOS_RETURN: `${PAYMENTS_BASE}/payos-return`,
     PAYOS_CANCEL: `${PAYMENTS_BASE}/payos-cancel`,
     PAYOS_STATUS: (orderCode: string | number) => `${PAYMENTS_BASE}/payos-status/${encodeURIComponent(String(orderCode))}`,
+    PAYOS_RECONCILE: (orderCode: string | number) => `${PAYMENTS_BASE}/payos-reconcile/${encodeURIComponent(String(orderCode))}`,
   },
   AI_CONFIGS: {
     BASE: AI_CONFIGS_BASE,

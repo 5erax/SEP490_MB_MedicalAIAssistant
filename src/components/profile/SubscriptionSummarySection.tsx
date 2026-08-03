@@ -3,9 +3,9 @@ import { router } from "expo-router";
 import { Sparkles } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card, LoadingState } from "@/src/components/ui";
-import { colors, spacing } from "@/src/theme/tokens";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { ROUTES } from "@/src/navigation/routes";
-import { UserSubscription } from "@/src/types/subscription";
+import { SubscriptionUsageQuota, UserSubscription } from "@/src/types/subscription";
 import { formatDateTime } from "@/src/utils/paymentPresentation";
 import { isActiveSubscription } from "@/src/utils/subscriptionPlanPresentation";
 
@@ -34,10 +34,12 @@ function formatSubscriptionStatus(statusName: unknown) {
 export function SubscriptionSummarySection({
   state,
   subscription,
+  usageList,
   onRetry,
 }: {
   state: "loading" | "ready" | "error";
   subscription: UserSubscription | null;
+  usageList: SubscriptionUsageQuota[];
   onRetry: () => void;
 }) {
   if (state === "loading") {
@@ -78,6 +80,29 @@ export function SubscriptionSummarySection({
           <AppText variant="bodyStrong">Nâng cấp MediMate+</AppText>
         </View>
       </Button>
+
+      {usageList.length > 0 ? (
+        <View style={styles.usageGroup}>
+          <AppText variant="caption" color={colors.subtle}>
+            Hạn mức sử dụng
+          </AppText>
+          {usageList.map((item) => (
+            <View key={item.quotaCode} style={styles.usageCard}>
+              <AppText variant="caption" color={colors.subtle}>
+                {item.quotaName || "Hạn mức sử dụng"}
+              </AppText>
+              <AppText variant="h3">
+                {item.remainingCount ?? "—"}/{item.limitValue ?? "—"}
+              </AppText>
+              <AppText variant="caption" color={colors.muted}>
+                Đã dùng {item.usedCount ?? 0}
+                {Number(item.reservedCount) > 0 ? ` · đang giữ chỗ ${item.reservedCount}` : ""}
+                {item.cycleEnd ? ` · làm mới vào ${formatDateTime(item.cycleEnd)}` : ""}
+              </AppText>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -95,5 +120,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+  },
+  usageGroup: {
+    gap: spacing.sm,
+  },
+  usageCard: {
+    gap: spacing.xs / 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
   },
 });
