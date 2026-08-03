@@ -107,14 +107,14 @@ const styles = StyleSheet.create({
     minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
   },
   pillSelectedYes: {
-    borderColor: colors.success,
-    backgroundColor: colors.success,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   pillSelectedNo: {
     borderColor: colors.danger,

@@ -287,10 +287,10 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   textInputWrap: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
+    borderRadius: radius.sm,
+    backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
   },
   textInput: {

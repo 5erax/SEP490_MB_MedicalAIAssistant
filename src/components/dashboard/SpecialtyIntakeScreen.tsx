@@ -265,9 +265,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
   },
   skeletonCard: {
-    borderWidth: 1.5,
-    borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     padding: spacing.xl,
   },
