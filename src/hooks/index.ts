@@ -4,6 +4,7 @@ export * from './useDebouncedValue';
 export * from './useFacilities';
 export * from './useFacilityReviews';
 export * from './useLogout';
+export * from './useSubscription';
 export * from './useSymptomIntake';
 export * from './useToast';
 export * from './useUserLocation';

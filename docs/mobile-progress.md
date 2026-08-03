@@ -540,3 +540,107 @@ thiết bị di động (không chỉ là một nút mờ bất động).
    dụng gọi điện đúng số.
 3. Bấm "Trò chuyện với AI" → xác nhận điều hướng sang tab Chat AI (hoặc
    thẻ nâng cấp Premium nếu tài khoản chưa có gói).
+
+---
+
+## Hotfix (ngoài thứ tự module): sai cổng backend gây "Network Error"
+
+Trong lúc chuẩn bị Module 8, người dùng báo test Login/Register bị
+"Network Error". Đã xác minh bằng `curl` trực tiếp:
+- `http://52.77.210.243:8080` (giá trị mặc định cũ trong `env.ts`) — **timeout, không phản hồi**.
+- `http://52.77.210.243` (không cổng, đúng như `.env.development`/
+  `.env.production`/`.env.example` thật của Web) — **phản hồi đúng**
+  (`GET /swagger/v1/swagger.json` → 200, `POST /api/authentication/login`
+  với sai mật khẩu → 401).
+
+Đây là lỗi do tôi cấu hình sai cổng mặc định từ Module 1 (dùng nhầm giá
+trị `:8080` từ một ghi chú cũ trong tài liệu Web thay vì đối chiếu đúng
+file `.env` thật). Đã sửa:
+- `src/config/env.ts`, `.env.example`: đổi về `http://52.77.210.243`.
+- Thêm `expo-build-properties` (`android.usesCleartextTraffic: true`) và
+  ngoại lệ ATS trên iOS (`NSAllowsArbitraryLoads: true`) — vì backend chỉ
+  chạy HTTP, một bản build native tuỳ chỉnh (EAS build/`expo prebuild`,
+  khác với Expo Go) sẽ chặn cleartext theo mặc định trên Android/iOS hiện
+  đại dù URL đã đúng. Cần thắt chặt lại khi backend có HTTPS.
+
+**Giới hạn quan trọng cần biết khi test**: Nếu test qua **trình duyệt web**
+(`expo start --web` mở bằng browser), vẫn sẽ luôn thấy "Network Error" —
+đã xác minh bằng cách gọi `fetch()` trực tiếp trong console: điều hướng
+cả trang tới backend thành công, nhưng `fetch()` từ trong trang bị chặn
+bởi chính sách CORS của backend (không cho phép origin `localhost:8081`).
+Đây **không phải lỗi code** và không ảnh hưởng khi test trên native thật
+(Expo Go, thiết bị thật, hoặc simulator) vì CORS chỉ áp dụng cho trình
+duyệt. **Khuyến nghị: luôn test trên Expo Go/thiết bị thật, không dùng
+`expo start --web` để kiểm tra các màn hình cần gọi API.**
+
+PR: [#8](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/8) (đã squash-merge vào `main`).
+
+---
+
+## Module 8: Subscription
+
+**Chức năng đã hoàn thành**
+- Trang Bảng giá (`/pricing`, public — khớp Web): so sánh gói Miễn phí vs
+  MediMate Plus, chuyển đổi chu kỳ Theo tháng/Theo năm (chỉ hiện chu kỳ
+  backend thực sự cung cấp), quyền lợi lấy từ `featureLimitJson`.
+- Gói hiện tại của tài khoản (trạng thái, ngày hết hạn, gia hạn tự động),
+  hủy gia hạn (xác nhận qua Alert native).
+- Thanh toán qua PayOS: tạo link thanh toán, mở trình duyệt trong ứng dụng
+  (`expo-web-browser`), polling trạng thái thanh toán sau khi quay lại
+  (tối đa 100 lần / 3 giây, khớp Web), tự làm mới quyền Premium khi thành
+  công.
+- FAQ đăng ký gói (accordion).
+
+**API đã tích hợp**
+- `GET /api/subscription-plans/active`
+- `GET /api/user-subscriptions/me`
+- `POST /api/user-subscriptions/checkout`
+- `POST /api/user-subscriptions/{id}/cancel`
+- `GET /api/payments/me/{id}` (dùng để polling — service dùng chung với
+  Module 9)
+
+**UI đã hoàn thành**
+- `app/(public)/pricing.tsx` (không bọc AuthGate — khớp Web).
+- `src/components/subscription/{PlanCard,CurrentSubscriptionCard,SubscriptionScreen,index}.tsx`.
+- `PremiumGate` (Module 4) giờ điều hướng thật sang `/pricing` thay vì chỉ
+  hiện toast tạm.
+
+**Hook:** `useSubscription()` — port toàn bộ logic `PricingPage.jsx`: tải
+gói/gói hiện tại, tạo thanh toán + polling, hủy gia hạn.
+
+**Service:** `subscriptionService.ts` (`subscriptionPlansApi.active`,
+`userSubscriptionsApi.checkout/me/cancel`, `paymentsApi.getMyPayment(s)/
+payOsReturn/payOsCancel/payOsStatus` — phần payOs* và getMyPayments dành
+cho Module 9). Đã xoá `subscriptionPlansService` placeholder trùng lặp
+trong `domainServices.ts`.
+
+**State:** `src/utils/subscriptionPlanPresentation.ts` — port nguyên vẹn
+`getPlanDisplayName`, `getPlanBenefits`, `getPlanCycle`, `getDurationLabel`,
+`formatPrice`, `isActiveSubscription`, `isSuccessfulPayment`,
+`isTerminalPayment`.
+
+**Known Issues**
+- **Khác biệt kỹ thuật có chủ đích với Web**: Web mở PayOS trong tab/
+  popup trình duyệt mới và polling nền trong lúc tab đó mở. Mobile dùng
+  `expo-web-browser` (trình duyệt trong ứng dụng, tương đương popup gần
+  nhất trên native) và bắt đầu polling ngay sau khi mở — vì không có tín
+  hiệu kiểu "postMessage" báo về từ tab thanh toán trên cả hai nền tảng,
+  polling vẫn là cơ chế đáng tin cậy chính trên cả Web lẫn Mobile.
+- Chưa test được luồng thanh toán PayOS thật đầu-cuối (cần thiết bị thật
+  + tài khoản thật + hoàn tất thanh toán thật).
+- Lịch sử giao dịch đầy đủ (danh sách nhiều payment) và màn hình
+  `/payment/return`, `/payment/cancel` thuộc Module 9.
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/pricing` mà KHÔNG đăng nhập → xác nhận vẫn xem được bảng giá,
+   nút "Thanh toán qua PayOS" đổi thành "Đăng nhập để nâng cấp".
+2. Đăng nhập tài khoản chưa có gói → đổi chu kỳ Theo tháng/Theo năm (nếu
+   backend có cả 2) → bật "Tự động gia hạn" → bấm nâng cấp → xác nhận mở
+   trình duyệt trong ứng dụng tới trang PayOS.
+3. Hoàn tất (hoặc hủy) thanh toán trên PayOS, quay lại ứng dụng → xác
+   nhận trạng thái tự cập nhật thành công/lỗi mà không cần thao tác thêm.
+4. Tài khoản đã có gói + bật gia hạn tự động → bấm "Hủy gia hạn" → xác
+   nhận hộp thoại xác nhận + gói vẫn hiệu lực đến ngày kết thúc sau khi
+   hủy.
+5. Vào Chat AI với tài khoản chưa Premium → bấm "Xem gói dịch vụ" → xác
+   nhận điều hướng đúng sang `/pricing` (không còn toast tạm).

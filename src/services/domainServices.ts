@@ -54,17 +54,8 @@ export const patientProfilesService = {
   },
 };
 
-export const subscriptionPlansService = {
-  list() {
-    return apiRequest(ENDPOINTS.SUBSCRIPTION_PLANS.BASE);
-  },
-  active() {
-    return apiRequest(ENDPOINTS.SUBSCRIPTION_PLANS.ACTIVE);
-  },
-  get(id: string) {
-    return apiRequest(ENDPOINTS.SUBSCRIPTION_PLANS.BY_ID(id));
-  },
-};
+// Real subscription-plans / user-subscriptions / payments services live in
+// subscriptionService.ts (built for the Subscription + Payment modules).
 
 export const webChatbotService = {
   message(message: string, auth = false) {
