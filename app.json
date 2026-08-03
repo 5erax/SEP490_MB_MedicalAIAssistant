@@ -53,6 +53,7 @@
         }
       ],
       "@maplibre/maplibre-react-native",
+      "expo-document-picker",
       [
         "expo-image-picker",
         {
