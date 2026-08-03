@@ -1,8 +1,8 @@
 // Ported from src/pages/NearbyClinicPage.jsx (Web). Mobile uses a map-first
 // layout: the map is the primary screen, and the facility list opens on demand
 // from a bottom sheet so Expo Go stays smooth.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { ListFilter, MapPin, X } from "lucide-react-native";
 
@@ -103,16 +103,19 @@ export function MapScreen() {
 
   const hasActiveFacilitiesWithoutMapData = facilities.length > 0 && facilities.every((facility) => !facility.hasValidCoordinates);
 
-  function openDetail(facility: NormalizedFacility) {
+  const openDetail = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
     setDetailFacility(facility);
     setDetailVisible(true);
-  }
+  }, []);
 
-  function selectFromSheet(facility: NormalizedFacility) {
+  const selectFromSheet = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
     setListVisible(false);
-  }
+  }, []);
+
+  const closeList = useCallback(() => setListVisible(false), []);
+  const openList = useCallback(() => setListVisible(true), []);
 
   useEffect(() => {
     if (clinical.isClinicalFlow || loading || autoOpenedRef.current || !params.facilityId) return;
@@ -121,7 +124,7 @@ export function MapScreen() {
       autoOpenedRef.current = true;
       openDetail(match);
     }
-  }, [clinical.isClinicalFlow, facilities, loading, params.facilityId]);
+  }, [clinical.isClinicalFlow, facilities, loading, openDetail, params.facilityId]);
 
   useEffect(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || autoSelectedRef.current || visibleFacilities.length === 0) return;
@@ -130,11 +133,11 @@ export function MapScreen() {
     setSelectedFacility(match);
   }, [clinical.isClinicalFlow, clinical.status, params.facilityId, visibleFacilities]);
 
-  async function handleRefresh() {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
     setRefreshing(false);
-  }
+  }, [reload]);
 
   return (
     <Screen padded={false} style={styles.screen}>
@@ -162,7 +165,7 @@ export function MapScreen() {
           </View>
         </Button>
 
-        <Button fullWidth onPress={() => setListVisible(true)} style={styles.nearbyButton}>
+        <Button fullWidth onPress={openList} style={styles.nearbyButton}>
           <View style={styles.nearbyInline}>
             <ListFilter size={17} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
@@ -178,89 +181,199 @@ export function MapScreen() {
       </View>
 
       {listVisible ? (
-        <View style={styles.sheetOverlay}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Đóng danh sách" onPress={() => setListVisible(false)} style={styles.scrim} />
-          <View style={styles.sheetPanel}>
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetTitleGroup}>
-                <AppText variant="h2">Cơ sở y tế gần bạn</AppText>
-                <AppText variant="caption" color={colors.subtle}>
-                  {visibleFacilities.length} địa điểm đang hiển thị trên bản đồ
-                </AppText>
-              </View>
-              <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={() => setListVisible(false)} style={styles.closeButton}>
-                <X size={19} color={colors.ink} />
-              </Pressable>
-            </View>
-
-            <ScrollView
-              contentContainerStyle={styles.sheetContent}
-              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-              showsVerticalScrollIndicator={false}
-            >
-              <ClinicalSummaryCard
-                status={clinical.status}
-                notice={clinical.notice}
-                department={clinical.context?.recommendedDepartment ?? null}
-                unavailableCount={unavailableCount}
-              />
-
-              <FacilityFilters
-                searchText={searchText}
-                onChangeSearchText={setSearchText}
-                selectedType={selectedType}
-                onChangeType={setSelectedType}
-                availableTypes={availableTypes}
-              />
-
-              {apiNotice ? (
-                <View style={styles.notice}>
-                  <AppText variant="caption" color={colors.warning}>
-                    {apiNotice}
-                  </AppText>
-                </View>
-              ) : null}
-
-              {hasActiveFacilitiesWithoutMapData ? (
-                <View style={styles.notice}>
-                  <AppText variant="caption" color={colors.warning}>
-                    Cơ sở y tế hiện chưa có tọa độ hợp lệ để hiển thị trên bản đồ.
-                  </AppText>
-                </View>
-              ) : null}
-
-              {loading ? (
-                <SkeletonGroup lines={4} />
-              ) : visibleFacilities.length === 0 ? (
-                <EmptyState title="Chưa tìm thấy cơ sở y tế phù hợp" description="Vui lòng thử đổi bộ lọc hoặc từ khóa tìm kiếm." />
-              ) : (
-                <View style={styles.list}>
-                  {visibleFacilities.map((facility) => (
-                    <FacilityListItem
-                      key={facility.facilityId}
-                      facility={facility}
-                      selected={selectedFacility?.facilityId === facility.facilityId}
-                      onPress={() => selectFromSheet(facility)}
-                    />
-                  ))}
-                </View>
-              )}
-
-              {locationStatus === "denied" ? (
-                <AppText variant="caption" color={colors.subtle}>
-                  Chưa cấp quyền vị trí. Danh sách vẫn hiển thị đầy đủ, chỉ thiếu khoảng cách.
-                </AppText>
-              ) : null}
-            </ScrollView>
-          </View>
-        </View>
+        <FacilityListSheet
+          apiNotice={apiNotice}
+          availableTypes={availableTypes}
+          clinicalStatus={clinical.status}
+          clinicalNotice={clinical.notice}
+          department={clinical.context?.recommendedDepartment ?? null}
+          facilities={visibleFacilities}
+          hasActiveFacilitiesWithoutMapData={hasActiveFacilitiesWithoutMapData}
+          loading={loading}
+          locationDenied={locationStatus === "denied"}
+          onChangeSearchText={setSearchText}
+          onChangeType={setSelectedType}
+          onClose={closeList}
+          onRefresh={handleRefresh}
+          onSelectFacility={selectFromSheet}
+          refreshing={refreshing}
+          searchText={searchText}
+          selectedFacilityId={selectedFacility?.facilityId ?? ""}
+          selectedType={selectedType}
+          unavailableCount={unavailableCount}
+        />
       ) : null}
 
       <FacilityDetailSheet facility={detailFacility} visible={detailVisible} onClose={() => setDetailVisible(false)} />
     </Screen>
   );
 }
+
+type FacilityListSheetProps = {
+  apiNotice?: string;
+  availableTypes: FacilityTypeKey[];
+  clinicalStatus: ReturnType<typeof useClinicalRecommendation>["status"];
+  clinicalNotice: ReturnType<typeof useClinicalRecommendation>["notice"];
+  department: ReturnType<typeof useClinicalRecommendation>["context"] extends infer Context
+    ? Context extends { recommendedDepartment?: infer Department }
+      ? Department | null
+      : null
+    : null;
+  facilities: NormalizedFacility[];
+  hasActiveFacilitiesWithoutMapData: boolean;
+  loading: boolean;
+  locationDenied: boolean;
+  onChangeSearchText: (value: string) => void;
+  onChangeType: (value: FacilityTypeKey | "all") => void;
+  onClose: () => void;
+  onRefresh: () => void;
+  onSelectFacility: (facility: NormalizedFacility) => void;
+  refreshing: boolean;
+  searchText: string;
+  selectedFacilityId: string;
+  selectedType: FacilityTypeKey | "all";
+  unavailableCount: number;
+};
+
+const FacilityListSheet = memo(function FacilityListSheet({
+  apiNotice,
+  availableTypes,
+  clinicalStatus,
+  clinicalNotice,
+  department,
+  facilities,
+  hasActiveFacilitiesWithoutMapData,
+  loading,
+  locationDenied,
+  onChangeSearchText,
+  onChangeType,
+  onClose,
+  onRefresh,
+  onSelectFacility,
+  refreshing,
+  searchText,
+  selectedFacilityId,
+  selectedType,
+  unavailableCount,
+}: FacilityListSheetProps) {
+  const keyExtractor = useCallback((facility: NormalizedFacility) => facility.facilityId, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: NormalizedFacility }) => (
+      <FacilityListItem
+        facility={item}
+        selected={selectedFacilityId === item.facilityId}
+        onPress={() => onSelectFacility(item)}
+      />
+    ),
+    [onSelectFacility, selectedFacilityId],
+  );
+
+  const header = useMemo(
+    () => (
+      <View style={styles.sheetListHeader}>
+        <ClinicalSummaryCard
+          status={clinicalStatus}
+          notice={clinicalNotice}
+          department={department}
+          unavailableCount={unavailableCount}
+        />
+
+        <FacilityFilters
+          searchText={searchText}
+          onChangeSearchText={onChangeSearchText}
+          selectedType={selectedType}
+          onChangeType={onChangeType}
+          availableTypes={availableTypes}
+        />
+
+        {apiNotice ? (
+          <View style={styles.notice}>
+            <AppText variant="caption" color={colors.warning}>
+              {apiNotice}
+            </AppText>
+          </View>
+        ) : null}
+
+        {hasActiveFacilitiesWithoutMapData ? (
+          <View style={styles.notice}>
+            <AppText variant="caption" color={colors.warning}>
+              Cơ sở y tế hiện chưa có tọa độ hợp lệ để hiển thị trên bản đồ.
+            </AppText>
+          </View>
+        ) : null}
+
+        {loading ? <SkeletonGroup lines={4} /> : null}
+      </View>
+    ),
+    [
+      apiNotice,
+      availableTypes,
+      clinicalNotice,
+      clinicalStatus,
+      department,
+      hasActiveFacilitiesWithoutMapData,
+      loading,
+      onChangeSearchText,
+      onChangeType,
+      searchText,
+      selectedType,
+      unavailableCount,
+    ],
+  );
+
+  const footer = useMemo(
+    () =>
+      locationDenied ? (
+        <AppText variant="caption" color={colors.subtle}>
+          Chưa cấp quyền vị trí. Danh sách vẫn hiển thị đầy đủ, chỉ thiếu khoảng cách.
+        </AppText>
+      ) : null,
+    [locationDenied],
+  );
+
+  return (
+    <View style={styles.sheetOverlay}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Đóng danh sách" onPress={onClose} style={styles.scrim} />
+      <View style={styles.sheetPanel}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetTitleGroup}>
+            <AppText variant="h2">Cơ sở y tế gần bạn</AppText>
+            <AppText variant="caption" color={colors.subtle}>
+              {facilities.length} địa điểm đang hiển thị trên bản đồ
+            </AppText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton}>
+            <X size={19} color={colors.ink} />
+          </Pressable>
+        </View>
+
+        {loading || facilities.length > 0 ? (
+          <FlatList
+            data={loading ? [] : facilities}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            ListHeaderComponent={header}
+            ListFooterComponent={footer}
+            contentContainerStyle={styles.sheetContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            removeClippedSubviews
+            updateCellsBatchingPeriod={32}
+            windowSize={5}
+          />
+        ) : (
+          <View style={styles.emptyWrap}>
+            {header}
+            <EmptyState title="Chưa tìm thấy cơ sở y tế phù hợp" description="Vui lòng thử đổi bộ lọc hoặc từ khóa tìm kiếm." />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   screen: {
@@ -349,6 +462,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   sheetContent: {
+    gap: spacing.lg,
+    padding: spacing.lg,
+    paddingBottom: spacing["4xl"],
+  },
+  sheetListHeader: {
+    gap: spacing.lg,
+  },
+  emptyWrap: {
     gap: spacing.lg,
     padding: spacing.lg,
     paddingBottom: spacing["4xl"],
