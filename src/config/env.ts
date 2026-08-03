@@ -1,4 +1,12 @@
-export const DEFAULT_API_BASE_URL = "http://52.77.210.243:8080";
+// Matches Web's real backend origin exactly (VITE_API_BASE_URL /
+// API_BASE_URL in .env.development, .env.production and .env.example on
+// Web — no port, defaults to :80). A previous version of this file used
+// ":8080", which is not the backend's actual listening port (verified: the
+// backend responds on plain :80 — e.g. GET /swagger/v1/swagger.json and
+// POST /api/authentication/login both succeed there — while :8080 times
+// out with no response at all). That mismatch is what produced the
+// generic axios "Network Error" seen when testing Login/Register.
+export const DEFAULT_API_BASE_URL = "http://52.77.210.243";
 
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
