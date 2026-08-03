@@ -4,6 +4,8 @@
 import { env } from "@/src/config/env";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_MEDICAL_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const MEDICAL_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png"]);
 
 export type PickedImage = {
   uri: string;
@@ -52,4 +54,62 @@ export async function uploadImageToCloudinary(image: PickedImage) {
   }
 
   return { secureUrl: payload.secure_url as string, publicId: payload.public_id as string };
+}
+
+export type PickedDocument = {
+  uri: string;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  fileName?: string | null;
+};
+
+export function validateMedicalDocument(document: PickedDocument) {
+  if (!document) {
+    throw new Error("Hãy chọn ảnh hoặc PDF phiếu xét nghiệm.");
+  }
+  if (document.mimeType && !MEDICAL_DOCUMENT_TYPES.has(document.mimeType)) {
+    throw new Error("Phiếu xét nghiệm phải là file JPG, PNG hoặc PDF.");
+  }
+  if (document.fileSize && document.fileSize > MAX_MEDICAL_DOCUMENT_SIZE_BYTES) {
+    throw new Error("Phiếu xét nghiệm tối đa 10 MB. Hãy chọn file nhẹ hơn.");
+  }
+}
+
+// Ported from uploadMedicalDocumentToCloudinary (Web) — the analyze endpoint
+// only ever receives a Cloudinary documentUrl, never the file itself (see
+// labTestService.ts). Uses the "auto" resource type (not "image/upload")
+// since this accepts both images and PDFs, in a dedicated "lab-tests"
+// subfolder.
+export async function uploadMedicalDocumentToCloudinary(document: PickedDocument) {
+  validateMedicalDocument(document);
+  const { cloudinaryCloudName: cloudName, cloudinaryUploadPreset: uploadPreset, cloudinaryFolder: folder } = env;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error("Chưa cấu hình dịch vụ tải tài liệu. Vui lòng thử lại sau.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", {
+    uri: document.uri,
+    name: document.fileName || `lab-test-${Date.now()}`,
+    type: document.mimeType || "application/octet-stream",
+  } as unknown as Blob);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("folder", folder ? `${folder}/lab-tests` : "lab-tests");
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || !payload.secure_url) {
+    throw new Error("Không thể tải phiếu xét nghiệm lên. Vui lòng thử lại.");
+  }
+
+  return {
+    secureUrl: payload.secure_url as string,
+    publicId: payload.public_id as string,
+    resourceType: payload.resource_type as string,
+  };
 }
