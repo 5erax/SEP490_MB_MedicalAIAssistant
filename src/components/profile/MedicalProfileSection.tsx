@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react-native";
+import { HeartPulse, Plus, ShieldCheck, Trash2 } from "lucide-react-native";
 
 import { AppText, Button, Card, EmptyState, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -167,7 +167,12 @@ export function MedicalProfileSection({
   return (
     <Card variant="soft" style={styles.card}>
       <View style={styles.headerRow}>
-        <AppText variant="h3">Hồ sơ y tế</AppText>
+        <View style={styles.headerTitle}>
+          <View style={styles.headerIconMark}>
+            <HeartPulse size={18} color={colors.teal} />
+          </View>
+          <AppText variant="h3">Hồ sơ y tế</AppText>
+        </View>
         {!isEditing ? (
           <Button variant="secondary" size="sm" onPress={onStartEditing}>
             Chỉnh sửa
@@ -297,6 +302,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  headerIconMark: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: colors.mint,
   },
   privacyNote: {
     flexDirection: "row",

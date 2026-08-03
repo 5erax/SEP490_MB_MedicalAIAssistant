@@ -8,7 +8,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "reac
 import { LogOut } from "lucide-react-native";
 
 import { AppText, Screen } from "@/src/components/ui";
-import { colors, radius, spacing } from "@/src/theme/tokens";
+import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useLogout, useProfile } from "@/src/hooks";
 import { useAuth } from "@/src/providers";
 import { PaymentHistoryScreen } from "@/src/components/payment";
@@ -41,19 +41,29 @@ export function ProfileScreen() {
     <Screen padded={false} style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.identity}>
-          <View style={styles.avatar}>
-            <AppText variant="bodyStrong" color={colors.teal}>
-              {initials(profile.personalForm.displayName)}
-            </AppText>
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              <AppText variant="h3" color={colors.white}>
+                {initials(profile.personalForm.displayName)}
+              </AppText>
+            </View>
           </View>
           <View style={styles.identityText}>
-            <AppText variant="h3">{profile.personalForm.displayName || "Người dùng"}</AppText>
-            <AppText variant="caption" color={colors.subtle}>
+            <AppText variant="h2" numberOfLines={1}>
+              {profile.personalForm.displayName || "Người dùng"}
+            </AppText>
+            <AppText variant="caption" color={colors.subtle} numberOfLines={1}>
               {profile.email}
             </AppText>
           </View>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Đăng xuất" onPress={logout} disabled={loggingOut} style={styles.logoutButton}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Đăng xuất"
+          onPress={logout}
+          disabled={loggingOut}
+          style={({ pressed }) => [styles.logoutButton, pressed && styles.logoutButtonPressed]}
+        >
           {loggingOut ? <ActivityIndicator size="small" color={colors.danger} /> : <LogOut size={18} color={colors.danger} />}
         </Pressable>
       </View>
@@ -133,13 +143,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md,
   },
-  avatar: {
-    width: 52,
-    height: 52,
+  avatarRing: {
+    width: 68,
+    height: 68,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.ink,
+    borderWidth: 2,
+    borderColor: colors.mint,
+    ...shadows.soft,
+  },
+  avatar: {
+    width: 58,
+    height: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
   },
   identityText: {
     flex: 1,
@@ -151,8 +171,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
+    backgroundColor: colors.paperSoft,
+  },
+  logoutButtonPressed: {
     backgroundColor: colors.dangerBg,
   },
   tabScroll: {

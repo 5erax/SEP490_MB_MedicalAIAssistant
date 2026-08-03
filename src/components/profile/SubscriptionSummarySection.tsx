@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Sparkles } from "lucide-react-native";
+import { CreditCard, Sparkles } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -62,7 +62,12 @@ export function SubscriptionSummarySection({
   return (
     <Card variant="soft" style={styles.card}>
       <View style={styles.headerRow}>
-        <AppText variant="h3">Gói dịch vụ</AppText>
+        <View style={styles.headerTitle}>
+          <View style={styles.iconMark}>
+            <CreditCard size={18} color={colors.teal} />
+          </View>
+          <AppText variant="h3">Gói dịch vụ</AppText>
+        </View>
         <Badge tone={active ? "success" : "neutral"}>{formatSubscriptionStatus(subscription?.statusName)}</Badge>
       </View>
 
@@ -115,6 +120,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  iconMark: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: colors.mint,
   },
   upgradeInline: {
     flexDirection: "row",

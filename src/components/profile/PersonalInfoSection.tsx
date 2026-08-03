@@ -1,6 +1,7 @@
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useState } from "react";
+import { UserRound } from "lucide-react-native";
 
 import { AppText, Button, Card, EmptyState, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -74,7 +75,12 @@ export function PersonalInfoSection({
   return (
     <Card variant="soft" style={styles.card}>
       <View style={styles.headerRow}>
-        <AppText variant="h3">Thông tin cá nhân</AppText>
+        <View style={styles.headerTitle}>
+          <View style={styles.iconMark}>
+            <UserRound size={18} color={colors.teal} />
+          </View>
+          <AppText variant="h3">Thông tin cá nhân</AppText>
+        </View>
         {!isEditing ? (
           <Button variant="secondary" size="sm" onPress={onStartEditing}>
             Chỉnh sửa
@@ -193,6 +199,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  headerTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  iconMark: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: colors.mint,
   },
   fieldGroup: {
     gap: spacing.sm,
