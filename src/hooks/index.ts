@@ -5,6 +5,7 @@ export * from './useFacilities';
 export * from './useFacilityReviews';
 export * from './useLogout';
 export * from './useMedicalRecords';
+export * from './useRecoveryPlan';
 export * from './useSubscription';
 export * from './useSymptomIntake';
 export * from './usePatientProfileSetup';
