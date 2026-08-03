@@ -23,6 +23,7 @@ export const ROUTES = {
     FACILITY_DETAIL: "/(patient)/facilities/[id]",
     MEDICATION: "/(patient)/medication",
     MEDICATION_RESULT: "/(patient)/medication/result",
+    PAYMENT_HISTORY: "/(patient)/payment-history",
     SETTINGS: "/(patient)/settings",
   },
   DOCTOR: {
