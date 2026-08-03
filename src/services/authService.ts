@@ -58,11 +58,20 @@ export const authService = {
    * Workflow: Authentication
    * Endpoint: POST /api/authentication/register
    */
-  register(payload: RegisterPayload) {
-    return apiRequest<AuthSession>(ENDPOINTS.AUTH.REGISTER, {
+  async register(payload: RegisterPayload) {
+    const response = await apiRequest<AuthSession>(ENDPOINTS.AUTH.REGISTER, {
       method: "POST",
       data: payload,
     });
+
+    if (!response.data?.accessToken) {
+      return authService.login({
+        email: payload.email,
+        password: payload.password,
+      });
+    }
+
+    return response;
   },
 
   registerStaff(payload: RegisterPayload) {

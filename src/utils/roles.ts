@@ -40,6 +40,7 @@ export function hasRole(roles: unknown = [], role: string) {
     if (current === wanted) return true;
     if (wanted === "admin") return ["administrator", "superadmin"].includes(current);
     if (wanted === "doctor") return ["clinician"].includes(current);
+    if (wanted === "patient") return ["user"].includes(current);
     return false;
   });
 }

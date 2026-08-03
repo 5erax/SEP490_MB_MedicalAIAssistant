@@ -15,10 +15,11 @@ function formatApiErrors(errors: ApiErrorPayload["errors"]) {
 export function getErrorMessage(error: unknown) {
   if (error instanceof AxiosError) {
     const payload = error.response?.data as ApiErrorPayload | undefined;
+    const details = formatApiErrors(payload?.errors);
 
     return (
-      payload?.message ||
-      formatApiErrors(payload?.errors) ||
+      (payload?.message && details ? `${payload.message}: ${details}` : payload?.message) ||
+      details ||
       payload?.title ||
       error.message ||
       "Yêu cầu thất bại. Vui lòng thử lại."

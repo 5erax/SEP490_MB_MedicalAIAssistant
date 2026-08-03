@@ -21,6 +21,17 @@ export class ApiError extends Error {
   }
 }
 
+function formatApiErrors(errors: ApiResponse["errors"]) {
+  if (!errors) return "";
+  if (Array.isArray(errors)) return errors.filter(Boolean).join(", ");
+  if (typeof errors === "string") return errors;
+
+  return Object.values(errors)
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export const apiClient = create({
   baseURL: env.apiBaseUrl,
   timeout: 30000,
@@ -46,7 +57,13 @@ apiClient.interceptors.response.use(
   (response) => {
     const payload = response.data as ApiResponse | undefined;
     if (payload?.success === false) {
-      throw new ApiError(payload.message || "Yêu cầu thất bại.", response.status, payload);
+      const details = formatApiErrors(payload.errors);
+      const message =
+        (payload.message && details ? `${payload.message}: ${details}` : payload.message) ||
+        details ||
+        payload.title ||
+        "Yeu cau that bai.";
+      throw new ApiError(message, response.status, payload);
     }
 
     return response;
