@@ -44,16 +44,22 @@ This file tracks the USER features that Mobile still needs to reach functional p
   - Web has richer assessment and consultation-session flows.
   - Need to resync quota handling, session metadata, result states, error states, and navigation.
 
-- [ ] Subscription / Pricing / Usage
-  - Mobile has pricing and subscription basics.
-  - Missing full subscription usage/quota parity with Web.
-  - Need to integrate and surface `subscriptionUsageApi` behavior.
+- [x] Subscription / Pricing / Usage — done, PR #28.
+  - Profile's "Gói dịch vụ" tab now shows per-feature quota cards from
+    `GET /api/me/subscription-usage` (best-effort, doesn't block the tab).
+  - Recovery Plan already had its own single-quota progress-bar view from
+    PR #27.
 
-- [ ] Payment
-  - Mobile has payment history and older PayOS helpers.
-  - Missing Web reconcile flow.
-  - API to integrate:
-    - `POST /api/payments/payos/reconcile/{orderCode}`
+- [x] Payment — done, PR #28.
+  - `POST /api/payments/payos-reconcile/{orderCode}` (note: actual path is
+    hyphenated single segment `payos-reconcile`, not `payos/reconcile` as
+    originally listed here — corrected after reading Web's endpoints.js).
+  - Checkout polling now reconciles alongside the cheap local payment poll
+    (first tick + every 4th tick), matching Web's cadence.
+  - Manual "Kiểm tra với PayOS" button on pending PayOS rows in Payment
+    History — the one piece of Web's reconcile UI mobile can fully own,
+    since the auto-reconcile payment-result/return page was never built
+    (PayOS can't deep-link into the app without backend config).
 
 - [ ] Medication
   - Mobile has medication CRUD basics.
@@ -78,7 +84,7 @@ This file tracks the USER features that Mobile still needs to reach functional p
 
 1. ~~Medical Records / Lab Tests~~ — done, PR #26.
 2. ~~Recovery Plan~~ — done, PR #27 (realtime sync deliberately skipped).
-3. Subscription / Usage / Payment resync
+3. ~~Subscription / Usage / Payment resync~~ — done, PR #28.
 4. Medication detail and reminders parity
 5. AI Consultation resync
 6. Google Sign-In native configuration
