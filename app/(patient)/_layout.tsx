@@ -1,8 +1,13 @@
-// Minimal bottom-tab shell for the patient area (Home/Map/Chat so far). More
-// tabs (Profile, ...) are added as their modules land — Module 13 — instead
-// of building a full tab bar ahead of the screens that would populate it.
+// Bottom-tab shell for the patient area. Tabs are added as their modules
+// land instead of building a full tab bar ahead of the screens that would
+// populate it — Profile (Module 12) is the latest addition.
+//
+// Expo Router's Tabs auto-adds every route file under this group to the tab
+// bar unless it's explicitly hidden (options.href = null) — so secondary
+// screens reached via navigation from elsewhere (not primary destinations)
+// must be listed here too, just without a visible tab.
 import { Tabs } from "expo-router";
-import { LayoutGrid, MapPin, MessageCircle } from "lucide-react-native";
+import { LayoutGrid, MapPin, MessageCircle, UserRound } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -37,6 +42,17 @@ export default function PatientLayout() {
           tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Hồ sơ",
+          tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen name="medication" options={{ href: null }} />
+      <Tabs.Screen name="my-medications" options={{ href: null }} />
+      <Tabs.Screen name="payment-history" options={{ href: null }} />
+      <Tabs.Screen name="recovery-plan" options={{ href: null }} />
     </Tabs>
   );
 }
