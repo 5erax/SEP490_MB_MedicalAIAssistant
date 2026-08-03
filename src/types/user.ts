@@ -5,7 +5,7 @@ export type UserProfile = {
   email?: string;
   displayName?: string;
   name?: string;
-  phoneNumber?: string;
+  phoneNumber?: string | null;
   address?: string;
   gender?: number;
   dateOfBirth?: string | null;

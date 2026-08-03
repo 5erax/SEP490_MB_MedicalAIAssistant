@@ -6,6 +6,8 @@ export * from './useFacilityReviews';
 export * from './useLogout';
 export * from './useSubscription';
 export * from './useSymptomIntake';
+export * from './usePatientProfileSetup';
+export * from './useProfile';
 export * from './useToast';
 export * from './useUserLocation';
 export * from './useUserMedications';
