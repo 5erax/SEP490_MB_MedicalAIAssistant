@@ -937,15 +937,24 @@ gián đoạn (hết hạn mức sử dụng). Ghi nhận lại nội dung vì c
 - **`src/api/client.ts`** + **`src/utils/errors.ts`**: thông báo lỗi
   API giờ gộp thêm chi tiết field-level (`payload.errors`) vào message
   hiển thị.
-- **`src/components/map/FacilityMapView.native.tsx`** — **cảnh báo hồi
-  quy thật sự**: bản đồ MapLibre thật (xây ở Module 3) đã bị thay bằng
-  màn hình "chưa khả dụng" cố định, vì module native của MapLibre không
-  có sẵn trong Expo Go và có vẻ đang chặn toàn bộ app khởi động được
-  trong Expo Go. Đây không chỉ là workaround cho riêng Expo Go — nó xoá
-  luôn tính năng bản đồ thật trên native build tuỳ chỉnh (vốn Module 3
-  đã note rõ là target đúng cho MapLibre). Cần quyết định thêm: có nên
-  làm điều kiện theo môi trường (Expo Go dùng fallback, dev client thật
-  vẫn dùng MapLibre thật) thay vì tắt vĩnh viễn hay không.
+- **`src/components/map/FacilityMapView.native.tsx`** — hồi quy: bản
+  đồ MapLibre thật (xây ở Module 3) đã bị thay bằng màn hình "chưa khả
+  dụng" cố định, vì module native của MapLibre không có sẵn trong Expo
+  Go và chặn toàn bộ app khởi động trong Expo Go. **Đã sửa** (xem PR
+  [#21](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/21)):
+  tách thành 3 file — `FacilityMapViewMapLibre.tsx` (bản đồ thật, khôi
+  phục nguyên vẹn từ Module 3), `FacilityMapViewFallback.tsx` (thông
+  báo Expo Go, tách thành component riêng), và `FacilityMapView.native.tsx`
+  (dispatcher kiểm tra `Constants.executionEnvironment` từ
+  `expo-constants`, `require()` bản đồ MapLibre có chủ đích trễ (lazy)
+  chỉ ở nhánh không phải Expo Go — dùng `import` tĩnh sẽ bị đánh giá
+  ngay lập tức bất kể điều kiện runtime phía sau, vẫn crash Expo Go).
+  Nguyên nhân gốc xác nhận qua đọc trực tiếp package đã cài:
+  `NativeMapViewModule.js` gọi `TurboModuleRegistry.getEnforcing(...)`
+  ở top-level module, ném lỗi ngay khi import nếu module native chưa
+  được liên kết — luôn đúng với Expo Go. Bản đồ thật giờ hoạt động lại
+  trên native build tuỳ chỉnh; Expo Go vẫn nhận fallback an toàn thay
+  vì crash.
 
 ---
 
