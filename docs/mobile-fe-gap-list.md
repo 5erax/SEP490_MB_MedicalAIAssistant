@@ -6,12 +6,14 @@ This file tracks the USER features that Mobile still needs to reach functional p
 
 ## Missing Completely
 
-- [ ] Medical Records / Lab Tests
-  - Missing lab test upload and AI analysis screen.
-  - Missing lab test analysis history.
-  - Missing lab test session detail screen.
-  - Missing mobile service/hook equivalent to Web lab test flow.
-  - APIs to integrate:
+- [x] Medical Records / Lab Tests — done, PR #26.
+  - Native history-first screen (filter chips + session list + FAB), upload
+    and detail each in a full-screen sheet.
+  - `labTestService.ts`, `useMedicalRecords.ts`, upload-to-Cloudinary +
+    analyze flow, 3s polling while a session is "processing".
+  - Linked from Settings ("Tính năng" section) since Web has no mobile-nav
+    or dashboard entry point to mirror.
+  - APIs integrated:
     - `POST /api/lab-tests/analyze`
     - `GET /api/lab-tests/my-sessions`
     - `GET /api/lab-tests/{sessionId}`

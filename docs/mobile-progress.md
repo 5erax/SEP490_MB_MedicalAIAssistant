@@ -416,3 +416,62 @@ Verification:
 Known issues:
 
 - Visual QA on emulator is still needed for final spacing and contrast validation.
+
+## 2026-08-03 - Medical Records / Lab Tests
+
+Branch: `feature/mobile-medical-records`
+
+Module: New feature, first item from the parity audit's Recommended Build Order.
+
+Goal:
+
+- Close the Medical Records / Lab Tests gap identified in `docs/mobile-fe-gap-list.md`.
+- Build it as a genuine mobile product screen, not a port of Web's desktop two-column layout.
+
+Files added:
+
+- `app/(patient)/records.tsx`
+- `src/components/records/{RecordsScreen,ResultCard,SessionCard,SessionDetailSheet,UploadRecordSheet,index}.tsx`
+- `src/hooks/useMedicalRecords.ts`
+- `src/services/labTestService.ts`
+- `src/types/labTest.ts`
+- `src/utils/labTestPresentation.ts`
+
+Files changed:
+
+- `src/api/endpoints.ts` (LAB_TESTS block)
+- `src/services/cloudinaryUploadService.ts` (uploadMedicalDocumentToCloudinary, validateMedicalDocument)
+- `src/hooks/index.ts`
+- `app/(patient)/_layout.tsx` (hide records from the tab bar)
+- `src/components/settings/SettingsScreen.tsx` (new "Tính năng" section, links to Records)
+- `app.json` (expo-document-picker plugin)
+- `package.json` / `package-lock.json` (expo-document-picker)
+
+UI completed:
+
+- History-first screen: status filter chips, session list, FAB to start a new analysis.
+- Upload sheet: read-only patient info (name/gender/date of birth from profile), test-date picker, image-or-PDF document picker, phase-aware submit button ("Đang tải tài liệu..." / "Đang gửi phân tích...").
+- Session detail sheet: status banners (processing/failed/empty), result cards with an expandable advice accordion, expandable raw OCR text, fixed medical-disclaimer footer.
+
+API integrated:
+
+- `POST /api/lab-tests/analyze`
+- `GET /api/lab-tests/my-sessions`
+- `GET /api/lab-tests/{sessionId}`
+
+Hooks/services/context/navigation:
+
+- `useMedicalRecords()`: profile load, upload-then-analyze submission (caches the Cloudinary upload by file identity so resubmitting the same file skips re-uploading), paginated/filterable history, session detail with 3s polling while `status === "processing"`.
+- Route access matches Web exactly: `"auth"`, not `"premium"` — Web's own route comment marks this as a temporary downgrade for product testing; do not upgrade to PremiumGate ahead of Web.
+- No entry point in the bottom tab bar (Web excludes this from its own mobile nav too) — linked from Settings instead, since Web's only entry point is a persistent sidebar item with no dashboard-card or bottom-nav equivalent on Web to mirror.
+
+Verification:
+
+- `npx tsc --noEmit`
+- `npx expo lint`
+- `npx expo export --platform web`
+- Browser preview: `/records` and `/settings` correctly redirect to Login via `AuthGate` when unauthenticated, no console errors.
+
+Known issues:
+
+- Full authenticated upload → analyze → poll → detail flow needs a real device/Expo Go — `expo-secure-store` has no web implementation, so session persistence can't be exercised in browser-based testing against this backend (same limitation noted in every prior module).
