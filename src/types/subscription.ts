@@ -36,7 +36,33 @@ export type Payment = {
 export type PayOsCheckout = {
   paymentId: string;
   paymentUrl: string;
+  orderCode?: string;
   [key: string]: unknown;
+};
+
+// Ported from the /api/me/subscription-usage response shape (Web) — used
+// by Recovery Plan (single, "recovery"-code quota), Profile's "Gói dịch
+// vụ" tab (full per-feature list), and PricingPage's post-checkout cache
+// warm (fetched but not rendered there).
+export type SubscriptionUsageQuota = {
+  quotaCode?: string;
+  quotaName?: string;
+  limitValue?: number;
+  remainingCount?: number;
+  usedCount?: number;
+  reservedCount?: number;
+  cycleStart?: string;
+  cycleEnd?: string;
+};
+
+export type PayOsReconcileResult = {
+  providerStatus?: string;
+  paymentStatus?: string;
+  isPaid?: boolean;
+  isActive?: boolean;
+  isCancelled?: boolean;
+  amountRemaining?: number;
+  message?: string;
 };
 
 export type CheckoutStatus = "idle" | "creating" | "pending" | "success" | "error";

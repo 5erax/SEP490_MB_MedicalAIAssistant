@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { recoveryPlanRequestsApi, recoveryPlansApi } from "@/src/services/recoveryPlanService";
 import { normalizeRecoveryQuota, subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
 import { ApiErrorPayload, PaginatedResult } from "@/src/types/api";
-import { DiseaseGroup, RecoveryPlan, RecoveryPlanRequest, SubscriptionUsageQuota } from "@/src/types/recoveryPlan";
+import { DiseaseGroup, RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
+import { SubscriptionUsageQuota } from "@/src/types/subscription";
 import { getRecoveryErrorMessage, isNoActiveSubscriptionError, makeIdempotencyKey } from "@/src/utils/recoveryPlanPresentation";
 
 type SectionState = "loading" | "ready" | "error";

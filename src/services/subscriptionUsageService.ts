@@ -1,7 +1,7 @@
 // Ported from src/services/subscriptionUsageService.js (Web).
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
-import { SubscriptionUsageQuota } from "@/src/types/recoveryPlan";
+import { SubscriptionUsageQuota } from "@/src/types/subscription";
 
 export const subscriptionUsageApi = {
   getUsage() {

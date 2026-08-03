@@ -3,7 +3,7 @@
 // Admin-only, not ported here).
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
-import { PayOsCheckout, Payment, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
+import { PayOsCheckout, PayOsReconcileResult, Payment, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
 import { ApiResponse } from "@/src/types/api";
 
 function withQuery(path: string, params: Record<string, string | number | undefined> = {}) {
@@ -60,5 +60,20 @@ export const paymentsApi = {
 
   payOsStatus(orderCode: string) {
     return apiRequest<ApiResponse>(ENDPOINTS.PAYMENTS.PAYOS_STATUS(orderCode));
+  },
+
+  // Ported from paymentsApi.reconcilePayOs (Web) — replaces payOsStatus as
+  // the source of truth: this actively re-queries PayOS live server-side
+  // instead of reading a locally cached DB status, and is auth-scoped to
+  // the caller's own payments (POST, not GET).
+  reconcilePayOs(orderCode: string) {
+    const normalizedOrderCode = String(orderCode ?? "").trim();
+    if (!normalizedOrderCode) {
+      return Promise.reject(new Error("Thiếu mã giao dịch PayOS."));
+    }
+    return apiRequest<PayOsReconcileResult>(ENDPOINTS.PAYMENTS.PAYOS_RECONCILE(normalizedOrderCode), {
+      method: "POST",
+      requiresAuth: true,
+    });
   },
 };

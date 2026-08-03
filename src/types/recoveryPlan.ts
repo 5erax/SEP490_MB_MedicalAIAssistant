@@ -1,13 +1,3 @@
-export type SubscriptionUsageQuota = {
-  quotaCode?: string;
-  limitValue?: number;
-  remainingCount?: number;
-  usedCount?: number;
-  reservedCount?: number;
-  cycleStart?: string;
-  cycleEnd?: string;
-};
-
 export type DiseaseGroup = "respiratory" | "musculoskeletal" | "infectiousDisease";
 
 export type RecoveryPlanRequestStatus =
