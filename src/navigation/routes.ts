@@ -24,6 +24,7 @@ export const ROUTES = {
     MEDICATION: "/(patient)/medication",
     MEDICATION_RESULT: "/(patient)/medication/result",
     PAYMENT_HISTORY: "/(patient)/payment-history",
+    RECOVERY_PLAN: "/(patient)/recovery-plan",
     SETTINGS: "/(patient)/settings",
   },
   DOCTOR: {
