@@ -1,252 +1,285 @@
-// Ported from src/pages/RecoveryPlanPage.jsx (Web) — this is a static
-// "not available yet" placeholder on Web too (no API calls, explicitly
-// labeled "Chưa khả dụng trên MediMate"), even though the backend exposes
-// RecoveryPlanRequests/DoctorRecoveryPlanRequests endpoints. Per source-
-// of-truth rules, mobile mirrors Web's actual current behavior — a real
-// recovery-plan feature is not built here since Web doesn't have one yet.
-import { StyleSheet, View } from "react-native";
-import { router } from "expo-router";
-import {
-  ArrowRight,
-  CalendarCheck,
-  ClipboardCheck,
-  FileText,
-  HeartPulse,
-  MapPin,
-  ShieldCheck,
-  Stethoscope,
-} from "lucide-react-native";
+// Ported from Web's RecoveryPlanPage.jsx — redesigned as a single scrolling
+// native screen (quota card, CTA, requests list, plans list) instead of
+// Web's desktop split-panel layout, with detail/create each in their own
+// full-screen sheet. Realtime SignalR sync is intentionally not ported —
+// pull-to-refresh + a manual reload cover the same need without adding a
+// native SignalR dependency; see docs/mobile-progress.md.
+import { useState } from "react";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react-native";
 
-import { AppText, Button, Card, Screen } from "@/src/components/ui";
-import { colors, radius, spacing } from "@/src/theme/tokens";
-import { ROUTES } from "@/src/navigation/routes";
+import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
+import { useRecoveryPlan, useToast } from "@/src/hooks";
+import { RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
+import { CreateRequestSheet } from "./CreateRequestSheet";
+import { PlanCard } from "./PlanCard";
+import { PlanDetailSheet } from "./PlanDetailSheet";
+import { QuotaCard } from "./QuotaCard";
+import { RequestCard } from "./RequestCard";
+import { RequestDetailSheet } from "./RequestDetailSheet";
 
-const PREPARATION_ITEMS = [
-  {
-    icon: FileText,
-    title: "Mang theo hướng dẫn sau khám",
-    text: "Giữ lại đơn thuốc, giấy hẹn và các chỉ dẫn được cơ sở y tế cung cấp.",
-  },
-  {
-    icon: HeartPulse,
-    title: "Ghi nhận thay đổi đáng chú ý",
-    text: "Theo dõi thời điểm xuất hiện, mức độ và diễn biến để trao đổi rõ hơn khi tái khám.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "Chuẩn bị cho lần tái khám",
-    text: "Ghi lại mốc tái khám và những câu hỏi bạn muốn trao đổi trực tiếp với nhân viên y tế.",
-  },
-];
-
-const NEXT_STEPS = [
-  "Làm rõ triệu chứng trước khi chọn chuyên khoa.",
-  "Tìm cơ sở y tế đang có trên hệ thống.",
-  "Làm theo kế hoạch được nhân viên y tế hướng dẫn sau khi khám.",
-];
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <View style={styles.pagination}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Trang trước"
+        disabled={page <= 1}
+        onPress={() => onChange(Math.max(1, page - 1))}
+        style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
+      >
+        <ChevronLeft size={16} color={colors.ink} />
+      </Pressable>
+      <AppText variant="caption" color={colors.subtle}>
+        Trang {page}/{totalPages}
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Trang sau"
+        disabled={page >= totalPages}
+        onPress={() => onChange(Math.min(totalPages, page + 1))}
+        style={[styles.pageButton, page >= totalPages && styles.pageButtonDisabled]}
+      >
+        <ChevronRight size={16} color={colors.ink} />
+      </Pressable>
+    </View>
+  );
+}
 
 export function RecoveryPlanScreen() {
+  const { showToast } = useToast();
+  const recovery = useRecoveryPlan();
+  const [createVisible, setCreateVisible] = useState(false);
+  const [requestDetailVisible, setRequestDetailVisible] = useState(false);
+  const [planDetailVisible, setPlanDetailVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const requestCreationDisabled =
+    recovery.quotaState === "loading" ||
+    recovery.quotaState === "error" ||
+    !recovery.quota ||
+    Number(recovery.quota.remainingCount) <= 0;
+
+  async function handleCreateSubmit() {
+    const result = await recovery.submitCreateRequest();
+    if (result === "success") {
+      setCreateVisible(false);
+      showToast({ type: "success", message: "Đã gửi yêu cầu kế hoạch phục hồi." });
+    }
+  }
+
+  function openRequest(request: RecoveryPlanRequest) {
+    recovery.selectRequest(request);
+    setRequestDetailVisible(true);
+  }
+
+  function openPlan(plan: RecoveryPlan) {
+    recovery.selectPlan(plan);
+    setPlanDetailVisible(true);
+  }
+
+  async function handleCancel(requestId: string) {
+    const result = await recovery.cancelRequest(requestId);
+    if (result === "success") {
+      showToast({ type: "success", message: "Đã hủy yêu cầu." });
+      setRequestDetailVisible(false);
+    } else {
+      showToast({ type: "error", message: result.message });
+    }
+  }
+
+  async function handleProvideInformation(requestId: string, text: string) {
+    const result = await recovery.submitMoreInformation(requestId, text);
+    if (result.status === "success") {
+      showToast({ type: "success", message: "Đã gửi thông tin bổ sung." });
+    } else {
+      showToast({ type: "error", message: result.message ?? "Không thể gửi thông tin bổ sung." });
+    }
+  }
+
+  async function handleStartPlan(planId: string) {
+    const result = await recovery.startPlan(planId);
+    if (result === "success") {
+      showToast({ type: "success", message: "Đã bắt đầu kế hoạch phục hồi." });
+    } else {
+      showToast({ type: "error", message: result.message });
+    }
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    recovery.reloadAll();
+    setRefreshing(false);
+  }
+
   return (
-    <Screen scroll contentContainerStyle={styles.content}>
-      <Card variant="dark" style={styles.heroCard}>
-        <View style={styles.badgeInline}>
-          <ShieldCheck size={13} color={colors.teal} />
-          <AppText variant="caption" color={colors.teal}>
-            Chưa khả dụng trên MediMate
+    <Screen padded={false} style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+      >
+        <View style={styles.header}>
+          <AppText variant="eyebrow" color={colors.teal}>
+            Theo dõi sau khám
           </AppText>
+          <AppText variant="h1">Kế hoạch phục hồi</AppText>
+          <AppText color={colors.muted}>Gửi yêu cầu để bác sĩ lên kế hoạch phục hồi cá nhân dựa trên tình trạng của bạn.</AppText>
         </View>
-        <AppText variant="eyebrow" color={colors.teal}>
-          Theo dõi sau khám
-        </AppText>
-        <AppText variant="h1" color={colors.white}>
-          Kế hoạch phục hồi chưa được mở
-        </AppText>
-        <AppText color="rgba(255,255,255,0.78)">
-          MediMate hiện chưa tạo, lưu hoặc theo dõi kế hoạch phục hồi cá nhân. Kế hoạch chăm sóc cần dựa trên hướng dẫn
-          trực tiếp từ bác sĩ hoặc cơ sở y tế của bạn.
-        </AppText>
 
-        <View style={styles.actions}>
-          <Button onPress={() => router.replace(ROUTES.PATIENT.HOME)}>
-            <View style={styles.actionInline}>
-              <Stethoscope size={17} color={colors.ink} />
-              <AppText variant="bodyStrong">Phân tích triệu chứng</AppText>
+        <QuotaCard
+          state={recovery.quotaState}
+          quota={recovery.quota}
+          message={recovery.quotaMessage}
+          needsSubscription={recovery.quotaNeedsSubscription}
+          onRetry={recovery.reloadQuota}
+        />
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={requestCreationDisabled}
+          onPress={() => setCreateVisible(true)}
+          style={[styles.createButton, requestCreationDisabled && styles.createButtonDisabled]}
+        >
+          <Plus size={18} color={colors.white} />
+          <AppText variant="bodyStrong" color={colors.white}>
+            Yêu cầu kế hoạch mới
+          </AppText>
+        </Pressable>
+
+        <View style={styles.section}>
+          <AppText variant="h3">Yêu cầu của bạn</AppText>
+          {recovery.requestsState === "loading" && recovery.requests.length === 0 ? (
+            <SkeletonGroup lines={3} />
+          ) : recovery.requestsState === "error" ? (
+            <EmptyState title="Không tải được danh sách yêu cầu" description={recovery.requestsError} />
+          ) : recovery.requests.length === 0 ? (
+            <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bắt đầu theo dõi kế hoạch phục hồi." />
+          ) : (
+            <View style={styles.list}>
+              {recovery.requests.map((request) => (
+                <RequestCard key={request.id} request={request} onPress={() => openRequest(request)} />
+              ))}
             </View>
-          </Button>
-          <Button variant="secondary" onPress={() => router.push(ROUTES.PATIENT.MAP)}>
-            <View style={styles.actionInline}>
-              <MapPin size={17} color={colors.ink} />
-              <AppText variant="bodyStrong">Tìm cơ sở y tế</AppText>
+          )}
+          <Pagination page={recovery.requestsPage} totalPages={recovery.requestsInfo.totalPages} onChange={recovery.setRequestsPage} />
+        </View>
+
+        <View style={styles.section}>
+          <AppText variant="h3">Kế hoạch đã nhận</AppText>
+          {recovery.plansState === "loading" && recovery.plans.length === 0 ? (
+            <SkeletonGroup lines={3} />
+          ) : recovery.plansState === "error" ? (
+            <EmptyState title="Không tải được danh sách kế hoạch" description={recovery.plansError} />
+          ) : recovery.plans.length === 0 ? (
+            <EmptyState title="Chưa có kế hoạch nào" description="Khi yêu cầu được hoàn tất, kế hoạch sẽ xuất hiện tại đây để bạn xem và bắt đầu." />
+          ) : (
+            <View style={styles.list}>
+              {recovery.plans.map((plan) => (
+                <PlanCard key={plan.id} plan={plan} onPress={() => openPlan(plan)} />
+              ))}
             </View>
-          </Button>
+          )}
+          <Pagination page={recovery.plansPage} totalPages={recovery.plansInfo.totalPages} onChange={recovery.setPlansPage} />
         </View>
 
-        <AppText variant="caption" color="rgba(255,255,255,0.62)">
-          Trang này không yêu cầu và không lưu thông tin sức khỏe của bạn.
-        </AppText>
-      </Card>
-
-      <Card variant="soft" style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.iconMark}>
-            <ClipboardCheck size={20} color={colors.teal} />
-          </View>
-          <View style={styles.cardHeaderText}>
-            <AppText variant="caption" color={colors.subtle}>
-              Bạn có thể làm ngay
-            </AppText>
-            <AppText variant="h3">Chuẩn bị bước tiếp theo</AppText>
-          </View>
-        </View>
-        <View style={styles.stepList}>
-          {NEXT_STEPS.map((step, index) => (
-            <View key={step} style={styles.stepRow}>
-              <AppText variant="caption" color={colors.teal} style={styles.stepIndex}>
-                {String(index + 1).padStart(2, "0")}
-              </AppText>
-              <AppText color={colors.muted} style={styles.stepText}>
-                {step}
-              </AppText>
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      <Card variant="hard" style={styles.card}>
         <AppText variant="caption" color={colors.subtle}>
-          Trước lần tái khám
+          Thông tin hỗ trợ, không thay thế chăm sóc y tế. Trong tình huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
         </AppText>
-        <AppText variant="h3">Những thông tin nên chuẩn bị</AppText>
-        <AppText color={colors.muted}>
-          Đây là gợi ý chuẩn bị chung, không phải kế hoạch điều trị và không thay thế hướng dẫn từ người có chuyên môn.
-        </AppText>
-        <View style={styles.preparationList}>
-          {PREPARATION_ITEMS.map(({ icon: Icon, title, text }) => (
-            <View key={title} style={styles.preparationRow}>
-              <View style={styles.iconMark}>
-                <Icon size={18} color={colors.teal} />
-              </View>
-              <View style={styles.preparationText}>
-                <AppText variant="bodyStrong">{title}</AppText>
-                <AppText variant="caption" color={colors.muted}>
-                  {text}
-                </AppText>
-              </View>
-            </View>
-          ))}
-        </View>
-      </Card>
+      </ScrollView>
 
-      <Card variant="dark" style={styles.careNoteCard}>
-        <View style={styles.careNoteIconMark}>
-          <HeartPulse size={20} color={colors.teal} />
-        </View>
-        <View style={styles.careNoteText}>
-          <AppText variant="caption" color={colors.teal}>
-            Khi cần hỗ trợ
-          </AppText>
-          <AppText variant="h3" color={colors.white}>
-            Ưu tiên hướng dẫn từ cơ sở y tế
-          </AppText>
-          <AppText color="rgba(255,255,255,0.72)">
-            Nếu tình trạng thay đổi hoặc bạn lo lắng về dấu hiệu đang gặp, hãy liên hệ cơ sở y tế phù hợp. Trong tình
-            huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
-          </AppText>
-        </View>
-        <Button variant="secondary" size="sm" onPress={() => router.push(ROUTES.PATIENT.MAP)}>
-          <View style={styles.actionInline}>
-            <AppText variant="bodyStrong">Xem cơ sở y tế</AppText>
-            <ArrowRight size={16} color={colors.ink} />
-          </View>
-        </Button>
-      </Card>
+      <CreateRequestSheet
+        visible={createVisible}
+        form={recovery.createForm}
+        errors={recovery.createErrors}
+        submitting={recovery.creating}
+        submitError={recovery.createError}
+        needsSubscription={recovery.createNeedsSubscription}
+        onClose={() => {
+          setCreateVisible(false);
+          recovery.resetCreateForm();
+        }}
+        onChange={recovery.updateCreateField}
+        onSubmit={handleCreateSubmit}
+      />
+
+      <RequestDetailSheet
+        visible={requestDetailVisible}
+        request={recovery.selectedRequest}
+        state={recovery.requestDetailState}
+        cancelling={Boolean(recovery.cancellingId)}
+        providingInfo={recovery.providingInfo}
+        onClose={() => {
+          setRequestDetailVisible(false);
+          recovery.clearSelectedRequest();
+        }}
+        onCancel={handleCancel}
+        onProvideInformation={handleProvideInformation}
+      />
+
+      <PlanDetailSheet
+        visible={planDetailVisible}
+        plan={recovery.selectedPlan}
+        state={recovery.planDetailState}
+        starting={Boolean(recovery.startingId)}
+        onClose={() => {
+          setPlanDetailVisible(false);
+          recovery.clearSelectedPlan();
+        }}
+        onStart={handleStartPlan}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   content: {
+    padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
-  heroCard: {
-    gap: spacing.md,
-  },
-  badgeInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  actions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  header: {
     gap: spacing.sm,
   },
-  actionInline: {
+  createButton: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  card: {
-    gap: spacing.md,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  cardHeaderText: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  iconMark: {
-    width: 40,
-    height: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: colors.mint,
-  },
-  stepList: {
     gap: spacing.sm,
-  },
-  stepRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: spacing.sm,
-  },
-  stepIndex: {
-    width: 24,
-  },
-  stepText: {
-    flex: 1,
-  },
-  preparationList: {
-    gap: spacing.md,
-  },
-  preparationRow: {
-    flexDirection: "row",
-    gap: spacing.md,
-    alignItems: "flex-start",
-  },
-  preparationText: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  careNoteCard: {
-    gap: spacing.md,
-  },
-  careNoteIconMark: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: colors.teal,
+    paddingVertical: spacing.md,
+    ...shadows.soft,
   },
-  careNoteText: {
-    gap: spacing.xs,
+  createButtonDisabled: {
+    opacity: 0.5,
+  },
+  section: {
+    gap: spacing.md,
+  },
+  list: {
+    gap: spacing.md,
+  },
+  pagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.md,
+  },
+  pageButton: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  pageButtonDisabled: {
+    opacity: 0.4,
   },
 });
