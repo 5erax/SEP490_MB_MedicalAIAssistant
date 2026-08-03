@@ -7,6 +7,8 @@ export const ROUTES = {
     CHANGE_PASSWORD: "/(public)/change-password",
     PRICING: "/(public)/pricing",
     MEDICAL_DISCLAIMER: "/(public)/medical-disclaimer",
+    SUPPORT: "/(public)/support",
+    PRIVACY: "/(public)/privacy",
   },
   SETUP: {
     PATIENT_PROFILE: "/(setup)/patient-profile",
