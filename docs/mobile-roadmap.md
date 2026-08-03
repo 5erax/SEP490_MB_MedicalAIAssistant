@@ -13,7 +13,7 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] Medical Facility
 - [x] Doctor
 - [x] Appointment
-- [ ] Subscription
+- [x] Subscription
 - [ ] Payment
 - [ ] Recovery Plan
 - [ ] Medication
