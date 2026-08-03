@@ -18,5 +18,5 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] Recovery Plan
 - [x] Medication
 - [x] ~~Notifications~~ — bỏ qua có chủ đích, xem [mobile-progress.md](./mobile-progress.md#module-12-notifications--bỏ-qua-có-chủ-đích)
-- [ ] Profile
+- [x] Profile
 - [ ] Settings
