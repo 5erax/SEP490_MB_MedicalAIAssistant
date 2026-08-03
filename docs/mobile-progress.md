@@ -920,3 +920,150 @@ tracking/Appointment có backend thật), Mobile sẽ port lại đúng theo
 API/luồng mới tại thời điểm đó.
 
 ---
+
+## Hotfix: sửa trực tiếp trên `main` (commit `4c68adc`, không qua PR)
+
+Chủ nhiệm đồ án đã tự sửa và push thẳng lên `main` khi phiên làm việc bị
+gián đoạn (hết hạn mức sử dụng). Ghi nhận lại nội dung vì chưa qua review:
+
+- **`src/services/authService.ts`**: `register()` giờ tự động gọi
+  `login()` nếu response đăng ký không kèm `accessToken` — xử lý
+  trường hợp backend trả về thành công nhưng không cấp token ngay.
+- **`src/utils/roles.ts`**: thêm đồng nghĩa vai trò `"patient" → "user"`
+  trong `hasRole()` — khả năng cao đây là fix đúng nếu backend thật trả
+  role claim là `"User"` chứ không phải `"Patient"` (nếu vậy, mọi kiểm
+  tra `hasRole(roles, "patient")` trước đó — bao gồm
+  `shouldSetupPatientProfile`, `PremiumGate` — đều đã âm thầm sai).
+- **`src/api/client.ts`** + **`src/utils/errors.ts`**: thông báo lỗi
+  API giờ gộp thêm chi tiết field-level (`payload.errors`) vào message
+  hiển thị.
+- **`src/components/map/FacilityMapView.native.tsx`** — **cảnh báo hồi
+  quy thật sự**: bản đồ MapLibre thật (xây ở Module 3) đã bị thay bằng
+  màn hình "chưa khả dụng" cố định, vì module native của MapLibre không
+  có sẵn trong Expo Go và có vẻ đang chặn toàn bộ app khởi động được
+  trong Expo Go. Đây không chỉ là workaround cho riêng Expo Go — nó xoá
+  luôn tính năng bản đồ thật trên native build tuỳ chỉnh (vốn Module 3
+  đã note rõ là target đúng cho MapLibre). Cần quyết định thêm: có nên
+  làm điều kiện theo môi trường (Expo Go dùng fallback, dev client thật
+  vẫn dùng MapLibre thật) thay vì tắt vĩnh viễn hay không.
+
+---
+
+## Module 12: Profile
+
+**Chức năng đã hoàn thành**
+
+*`/profile` — Hồ sơ cá nhân (`access: "auth"`, tab switcher gốc thay
+cho sidebar tab của Web)*
+- **Thông tin cá nhân**: xem/sửa họ tên, giới tính (Nam/Nữ/Khác), ngày
+  sinh, số điện thoại, địa chỉ. Email chỉ đọc ("Không thể đổi").
+- **Hồ sơ y tế**: xem/sửa nhóm máu, chiều cao, cân nặng, dị ứng, danh
+  sách bệnh nền (thêm/sửa/xoá từng bệnh với tên/từ ngày/đến ngày/ghi
+  chú).
+- **Gói dịch vụ**: hiển thị gói hiện tại + trạng thái + nút "Nâng cấp
+  MediMate+" sang `/pricing`.
+- **Giao dịch**: tái dùng nguyên `PaymentHistoryScreen` (Module 9) thay
+  vì viết lại danh sách — khớp đúng cách Web lồng `PaymentHistoryPanel`
+  vào cùng trang.
+- **Bảo mật**: nút gửi mã đổi mật khẩu, điều hướng sang `/forgot-password`
+  đã có sẵn.
+- Nút "Đăng xuất" trên header — Web đặt logout trong menu tài khoản
+  (chưa có trên Mobile, thuộc Module 13/14); đặt tại đây là vị trí hợp
+  lý nhất hiện có cho cùng một hành động, không phải logic mới.
+
+*`/(setup)/patient-profile` — Hoàn thiện hồ sơ lần đầu (`access: "auth"`)*
+- Thay thế màn placeholder của Module 1 bằng form thật: thông tin liên
+  hệ bắt buộc (họ tên, ngày sinh, giới tính [chỉ Nam/Nữ — khớp đúng
+  form setup của Web, khác với màn Hồ sơ có thêm "Khác"], số điện
+  thoại, địa chỉ) + thông tin sức khỏe tuỳ chọn + danh sách bệnh nền.
+- Nếu phát hiện hồ sơ bệnh nhân đã tồn tại (ví dụ do cờ auth bị lệch),
+  tự sửa lại cờ và chuyển hướng đi luôn, không hiện form — khớp đúng
+  `PersonalPatientProfilePage.jsx`.
+- Sau khi lưu thành công: cập nhật cờ `isFirstLogin/isProfileCompleted`
+  trong session rồi điều hướng vào trang chủ theo vai trò.
+
+**API đã tích hợp**
+- `GET /api/users/me`
+- `PUT /api/users/{id}`
+- `GET /api/patient-profiles?PageNumber=&PageSize=`
+- `POST /api/patient-profiles`
+- `PUT /api/patient-profiles/{id}`
+- `GET /api/user-subscriptions/me` (tái dùng từ Module 8)
+
+**UI đã hoàn thành**
+- `app/(patient)/profile.tsx` (bọc `AuthGate`).
+- `app/(setup)/patient-profile.tsx` (thay placeholder bằng form thật).
+- `src/components/profile/{ProfileScreen,ProfileTabs,PersonalInfoSection,
+  MedicalProfileSection,SubscriptionSummarySection,SecuritySection,
+  PatientProfileSetupScreen,index}.tsx`.
+
+**Hook:** `useProfile()` — port `UserProfilePage.jsx`: 3 phần tải độc
+lập (cá nhân/y tế/gói dịch vụ), lỗi ở phần này không chặn phần khác.
+`usePatientProfileSetup()` — port state machine của
+`PersonalPatientProfilePage.jsx`.
+
+**Service:** `patientProfileService.ts` (`patientProfilesApi.list/
+create/update`, `findPatientProfileByUserId` bản phân trang đầy đủ —
+dùng cho luồng setup). `patientProfileSetup.ts`
+(`savePatientProfileSetup`).
+
+**State:** `src/utils/profileValidation.ts` — port nguyên vẹn
+`validatePersonalProfile`, `validateMedicalProfile`,
+`normalizePersonalProfile`, `normalizePhoneNumber` từ
+`profileValidation.js`.
+
+**Known Issues**
+- **Phát hiện + sửa lỗi hệ thống trong tab bar Mobile**: Expo Router tự
+  thêm tab cho MỌI file route trong nhóm `Tabs` trừ khi bị ẩn tường
+  minh — `medication`, `my-medications`, `payment-history`,
+  `recovery-plan` đang âm thầm hiện thành tab thừa. Đã ẩn bằng
+  `options.href = null` trong `app/(patient)/_layout.tsx`, vẫn điều
+  hướng được qua code như cũ.
+- **Web có 2 thuật toán tìm hồ sơ bệnh nhân theo userId khác nhau**
+  giữa `UserProfilePage.jsx` (chỉ tra 1 trang, `list(1,100)`) và
+  `PersonalPatientProfilePage.jsx` (`findByUserId` — lặp qua TẤT CẢ các
+  trang cho đến khi tìm thấy). Đây là mâu thuẫn có thật trong chính
+  code Web (không phải lỗi do Mobile), Mobile giữ nguyên cả 2 thuật
+  toán tương ứng đúng theo từng luồng thay vì hợp nhất chúng.
+- Endpoint `BY_USER` (`/api/patient-profiles/by-user/{userId}`) tồn tại
+  nhưng không được Web gọi ở cả 2 luồng trên — Mobile cũng không dùng,
+  khớp đúng hiện trạng.
+- Chưa test được đầy đủ luồng CRUD hồ sơ + luồng setup lần đầu trên tài
+  khoản thật qua trình duyệt: đăng ký tài khoản test thật đã **thành
+  công ở tầng mạng** (xác nhận fix backend của chủ nhiệm đồ án đã giải
+  quyết đúng lỗi "Network Error" trước đó), nhưng sau đó gặp lỗi
+  `ExpoSecureStore.default.setValueWithKeyAsync is not a function` khi
+  lưu session — đã xác minh đây là giới hạn riêng của môi trường
+  browser-test (`expo-secure-store` không có cài đặt gì cho web, file
+  `ExpoSecureStore.web.ts` trong package là object rỗng), không phải
+  lỗi của Module 12 hay của bản fix backend. Cần test đầy đủ trên Expo
+  Go/thiết bị thật.
+
+**Hướng dẫn test trên Mobile**
+1. Đăng nhập tài khoản bệnh nhân lần đầu (chưa hoàn thiện hồ sơ) → xác
+   nhận chuyển hướng sang `/(setup)/patient-profile` với form được điền
+   sẵn từ dữ liệu tài khoản.
+2. Bỏ trống 1 trường bắt buộc → bấm "Hoàn tất hồ sơ" → xác nhận báo lỗi
+   đúng trường.
+3. Điền đủ thông tin bắt buộc, có thể bỏ qua phần y tế → lưu thành công
+   → xác nhận vào thẳng trang chủ, không còn bị chuyển hướng lại setup
+   ở lần vào sau.
+4. Vào `/profile` → chuyển qua từng tab (Thông tin/Y tế/Gói dịch vụ/
+   Giao dịch/Bảo mật) → xác nhận đúng nội dung từng tab.
+5. Ở tab Thông tin/Y tế: bấm "Chỉnh sửa" → sửa dữ liệu → "Lưu thay đổi"
+   → xác nhận dữ liệu cập nhật đúng; bấm "Huỷ" → xác nhận dữ liệu quay
+   về giá trị cũ.
+6. Thêm/xoá 1 bệnh nền ở tab Y tế → lưu → xác nhận danh sách cập nhật
+   đúng.
+7. Bấm "Đăng xuất" trên header → xác nhận đăng xuất và quay về màn Đăng
+   nhập.
+8. Xác nhận thanh tab dưới cùng chỉ hiện 4 tab (Tư vấn/Bản đồ/Chat AI/
+   Hồ sơ) — không còn tab thừa cho medication/my-medications/
+   payment-history/recovery-plan.
+
+**Kết quả build:** `tsc --noEmit` sạch, `expo lint` sạch, `expo export
+--platform web` xuất bundle thành công (`/profile` và
+`/(setup)/patient-profile` đều có mặt). Đăng ký tài khoản thật qua
+trình duyệt xác nhận không còn "Network Error" ở tầng mạng.
+
+**PR:** [#17](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/17)
