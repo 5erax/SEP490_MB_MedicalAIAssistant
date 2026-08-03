@@ -22,7 +22,7 @@ import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
 import { authService, normalizeAuthSession, RegisterPayload } from "@/src/services";
 import { useAuth } from "@/src/providers";
 import { useToast } from "@/src/hooks/useToast";
-import { colors, radius, spacing, typography } from "@/src/theme/tokens";
+import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
 
 type RegisterForm = {
