@@ -57,7 +57,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.brandMark}>
               <AppText variant="h3">+</AppText>
             </View>
-            <AppText variant="eyebrow" color={colors.lime}>
+            <AppText variant="eyebrow" color={colors.teal}>
               Bảo mật tài khoản
             </AppText>
             <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
@@ -101,8 +101,10 @@ export default function ForgotPasswordScreen() {
               <Button fullWidth disabled={submitting || !email.trim()} onPress={handleSubmit} style={styles.submitButton}>
                 {submitting ? (
                   <View style={styles.loadingLabel}>
-                    <ActivityIndicator color={colors.ink} size="small" />
-                    <AppText variant="bodyStrong">Đang gửi...</AppText>
+                    <ActivityIndicator color={colors.white} size="small" />
+                    <AppText variant="bodyStrong" color={colors.white}>
+                      Đang gửi...
+                    </AppText>
                   </View>
                 ) : (
                   "Gửi hướng dẫn"
@@ -136,14 +138,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
   hero: {
     gap: spacing.md,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.ink,
     padding: spacing.xl,
   },
@@ -153,10 +155,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderColor: "rgba(255,255,255,0.18)",
     borderRadius: radius.md,
-    backgroundColor: colors.lime,
-    ...shadows.hard,
+    backgroundColor: colors.paper,
   },
   heroTitle: { fontSize: 30, lineHeight: 36 },
   heroCopy: { fontSize: 15, lineHeight: 23 },
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing["2xl"],
@@ -173,7 +174,9 @@ const styles = StyleSheet.create({
   title: { ...(typography.h2 as object) },
   form: { gap: spacing.xl },
   inlineNote: {
-    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.sm,
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },

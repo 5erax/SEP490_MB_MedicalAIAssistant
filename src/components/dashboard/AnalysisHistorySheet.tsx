@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   sessionRowActive: {
-    borderColor: colors.limeDark,
+    borderColor: colors.teal,
     backgroundColor: colors.mint,
   },
   sessionText: {

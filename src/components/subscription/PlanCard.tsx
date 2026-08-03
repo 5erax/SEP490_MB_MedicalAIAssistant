@@ -12,7 +12,7 @@ export function FreePlanCard({ plan, onExplore }: { plan?: SubscriptionPlan; onE
     <Card variant="soft" style={styles.card}>
       <View style={styles.headingRow}>
         <View style={styles.iconMark}>
-          <Sparkles size={20} color={colors.limeDark} />
+          <Sparkles size={20} color={colors.teal} />
         </View>
         <Badge tone="neutral">Không cần mua gói</Badge>
       </View>
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 12,
-    backgroundColor: colors.limeDark,
+    backgroundColor: colors.teal,
   },
   priceRow: {
     flexDirection: "row",

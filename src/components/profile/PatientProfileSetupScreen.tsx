@@ -48,7 +48,7 @@ export function PatientProfileSetupScreen() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.headerGroup}>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Thiết lập hồ sơ
         </AppText>
         <AppText variant="h1">Hoàn thiện hồ sơ sức khỏe</AppText>
@@ -123,7 +123,7 @@ export function PatientProfileSetupScreen() {
                   onPress={() => updateField("gender", value)}
                   style={[styles.segment, selected && styles.segmentSelected]}
                 >
-                  <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                  <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                     {label}
                   </AppText>
                 </Pressable>
@@ -174,7 +174,7 @@ export function PatientProfileSetupScreen() {
                   onPress={() => updateField("bloodType", type)}
                   style={[styles.bloodTypeChip, selected && styles.bloodTypeChipSelected]}
                 >
-                  <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                  <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                     {type || "Chưa rõ"}
                   </AppText>
                 </Pressable>
@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
   },
@@ -364,19 +364,21 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: "row",
     gap: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.xs,
   },
   segment: {
     flex: 1,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: radius.sm,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.paper,
   },
   segmentSelected: {
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   privacyNote: {
     flexDirection: "row",
@@ -394,7 +396,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   bloodTypeChip: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -402,8 +404,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   bloodTypeChipSelected: {
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   measurementRow: {
     flexDirection: "row",
@@ -416,7 +418,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: "dashed",
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
@@ -433,9 +435,9 @@ const styles = StyleSheet.create({
   dateChip: {
     flex: 1,
     gap: spacing.xs / 2,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.paperSoft,

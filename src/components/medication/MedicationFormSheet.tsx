@@ -126,7 +126,7 @@ export function MedicationFormSheet({
             <Switch
               value={form.isReminderEnabled}
               onValueChange={(value) => onSetField("isReminderEnabled", value)}
-              trackColor={{ false: colors.line, true: colors.lime }}
+              trackColor={{ false: colors.line, true: colors.teal }}
               thumbColor={colors.paper}
             />
           </View>
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
   },
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: "dashed",
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,

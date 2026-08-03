@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     borderColor: colors.white,
-    backgroundColor: colors.limeDark,
+    backgroundColor: colors.teal,
   },
   pinSelected: {
     width: 22,

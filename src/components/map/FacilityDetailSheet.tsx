@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabButtonActive: {
-    borderBottomColor: colors.limeDark,
+    borderBottomColor: colors.teal,
   },
   content: {
     padding: spacing.lg,

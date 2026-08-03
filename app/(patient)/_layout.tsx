@@ -16,7 +16,7 @@ export default function PatientLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.limeDark,
+        tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.subtle,
         tabBarStyle: { borderTopColor: colors.line },
       }}

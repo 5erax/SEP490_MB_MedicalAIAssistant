@@ -18,7 +18,7 @@ function PremiumUpsell() {
     <Screen contentContainerStyle={styles.content}>
       <Card variant="hard" style={styles.card}>
         <View style={styles.iconMark}>
-          <Sparkles size={22} color={colors.limeDark} />
+          <Sparkles size={22} color={colors.teal} />
         </View>
         <AppText variant="h2">Tính năng dành cho gói MediMate+</AppText>
         <AppText color={colors.muted}>
@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.mint,
   },
 });

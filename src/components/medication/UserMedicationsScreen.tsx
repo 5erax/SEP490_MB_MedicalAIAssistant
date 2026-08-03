@@ -4,7 +4,7 @@ import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "re
 import { Plus } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
-import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useToast, useUserMedications } from "@/src/hooks";
 import { UserMedication } from "@/src/types/medication";
 import { MedicationCard } from "./MedicationCard";
@@ -99,7 +99,7 @@ export function UserMedicationsScreen() {
       )}
 
       <Pressable accessibilityRole="button" accessibilityLabel="Thêm thuốc" onPress={openCreateForm} style={styles.fab}>
-        <Plus size={24} color={colors.ink} />
+        <Plus size={24} color={colors.white} />
       </Pressable>
 
       <MedicationFormSheet
@@ -143,9 +143,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
-    ...shadows.hard,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.24,
+    shadowRadius: 20,
+    elevation: 5,
   },
 });

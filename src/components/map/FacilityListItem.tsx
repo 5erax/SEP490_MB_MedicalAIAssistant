@@ -32,7 +32,7 @@ export function FacilityListItem({ facility, selected, onPress }: FacilityListIt
         </AppText>
       </View>
       {facility.distanceKm != null ? (
-        <AppText variant="caption" color={colors.limeDark}>
+        <AppText variant="caption" color={colors.teal}>
           Cách bạn khoảng {formatDistance(facility.distanceKm)}
         </AppText>
       ) : null}
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   cardSelected: {
-    borderColor: colors.limeDark,
+    borderColor: colors.teal,
     backgroundColor: colors.mint,
   },
   header: {

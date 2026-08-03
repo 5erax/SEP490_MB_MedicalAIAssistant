@@ -27,8 +27,8 @@ export function ProfileTabs({ activeTab, onChange }: { activeTab: ProfileTabId; 
             onPress={() => onChange(id)}
             style={[styles.tab, selected && styles.tabSelected]}
           >
-            <Icon size={16} color={selected ? colors.ink : colors.muted} />
-            <AppText variant="caption" color={selected ? colors.ink : colors.muted}>
+            <Icon size={16} color={selected ? colors.white : colors.muted} />
+            <AppText variant="caption" color={selected ? colors.white : colors.muted}>
               {label}
             </AppText>
           </Pressable>
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   tabSelected: {
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
 });

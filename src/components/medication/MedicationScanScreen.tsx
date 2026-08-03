@@ -80,7 +80,7 @@ export function MedicationScanScreen() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.headerGroup}>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Kiểm tra thuốc
         </AppText>
         <AppText variant="h1">Xem trước ảnh nhãn thuốc</AppText>

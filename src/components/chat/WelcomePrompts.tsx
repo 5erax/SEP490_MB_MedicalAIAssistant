@@ -14,7 +14,7 @@ const WELCOME_PROMPTS = [
 export function WelcomePrompts({ onSelect }: { onSelect: (prompt: string) => void }) {
   return (
     <View style={styles.group}>
-      <AppText variant="eyebrow" color={colors.limeDark}>
+      <AppText variant="eyebrow" color={colors.teal}>
         Gợi ý để bắt đầu
       </AppText>
       {WELCOME_PROMPTS.map(({ icon: Icon, label, prompt }) => (

@@ -101,7 +101,7 @@ export function PersonalInfoSection({
                 onPress={() => onChange("gender", value)}
                 style={[styles.segment, selected && styles.segmentSelected]}
               >
-                <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                   {label}
                 </AppText>
               </Pressable>
@@ -200,26 +200,28 @@ const styles = StyleSheet.create({
   segmented: {
     flexDirection: "row",
     gap: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.xs,
   },
   segment: {
     flex: 1,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: radius.sm,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.paper,
   },
   segmentSelected: {
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   dateInput: {
     minHeight: 48,
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
   },

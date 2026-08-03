@@ -330,7 +330,7 @@ function SectionBlock({ section }: { section: TrustSection }) {
       {section.steps
         ? section.steps.map(([number, title, body]) => (
             <View key={number} style={styles.stepRow}>
-              <AppText variant="caption" color={colors.limeDark} style={styles.stepIndex}>
+              <AppText variant="caption" color={colors.teal} style={styles.stepIndex}>
                 {number}
               </AppText>
               <View style={styles.stepText}>
@@ -389,9 +389,9 @@ export function TrustInfoScreen({ page }: { page: TrustPageId }): ReactNode {
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <View style={styles.heroIcon}>
-          <HeroIcon size={24} color={colors.limeDark} />
+          <HeroIcon size={24} color={colors.teal} />
         </View>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           {content.eyebrow}
         </AppText>
         <AppText variant="h1">{content.title}</AppText>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   factPanel: {
     gap: spacing.md,
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     marginTop: 8,
-    backgroundColor: colors.limeDark,
+    backgroundColor: colors.teal,
   },
   bulletText: {
     flex: 1,

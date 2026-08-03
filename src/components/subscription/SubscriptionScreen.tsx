@@ -113,7 +113,7 @@ export function SubscriptionScreen() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.heroGroup}>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Bảng giá MediMate
         </AppText>
         <AppText variant="h1">Chọn gói phù hợp với cách bạn sử dụng MediMate</AppText>
@@ -136,7 +136,7 @@ export function SubscriptionScreen() {
                 onPress={() => setBillingCycle(cycle)}
                 style={[styles.cycleButton, selected && styles.cycleButtonActive, !available && styles.cycleButtonDisabled]}
               >
-                <AppText variant="bodyStrong" color={selected ? colors.ink : colors.subtle}>
+                <AppText variant="bodyStrong" color={selected ? colors.white : colors.subtle}>
                   {cycle === "monthly" ? "Theo tháng" : "Theo năm"}
                 </AppText>
               </Pressable>
@@ -228,7 +228,7 @@ export function SubscriptionScreen() {
       ) : null}
 
       <View style={styles.faqGroup}>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Thông tin cần biết
         </AppText>
         <AppText variant="h3">Câu hỏi về gói đăng ký</AppText>
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   cycleButtonActive: {
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   cycleButtonDisabled: {
     opacity: 0.4,
@@ -362,12 +362,13 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.paper,
   },
   checkboxChecked: {
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   autoRenewText: {
     flex: 1,

@@ -55,7 +55,7 @@ export function RecoveryPlanScreen() {
             Chưa khả dụng trên MediMate
           </AppText>
         </View>
-        <AppText variant="eyebrow" color={colors.lime}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Theo dõi sau khám
         </AppText>
         <AppText variant="h1" color={colors.white}>
@@ -101,7 +101,7 @@ export function RecoveryPlanScreen() {
         <View style={styles.stepList}>
           {NEXT_STEPS.map((step, index) => (
             <View key={step} style={styles.stepRow}>
-              <AppText variant="caption" color={colors.limeDark} style={styles.stepIndex}>
+              <AppText variant="caption" color={colors.teal} style={styles.stepIndex}>
                 {String(index + 1).padStart(2, "0")}
               </AppText>
               <AppText color={colors.muted} style={styles.stepText}>
@@ -139,10 +139,10 @@ export function RecoveryPlanScreen() {
 
       <Card variant="dark" style={styles.careNoteCard}>
         <View style={styles.careNoteIconMark}>
-          <HeartPulse size={20} color={colors.lime} />
+          <HeartPulse size={20} color={colors.teal} />
         </View>
         <View style={styles.careNoteText}>
-          <AppText variant="caption" color={colors.lime}>
+          <AppText variant="caption" color={colors.teal}>
             Khi cần hỗ trợ
           </AppText>
           <AppText variant="h3" color={colors.white}>

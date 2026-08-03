@@ -42,7 +42,7 @@ export function ProfileScreen() {
       <View style={styles.header}>
         <View style={styles.identity}>
           <View style={styles.avatar}>
-            <AppText variant="bodyStrong" color={colors.lime}>
+            <AppText variant="bodyStrong" color={colors.teal}>
               {initials(profile.personalForm.displayName)}
             </AppText>
           </View>

@@ -299,3 +299,69 @@ Todo:
 - Verify disabled/loading button states.
 - Verify gender selected state no longer shows lime/green.
 - Continue next feature module from roadmap: `feature/mobile-medical-records`.
+
+## 2026-08-03 - Global Mobile Brand Refresh
+
+Branch: `feature/mobile-global-brand-refresh`
+
+Module: Existing Mobile UI brand and form cleanup.
+
+Goal:
+
+- Remove the old green/lime visual treatment across existing Mobile screens.
+- Align Mobile color usage with the refreshed Web-style teal/ink/paper system.
+- Improve existing form controls without changing business logic, APIs, validation, services, contexts, or navigation flow.
+
+Files changed:
+
+- `src/theme/tokens.ts`
+- `src/theme/navigationTheme.ts`
+- `app/(patient)/_layout.tsx`
+- `app/(public)/forgot-password.tsx`
+- `app/(public)/change-password.tsx`
+- `src/components/auth/PremiumGate.tsx`
+- `src/components/auth/RolePlaceholderScreen.tsx`
+- `src/components/map/FacilityFilters.tsx`
+- `src/components/profile/ProfileTabs.tsx`
+- `src/components/profile/PersonalInfoSection.tsx`
+- `src/components/profile/MedicalProfileSection.tsx`
+- `src/components/profile/PatientProfileSetupScreen.tsx`
+- `src/components/subscription/SubscriptionScreen.tsx`
+- `src/components/medication/MedicationFormSheet.tsx`
+- `src/components/medication/UserMedicationsScreen.tsx`
+
+UI completed:
+
+- Retargeted legacy `lime`/`limeDark` tokens to teal to prevent old green UI from resurfacing.
+- Changed `mint` and success backgrounds from green tint to teal tint.
+- Updated patient tab active color and navigation notification accent to teal.
+- Refreshed forgot-password and change-password forms to match the new Auth surfaces.
+- Converted selected chips, tabs, blood type controls, gender controls, subscription cycle buttons, and map filters to teal with white text.
+- Reworked profile setup and profile edit controls with softer segmented containers, smaller radii, and lighter borders.
+- Modernized medication floating action button with teal shadow and white icon.
+- Reduced dashed/form control borders where they felt too heavy for mobile.
+
+API integrated:
+
+- No API changes.
+
+Hooks/services/context/navigation:
+
+- No hook, service, context, or flow changes.
+- Navigation theme colors changed visually only.
+
+Verification:
+
+- `npm run lint`
+- `rg "colors\\.(lime|limeDark)|#c4e995|#6a9540|#AAED63|#7EC832|#EEF8DC|#dcfce7|#D1FAE5|green" app src -n`
+
+Known issues:
+
+- Emulator visual QA is still required screen by screen.
+- Some screens still need deeper UX redesign beyond color/form controls. This branch removes the old green system and improves existing controls without rewriting modules.
+
+Todo:
+
+- Manual emulator pass for Login/Register/Forgot/Change Password.
+- Manual emulator pass for Profile Setup, Profile, Map filters, Subscription, and Medication forms.
+- Continue deeper page-level redesign module by module.

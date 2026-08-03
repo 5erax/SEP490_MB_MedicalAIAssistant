@@ -197,7 +197,7 @@ export function MedicalProfileSection({
                 onPress={() => onChange("bloodType", type)}
                 style={[styles.bloodTypeChip, selected && styles.bloodTypeChipSelected]}
               >
-                <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                   {type || "Chưa rõ"}
                 </AppText>
               </Pressable>
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   bloodTypeChip: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   bloodTypeChipSelected: {
-    borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
   },
   measurementRow: {
     flexDirection: "row",
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderStyle: "dashed",
     borderColor: colors.lineStrong,
     borderRadius: radius.pill,
@@ -361,9 +361,9 @@ const styles = StyleSheet.create({
   dateChip: {
     flex: 1,
     gap: spacing.xs / 2,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: 10,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     backgroundColor: colors.paperSoft,

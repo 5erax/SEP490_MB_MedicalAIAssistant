@@ -19,7 +19,7 @@ export function CurrentSubscriptionCard({ loading, error, activeSubscription, on
   return (
     <Card variant="soft" style={styles.card}>
       <View style={styles.header}>
-        <ShieldCheck size={20} color={colors.limeDark} />
+        <ShieldCheck size={20} color={colors.teal} />
         <AppText variant="caption" color={colors.subtle}>
           Gói của bạn
         </AppText>

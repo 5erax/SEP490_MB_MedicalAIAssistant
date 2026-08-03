@@ -90,7 +90,7 @@ export function ChatScreen() {
           <Bot size={20} color={colors.teal} />
         </View>
         <View style={styles.headingGroup}>
-          <AppText variant="eyebrow" color={colors.limeDark}>
+          <AppText variant="eyebrow" color={colors.teal}>
             Trợ lý sức khỏe
           </AppText>
           <AppText variant="bodyStrong">MediMate AI</AppText>

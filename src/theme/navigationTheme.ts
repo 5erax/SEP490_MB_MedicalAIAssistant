@@ -14,8 +14,7 @@ export function createNavigationTheme(colorScheme: "light" | "dark" | null | und
       card: colors.paper,
       text: colors.ink,
       border: colors.line,
-      notification: colors.lime,
+      notification: colors.teal,
     },
   };
 }
-

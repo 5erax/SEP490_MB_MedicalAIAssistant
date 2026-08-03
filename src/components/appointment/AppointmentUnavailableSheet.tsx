@@ -26,7 +26,7 @@ export function AppointmentUnavailableSheet({ visible, onClose, facilityPhone }:
         <View style={styles.sheet}>
           <View style={styles.header}>
             <View style={styles.iconMark}>
-              <CalendarClock size={20} color={colors.limeDark} />
+              <CalendarClock size={20} color={colors.teal} />
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
               <X size={18} color={colors.ink} />
