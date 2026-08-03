@@ -7,8 +7,9 @@ import { useCallback, useEffect, useState } from "react";
 import { authService } from "@/src/services/authService";
 import { patientProfilesApi } from "@/src/services/patientProfileService";
 import { userSubscriptionsApi } from "@/src/services/subscriptionService";
+import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
 import { ChronicDisease, PatientProfile } from "@/src/types/patientProfile";
-import { UserSubscription } from "@/src/types/subscription";
+import { SubscriptionUsageQuota, UserSubscription } from "@/src/types/subscription";
 import { UserProfile } from "@/src/types/user";
 import {
   MedicalProfileErrors,
@@ -78,16 +79,18 @@ export function useProfile() {
 
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [subscriptionState, setSubscriptionState] = useState<SectionState>("loading");
+  const [usageList, setUsageList] = useState<SubscriptionUsageQuota[]>([]);
 
   const load = useCallback(async () => {
     setPersonalState("loading");
     setMedicalState("loading");
     setSubscriptionState("loading");
 
-    const [userResult, profilesResult, subscriptionResult] = await Promise.allSettled([
+    const [userResult, profilesResult, subscriptionResult, usageResult] = await Promise.allSettled([
       authService.me(),
       patientProfilesApi.list(1, 100),
       userSubscriptionsApi.me(),
+      subscriptionUsageApi.getUsage(),
     ]);
 
     let resolvedUserId = "";
@@ -125,6 +128,15 @@ export function useProfile() {
       setSubscriptionState("ready");
     } else {
       setSubscriptionState("error");
+    }
+
+    // Best-effort: quota is optional context on this tab, a failure here
+    // shouldn't surface an error state of its own (matches Web).
+    if (usageResult.status === "fulfilled") {
+      const data = (usageResult.value as { data?: SubscriptionUsageQuota | SubscriptionUsageQuota[] }).data;
+      setUsageList(Array.isArray(data) ? data : data ? [data] : []);
+    } else {
+      setUsageList([]);
     }
   }, []);
 
@@ -280,6 +292,7 @@ export function useProfile() {
 
     subscription,
     subscriptionState,
+    usageList,
 
     reload: load,
   };
