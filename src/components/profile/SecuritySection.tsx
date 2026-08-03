@@ -26,6 +26,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   headerTitle: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
