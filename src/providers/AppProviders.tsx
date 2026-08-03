@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppThemeProvider } from "@/src/theme/ThemeProvider";
@@ -12,13 +13,15 @@ type AppProvidersProps = {
 
 export function AppProviders({ children, colorScheme }: AppProvidersProps) {
   return (
-    <SafeAreaProvider>
-      <AppThemeProvider colorScheme={colorScheme}>
-        <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </AuthProvider>
-      </AppThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppThemeProvider colorScheme={colorScheme}>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
+        </AppThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
