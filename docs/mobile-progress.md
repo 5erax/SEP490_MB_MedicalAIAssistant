@@ -696,3 +696,91 @@ trong `domainServices.ts`.
    tin.
 3. Nếu có nhiều hơn 10 giao dịch → xác nhận nút chuyển trang hoạt động.
 4. Kéo để làm mới danh sách.
+
+---
+
+## Hotfix: Button/Badge lồng View trong Text (crash tiềm ẩn trên native)
+
+**Vấn đề phát hiện**
+- React Native chỉ cho phép `<Text>` chứa `<Text>` con trên iOS/Android
+  thật, KHÔNG cho phép `<Text>` chứa `<View>` con (ví dụ hàng icon+nhãn).
+  `Button` và `Badge` trước đó luôn bọc `children` trong `<AppText>`
+  (→ `<Text>`) bất kể loại children.
+- react-native-web bỏ qua giới hạn này và hiển thị đúng trên trình
+  duyệt, nên toàn bộ kiểm thử bằng `expo start --web` từ Module 1 đến
+  Module 9 không phát hiện ra — lỗi này chỉ lộ ra trên thiết bị/app
+  native thật.
+- Grep toàn bộ codebase tìm thấy khoảng 15+ file bị ảnh hưởng (mọi nơi
+  gọi `<Button>`/`<Badge>` với children là `<View>` chứa icon+nhãn),
+  trải khắp gần như mọi module đã build.
+
+**Cách sửa**
+- Sửa gốc tại `src/components/ui/Button.tsx` và
+  `src/components/ui/Badge.tsx`: chỉ bọc `children` trong `<AppText>`
+  khi `typeof children === "string" || typeof children === "number"`;
+  các children khác (ví dụ `<View>` hàng icon+nhãn) được render trực
+  tiếp, không bọc `<Text>`.
+- Sửa 1 lần ở component dùng chung là đủ khắc phục toàn bộ ~15+ điểm gọi
+  bị ảnh hưởng, không cần sửa từng file.
+
+**Kiểm tra**
+- `npx tsc --noEmit`, `npx expo lint`, `npx expo export --platform web`
+  đều sạch sau khi sửa.
+- Không thể tái hiện lỗi gốc (crash native) trong môi trường kiểm thử
+  bằng trình duyệt — khuyến nghị kiểm tra thêm trên thiết bị thật/Expo
+  Go để xác nhận cuối cùng.
+
+**PR:** [#11](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/11)
+
+---
+
+## Module 10: Recovery Plan
+
+**Chức năng đã hoàn thành**
+- Trang tĩnh thông báo "Kế hoạch phục hồi chưa được mở" — khớp 1:1 hành
+  vi thật của Web (`RecoveryPlanPage.jsx` không gọi API nào, dù backend
+  có sẵn endpoint `RecoveryPlanRequests`/`DoctorRecoveryPlanRequests`).
+- Thẻ hero (badge "Chưa khả dụng", tiêu đề, mô tả, 2 nút hành động sang
+  Trang chủ/Bản đồ).
+- Thẻ "Bạn có thể làm ngay" (3 bước đánh số).
+- Thẻ "Những thông tin nên chuẩn bị" (3 mục có icon).
+- Thẻ ghi chú chăm sóc (nền tối) với nút "Xem cơ sở y tế".
+
+**API đã tích hợp:** Không có — khớp đúng hiện trạng của Web (trang
+tĩnh, chưa có tính năng thật).
+
+**UI đã hoàn thành**
+- `app/(patient)/recovery-plan.tsx` (bọc `AuthGate`, khớp `access: "auth"`
+  trên Web).
+- `src/components/recovery/{RecoveryPlanScreen,index}.tsx` — thiết kế
+  lại theo phong cách MediMate (hero card tối, danh sách bước, thẻ CTA),
+  không sao chép UI Web.
+
+**Route:** `ROUTES.PATIENT.RECOVERY_PLAN` = `/(patient)/recovery-plan`
+(`src/navigation/routes.ts`).
+
+**Hook / Service / State:** Không cần — trang tĩnh, không có logic
+nghiệp vụ hay gọi API.
+
+**Known Issues**
+- Đây là trang đặt chỗ (placeholder) trên cả Web lẫn Mobile; không có
+  liên kết menu điều hướng tới trang này trên Web (chỉ truy cập được
+  qua URL trực tiếp) — Mobile giữ nguyên hiện trạng này, không tự thêm
+  liên kết menu.
+- Nếu Web triển khai tính năng Kế hoạch phục hồi thật trong tương lai,
+  module này trên Mobile cần được xây dựng lại theo đúng API/luồng mới.
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/(patient)/recovery-plan` khi CHƯA đăng nhập → xác nhận
+   `AuthGate` chuyển hướng sang màn Đăng nhập.
+2. Đăng nhập rồi vào lại → xác nhận hiển thị đúng nội dung tĩnh: thẻ
+   hero, danh sách bước, thẻ chuẩn bị, thẻ ghi chú chăm sóc.
+3. Bấm "Phân tích triệu chứng" → điều hướng đúng sang Trang chủ.
+4. Bấm "Tìm cơ sở y tế" hoặc "Xem cơ sở y tế" → điều hướng đúng sang
+   Bản đồ.
+
+**Kết quả build:** `tsc --noEmit` sạch, `expo lint` sạch, `expo export
+--platform web` xuất bundle thành công (route `/(patient)/recovery-plan`
+có mặt).
+
+**PR:** [#12](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/12)
