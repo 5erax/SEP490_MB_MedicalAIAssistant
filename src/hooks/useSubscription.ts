@@ -10,6 +10,7 @@ import * as WebBrowser from "expo-web-browser";
 
 import { authService } from "@/src/services/authService";
 import { paymentsApi, subscriptionPlansApi, userSubscriptionsApi } from "@/src/services/subscriptionService";
+import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
 import { CheckoutState, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
 import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscriptionPlanPresentation";
 import { useAuth } from "@/src/providers";
@@ -90,13 +91,36 @@ export function useSubscription() {
   }, []);
 
   const pollPayment = useCallback(
-    async (paymentId: string) => {
+    async (paymentId: string, orderCode?: string) => {
       stopPolling();
       pollAttempts.current = 0;
 
       const check = async () => {
         pollAttempts.current += 1;
         try {
+          // Local GET /payments/me/{id} is a cheap DB read so it can poll
+          // every 3s; reconcile asks PayOS directly, so it only runs on
+          // the first tick and roughly every ~12s after that to avoid
+          // hammering the provider (matches Web's PricingPage.jsx cadence).
+          if (orderCode && (pollAttempts.current === 1 || pollAttempts.current % 4 === 0)) {
+            try {
+              await paymentsApi.reconcilePayOs(orderCode);
+            } catch (reconcileError) {
+              const status = (reconcileError as { status?: number })?.status;
+              if (status && [400, 403, 404, 409].includes(status)) {
+                stopPolling();
+                setCheckoutState({
+                  status: "error",
+                  paymentId,
+                  message: "Giao dịch không hợp lệ hoặc không thuộc tài khoản này. Vui lòng kiểm tra lại lịch sử thanh toán.",
+                });
+                return true;
+              }
+              // 429/502: keep the current pending state and retry next
+              // tick instead of spamming PayOS.
+            }
+          }
+
           const response = await paymentsApi.getMyPayment(paymentId);
           const payment = response.data;
 
@@ -108,6 +132,11 @@ export function useSubscription() {
               await authService.refresh();
             } catch {
               // subscription state is still refreshed from /user-subscriptions/me
+            }
+            try {
+              await subscriptionUsageApi.getUsage();
+            } catch {
+              // best-effort cache warm; quota is optional context here
             }
             showToast({ type: "success", title: "Thanh toán thành công", message: "Quyền lợi MediMate Plus đã được cập nhật." });
             return true;
@@ -165,7 +194,7 @@ export function useSubscription() {
         });
 
         await WebBrowser.openBrowserAsync(checkout.paymentUrl);
-        pollPayment(checkout.paymentId);
+        pollPayment(checkout.paymentId, checkout.orderCode);
       } catch {
         setCheckoutState({ status: "error", paymentId: "", message: "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau." });
       }
