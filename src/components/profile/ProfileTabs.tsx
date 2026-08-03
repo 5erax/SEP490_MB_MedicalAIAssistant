@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   tabSelected: {
-    borderColor: colors.ink,
+    borderColor: colors.teal,
     backgroundColor: colors.teal,
   },
 });
