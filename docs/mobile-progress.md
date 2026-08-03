@@ -1067,3 +1067,92 @@ dùng cho luồng setup). `patientProfileSetup.ts`
 trình duyệt xác nhận không còn "Network Error" ở tầng mạng.
 
 **PR:** [#17](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/17)
+
+---
+
+## Module 13: Settings
+
+**Rà soát trước khi build**: Web hoàn toàn không có trang/route "Cài
+đặt" nào. Những gì thực sự tồn tại và có hình dạng gần với "Settings":
+- `DisplayPreferences.jsx` + `displayPreferences.js` — popover tuỳ
+  chọn hiển thị (giao diện sáng/tối/theo hệ thống, chuyển động, độ
+  tương phản, cỡ chữ, giãn dòng), lưu `localStorage`, áp dụng qua
+  `data-theme`. **Quyết định bỏ qua có chủ đích** sau khi trao đổi với
+  chủ nhiệm đồ án: hệ thống thiết kế Mobile (`tokens.ts`) hiện chỉ có
+  1 bảng màu sáng cố định, chưa có bảng màu tối — xây toggle sáng/tối
+  thật sẽ cần sửa lại cách dùng màu ở toàn bộ ~30 file thuộc 12 module
+  đã xong, vượt quá phạm vi 1 module và không nên làm nửa vời.
+- `TrustInfoPage.jsx` (3 trang: `/support`, `/privacy`,
+  `/medical-disclaimer`) — nội dung thật, nhưng trên Web chỉ được liên
+  kết từ footer trang marketing công khai, **không có lối vào nào từ
+  trong ứng dụng đã đăng nhập**.
+- Đăng xuất — logic đã có sẵn (`useLogout`), chỉ thiếu nơi đặt.
+- Không có: đổi ngôn ngữ (Web thuần Việt, không có i18n), xoá/vô hiệu
+  hoá tài khoản (Web tự nhận chưa xây), xuất dữ liệu, quản lý đồng ý
+  quyền riêng tư, trang Điều khoản sử dụng (footer Web trỏ tới
+  `/terms` nhưng route này chưa từng được xây trên Web — dead link).
+
+**Chức năng đã hoàn thành**
+- 3 trang thông tin pháp lý/hỗ trợ, port nguyên nội dung từ
+  `TrustInfoPage.jsx` qua 1 component dùng chung `TrustInfoScreen(page)`
+  (khớp đúng cấu trúc "1 file + data map" của Web), thiết kế lại thành
+  danh sách card cuộn dọc thay vì layout có thanh mục lục dính cạnh
+  (affordance riêng cho desktop, không cần trên di động).
+- Màn Cài đặt: danh sách liên kết tới 3 trang trên, nút Đăng xuất,
+  thông tin phiên bản ứng dụng (`expo-constants`).
+- Thêm tab thứ 5 "Cài đặt" trên thanh tab dưới cùng.
+
+**API đã tích hợp:** Không có — toàn bộ là nội dung tĩnh/điều hướng.
+
+**UI đã hoàn thành**
+- `app/(patient)/settings.tsx` (bọc `AuthGate`).
+- `app/(public)/{support,privacy,medical-disclaimer}.tsx` (không bọc
+  AuthGate — khớp `access: "public"` của Web).
+- `src/components/legal/{TrustInfoScreen,index}.tsx`.
+- `src/components/settings/{SettingsScreen,index}.tsx`.
+
+**Route:** `ROUTES.PUBLIC.SUPPORT`, `ROUTES.PUBLIC.PRIVACY` (mới thêm),
+`ROUTES.PUBLIC.MEDICAL_DISCLAIMER`, `ROUTES.PATIENT.SETTINGS` (đã có
+sẵn hằng số từ trước, nay có màn hình thật).
+
+**Known Issues**
+- Tuỳ chọn hiển thị (giao diện sáng/tối...) chưa port — xem lý do ở
+  trên. Nếu sau này cần, phải làm cùng lúc với việc thêm bảng màu tối
+  vào `tokens.ts` và rà lại cách dùng màu ở tất cả các module.
+- Không có trang Điều khoản sử dụng vì Web cũng chưa xây (chỉ có link
+  chết trên footer).
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/support`, `/privacy`, `/medical-disclaimer` khi CHƯA đăng
+   nhập → xác nhận vẫn xem được đầy đủ nội dung (route công khai).
+2. Ở trang `/support`, bấm "Mở trang đăng nhập" → xác nhận điều hướng
+   đúng sang `/login`.
+3. Vào `/(patient)/settings` khi chưa đăng nhập → xác nhận `AuthGate`
+   chuyển hướng sang Đăng nhập.
+4. Đăng nhập → vào tab "Cài đặt" → bấm từng liên kết → xác nhận mở
+   đúng 3 trang thông tin.
+5. Bấm "Đăng xuất" → xác nhận đăng xuất và quay về màn Đăng nhập.
+6. Xác nhận thanh tab dưới cùng hiện đủ 5 tab: Tư vấn/Bản đồ/Chat AI/
+   Hồ sơ/Cài đặt.
+
+**Kết quả build:** `tsc --noEmit` sạch, `expo lint` sạch, `expo export
+--platform web` xuất bundle thành công (cả 4 route mới đều có mặt).
+Đã xác nhận qua trình duyệt: nội dung 3 trang pháp lý hiển thị đúng,
+không có lỗi console; liên kết nội bộ điều hướng đúng; `/settings`
+chuyển hướng đúng khi chưa đăng nhập.
+
+**PR:** [#19](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/19)
+
+---
+
+## Tổng kết: Mobile USER app hoàn thành 13/13 module
+
+Toàn bộ phạm vi USER (không bao gồm Admin, sẽ làm sau theo đúng chỉ
+đạo ban đầu) đã hoàn thành: Authentication, Dashboard, Nearby Clinics/
+Map, AI Consultation, Medical Facility, Doctor, Appointment,
+Subscription, Payment, Recovery Plan, Medication, Profile, Settings
+(Module "Notifications" đã bỏ qua có chủ đích — xem lý do ở mục riêng
+phía trên). Xem [mobile-roadmap.md](./mobile-roadmap.md) để có danh
+sách checkbox đầy đủ, và mục "Known Issues" của từng module ở trên để
+biết những điểm còn khác biệt với Web hoặc cần thiết bị thật để test
+đầy đủ.
