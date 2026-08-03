@@ -8,3 +8,4 @@ export * from './useSubscription';
 export * from './useSymptomIntake';
 export * from './useToast';
 export * from './useUserLocation';
+export * from './useUserMedications';
