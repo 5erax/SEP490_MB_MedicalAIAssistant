@@ -17,6 +17,9 @@ const SYMPTOM_ANALYSIS_BASE = "/api/symptom-analysis";
 const FEEDBACK_REVIEWS_BASE = "/api/feedback-reviews";
 const USER_MEDICATIONS_BASE = "/api/user-medications";
 const LAB_TESTS_BASE = "/api/lab-tests";
+const SUBSCRIPTION_USAGE_BASE = "/api/me/subscription-usage";
+const RECOVERY_PLAN_REQUESTS_BASE = "/api/recovery-plan-requests";
+const RECOVERY_PLANS_BASE = "/api/recovery-plans";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -110,6 +113,21 @@ export const ENDPOINTS = {
     ANALYZE: `${LAB_TESTS_BASE}/analyze`,
     MY_SESSIONS: `${LAB_TESTS_BASE}/my-sessions`,
     BY_SESSION: (sessionId: string) => byId(LAB_TESTS_BASE, sessionId),
+  },
+  SUBSCRIPTION_USAGE: {
+    ME: SUBSCRIPTION_USAGE_BASE,
+  },
+  RECOVERY_PLAN_REQUESTS: {
+    BASE: RECOVERY_PLAN_REQUESTS_BASE,
+    ME: `${RECOVERY_PLAN_REQUESTS_BASE}/me`,
+    BY_ID: (requestId: string) => byId(RECOVERY_PLAN_REQUESTS_BASE, requestId),
+    CANCEL: (requestId: string) => `${byId(RECOVERY_PLAN_REQUESTS_BASE, requestId)}/cancel`,
+    PROVIDE_INFORMATION: (requestId: string) => `${byId(RECOVERY_PLAN_REQUESTS_BASE, requestId)}/provide-more-information`,
+  },
+  RECOVERY_PLANS: {
+    ME: `${RECOVERY_PLANS_BASE}/me`,
+    BY_ID: (planId: string) => byId(RECOVERY_PLANS_BASE, planId),
+    START: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/start`,
   },
 } as const;
 
