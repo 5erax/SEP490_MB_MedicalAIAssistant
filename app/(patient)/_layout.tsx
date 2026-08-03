@@ -7,7 +7,7 @@
 // screens reached via navigation from elsewhere (not primary destinations)
 // must be listed here too, just without a visible tab.
 import { Tabs } from "expo-router";
-import { LayoutGrid, MapPin, MessageCircle, UserRound } from "lucide-react-native";
+import { LayoutGrid, MapPin, MessageCircle, Settings, UserRound } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -47,6 +47,13 @@ export default function PatientLayout() {
         options={{
           title: "Hồ sơ",
           tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Cài đặt",
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
       <Tabs.Screen name="medication" options={{ href: null }} />
