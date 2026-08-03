@@ -365,3 +365,54 @@ Todo:
 - Manual emulator pass for Login/Register/Forgot/Change Password.
 - Manual emulator pass for Profile Setup, Profile, Map filters, Subscription, and Medication forms.
 - Continue deeper page-level redesign module by module.
+
+## 2026-08-03 - Direct Main UI Polish Pass
+
+Branch: `main`
+
+Module: Existing Mobile UI surface polish.
+
+Goal:
+
+- Continue UI cleanup directly on `main` with visible small commits instead of PR squash commits.
+- Reduce heavy desktop-style borders and block shadows on Mobile.
+- Keep the refreshed FE-aligned teal/ink/paper color system.
+
+Files changed:
+
+- `src/components/ui/Card.tsx`
+- `app/(public)/login.tsx`
+- `app/(public)/register.tsx`
+- `app/(public)/forgot-password.tsx`
+- `app/(public)/change-password.tsx`
+- `src/components/dashboard/AnswerButtons.tsx`
+- `src/components/dashboard/SpecialtyIntakeScreen.tsx`
+- `src/components/chat/ChatScreen.tsx`
+- `src/components/map/FacilityListItem.tsx`
+- `src/components/map/FacilityDetailSheet.tsx`
+- `src/components/doctor/DoctorDetailSheet.tsx`
+- `src/components/reviews/ReviewForm.tsx`
+
+UI completed:
+
+- Softened shared `Card` hard surfaces for Mobile by replacing block shadow with softer elevation.
+- Polished public auth form containers and hero borders.
+- Refined dashboard answer controls and loading surfaces.
+- Refined chat composer input styling.
+- Polished map facility cards, facility detail panels, doctor detail info list, and review image picker.
+
+API integrated:
+
+- No API changes.
+
+Hooks/services/context/navigation:
+
+- No logic or flow changes.
+
+Verification:
+
+- `npm run lint`
+
+Known issues:
+
+- Visual QA on emulator is still needed for final spacing and contrast validation.
