@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Pressable, PressableProps, StyleSheet, TextStyle, ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
 
-import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
+import { colors, radius, spacing, typography } from "@/src/theme/tokens";
 import { AppText } from "./AppText";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "dark" | "danger";
@@ -56,7 +56,7 @@ export function Button({
       {typeof children === "string" || typeof children === "number" ? (
         <AppText
           variant="bodyStrong"
-          color={variant === "dark" || variant === "danger" ? colors.white : colors.ink}
+          color={variant === "primary" || variant === "dark" || variant === "danger" ? colors.white : colors.ink}
           style={[styles.label, textStyle]}
         >
           {children}
@@ -80,8 +80,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexDirection: "row",
     gap: spacing.sm,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
   },
@@ -93,8 +93,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   primary: {
-    backgroundColor: colors.lime,
-    ...shadows.hard,
+    borderColor: colors.teal,
+    backgroundColor: colors.teal,
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    elevation: 3,
   },
   secondary: {
     backgroundColor: colors.paper,
@@ -106,6 +111,11 @@ const styles = StyleSheet.create({
   dark: {
     backgroundColor: colors.ink,
     borderColor: colors.ink,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 3,
   },
   danger: {
     backgroundColor: colors.danger,

@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     backgroundColor: colors.paper,
     color: colors.ink,
     paddingHorizontal: spacing.md,
@@ -61,10 +61,10 @@ const styles = StyleSheet.create({
   },
   focused: {
     borderColor: colors.teal,
+    backgroundColor: colors.paperSoft,
   },
   error: {
     borderColor: colors.danger,
     backgroundColor: colors.dangerBg,
   },
 });
-
