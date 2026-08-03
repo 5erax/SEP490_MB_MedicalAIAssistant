@@ -68,7 +68,7 @@ export default function ChangePasswordScreen() {
             <View style={styles.brandMark}>
               <AppText variant="h3">+</AppText>
             </View>
-            <AppText variant="eyebrow" color={colors.lime}>
+            <AppText variant="eyebrow" color={colors.teal}>
               Bảo mật tài khoản
             </AppText>
             <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
@@ -152,8 +152,10 @@ export default function ChangePasswordScreen() {
               <Button fullWidth disabled={disabled} onPress={handleSubmit} style={styles.submitButton}>
                 {submitting ? (
                   <View style={styles.loadingLabel}>
-                    <ActivityIndicator color={colors.ink} size="small" />
-                    <AppText variant="bodyStrong">Đang đổi...</AppText>
+                    <ActivityIndicator color={colors.white} size="small" />
+                    <AppText variant="bodyStrong" color={colors.white}>
+                      Đang đổi...
+                    </AppText>
                   </View>
                 ) : (
                   "Đổi mật khẩu"
@@ -187,14 +189,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
   hero: {
     gap: spacing.md,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.ink,
     padding: spacing.xl,
   },
@@ -204,10 +206,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderColor: "rgba(255,255,255,0.18)",
     borderRadius: radius.md,
-    backgroundColor: colors.lime,
-    ...shadows.hard,
+    backgroundColor: colors.paper,
   },
   heroTitle: { fontSize: 30, lineHeight: 36 },
   heroCopy: { fontSize: 15, lineHeight: 23 },
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing["2xl"],
