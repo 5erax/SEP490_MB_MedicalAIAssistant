@@ -14,9 +14,13 @@ type BadgeProps = {
 export function Badge({ children, tone = "info" }: BadgeProps) {
   return (
     <View style={[styles.base, styles[tone]]}>
-      <AppText variant="caption" color={toneText[tone]}>
-        {children}
-      </AppText>
+      {typeof children === "string" || typeof children === "number" ? (
+        <AppText variant="caption" color={toneText[tone]}>
+          {children}
+        </AppText>
+      ) : (
+        children
+      )}
     </View>
   );
 }

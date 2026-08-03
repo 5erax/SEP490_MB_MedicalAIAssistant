@@ -53,13 +53,22 @@ export function Button({
       ]}
     >
       {leftIcon}
-      <AppText
-        variant="bodyStrong"
-        color={variant === "dark" || variant === "danger" ? colors.white : colors.ink}
-        style={[styles.label, textStyle]}
-      >
-        {children}
-      </AppText>
+      {typeof children === "string" || typeof children === "number" ? (
+        <AppText
+          variant="bodyStrong"
+          color={variant === "dark" || variant === "danger" ? colors.white : colors.ink}
+          style={[styles.label, textStyle]}
+        >
+          {children}
+        </AppText>
+      ) : (
+        // Non-text children (e.g. a <View> row combining an icon + label)
+        // must not be nested inside <Text> — React Native only supports
+        // <Text> nesting <Text>, not <View>, on native iOS/Android (this
+        // renders fine on react-native-web, which is why it can look correct
+        // in a browser preview while still being broken on a real device).
+        children
+      )}
       {rightIcon}
     </Pressable>
   );
