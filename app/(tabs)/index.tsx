@@ -1,5 +1,0 @@
-import { AuthGate } from "@/src/components/auth";
-
-export default function HomeScreen() {
-  return <AuthGate />;
-}
