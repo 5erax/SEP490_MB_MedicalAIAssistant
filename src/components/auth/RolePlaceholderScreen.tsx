@@ -27,7 +27,7 @@ export function RolePlaceholderScreen({ title, role }: RolePlaceholderScreenProp
           <AppText variant="h3">+</AppText>
         </View>
         <View style={styles.headerText}>
-          <AppText variant="eyebrow" color={colors.limeDark}>
+          <AppText variant="eyebrow" color={colors.teal}>
             MediMate AI
           </AppText>
           <AppText variant="h2">{title}</AppText>
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.mint,
   },
   headerText: {
     flex: 1,

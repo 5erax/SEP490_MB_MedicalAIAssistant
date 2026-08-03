@@ -14,7 +14,7 @@ export const colors = {
   lineStrong: "#b9c5ad",
   lime: "#087f8c",
   limeDark: "#05616a",
-  mint: "#e6f4ee",
+  mint: "#e7f3f5",
   teal: "#087f8c",
   blue: "#1d4ed8",
   amber: "#d97706",
