@@ -3,20 +3,39 @@
 // UserProfilePage / Module 13, which doesn't exist yet); will be linked
 // from Profile once that module lands.
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { paymentsApi } from "@/src/services/subscriptionService";
+import { useToast } from "@/src/hooks";
 import { Payment } from "@/src/types/subscription";
-import { formatDateTime, formatMoney, getHistoryErrorMessage, normalizePaymentPage, NormalizedPaymentPage } from "@/src/utils/paymentPresentation";
+import {
+  canReconcilePayment,
+  formatDateTime,
+  formatMoney,
+  getHistoryErrorMessage,
+  getReconcileErrorMessage,
+  normalizePaymentPage,
+  NormalizedPaymentPage,
+} from "@/src/utils/paymentPresentation";
 import { PaymentDetailSheet } from "./PaymentDetailSheet";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
 
 const EMPTY_PAGE: NormalizedPaymentPage = { items: [], pageNumber: 1, pageSize: 10, totalCount: 0, totalPages: 0 };
 
-function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => void }) {
+function PaymentRow({
+  payment,
+  reconciling,
+  onPress,
+  onReconcile,
+}: {
+  payment: Payment;
+  reconciling: boolean;
+  onPress: () => void;
+  onReconcile: () => void;
+}) {
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
       <View style={styles.rowMain}>
@@ -27,6 +46,26 @@ function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => voi
         <AppText variant="caption" color={colors.subtle}>
           {formatDateTime(payment.createdAt)}
         </AppText>
+        {canReconcilePayment(payment) ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={reconciling}
+            onPress={(event) => {
+              event.stopPropagation();
+              onReconcile();
+            }}
+            style={styles.reconcileButton}
+          >
+            {reconciling ? (
+              <ActivityIndicator size="small" color={colors.teal} />
+            ) : (
+              <RefreshCw size={14} color={colors.teal} />
+            )}
+            <AppText variant="caption" color={colors.teal}>
+              {reconciling ? "Đang kiểm tra..." : "Kiểm tra với PayOS"}
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.rowMeta}>
         <PaymentStatusBadge payment={payment} />
@@ -37,12 +76,14 @@ function PaymentRow({ payment, onPress }: { payment: Payment; onPress: () => voi
 }
 
 export function PaymentHistoryScreen() {
+  const { showToast } = useToast();
   const [pageNumber, setPageNumber] = useState(1);
   const [page, setPage] = useState<NormalizedPaymentPage>(EMPTY_PAGE);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [reconcilingId, setReconcilingId] = useState<string | null>(null);
 
   const load = useCallback(async (targetPage: number, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -63,6 +104,20 @@ export function PaymentHistoryScreen() {
   useEffect(() => {
     load(pageNumber);
   }, [pageNumber, load]);
+
+  async function handleReconcile(payment: Payment) {
+    if (!payment.transactionReference) return;
+    setReconcilingId(payment.id);
+    try {
+      await paymentsApi.reconcilePayOs(payment.transactionReference);
+      await load(pageNumber);
+      showToast({ type: "success", message: "Đã cập nhật trạng thái giao dịch." });
+    } catch (requestError) {
+      showToast({ type: "error", message: getReconcileErrorMessage(requestError) });
+    } finally {
+      setReconcilingId(null);
+    }
+  }
 
   const firstItem = page.totalCount ? (page.pageNumber - 1) * page.pageSize + 1 : 0;
   const lastItem = Math.min(page.totalCount, firstItem + page.items.length - 1);
@@ -100,7 +155,14 @@ export function PaymentHistoryScreen() {
           keyExtractor={(payment, index) => String(payment.id || payment.transactionReference || index)}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(pageNumber, true)} />}
-          renderItem={({ item }) => <PaymentRow payment={item} onPress={() => setSelectedPayment(item)} />}
+          renderItem={({ item }) => (
+            <PaymentRow
+              payment={item}
+              reconciling={reconcilingId === item.id}
+              onPress={() => setSelectedPayment(item)}
+              onReconcile={() => handleReconcile(item)}
+            />
+          )}
         />
       )}
 
@@ -176,6 +238,13 @@ const styles = StyleSheet.create({
   rowMain: {
     flex: 1,
     gap: spacing.xs / 2,
+  },
+  reconcileButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
   },
   rowMeta: {
     alignItems: "flex-end",
