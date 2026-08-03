@@ -60,6 +60,7 @@ export default function PatientLayout() {
       <Tabs.Screen name="my-medications" options={{ href: null }} />
       <Tabs.Screen name="payment-history" options={{ href: null }} />
       <Tabs.Screen name="recovery-plan" options={{ href: null }} />
+      <Tabs.Screen name="records" options={{ href: null }} />
     </Tabs>
   );
 }

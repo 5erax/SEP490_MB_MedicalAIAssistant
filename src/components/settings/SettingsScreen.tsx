@@ -7,32 +7,34 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import Constants from "expo-constants";
-import { ChevronRight, FileWarning, LifeBuoy, LockKeyhole, LogOut } from "lucide-react-native";
+import { ChevronRight, ClipboardList, FileWarning, LifeBuoy, LockKeyhole, LogOut } from "lucide-react-native";
 
 import { AppText, Card, Screen } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useLogout } from "@/src/hooks";
 import { ROUTES } from "@/src/navigation/routes";
 
-const LINKS = [
+// Web's only entry point for Medical Records is a persistent sidebar nav
+// item (excluded from Web's own mobile bottom-nav set) — Settings is the
+// closest native equivalent to a secondary, always-reachable nav hub.
+const FEATURE_LINKS = [{ icon: ClipboardList, label: "Phân tích xét nghiệm", route: ROUTES.PATIENT.RECORDS }] as const;
+
+const LEGAL_LINKS = [
   { icon: LifeBuoy, label: "Trung tâm hỗ trợ", route: ROUTES.PUBLIC.SUPPORT },
   { icon: LockKeyhole, label: "Quyền riêng tư", route: ROUTES.PUBLIC.PRIVACY },
   { icon: FileWarning, label: "Tuyên bố miễn trừ y tế", route: ROUTES.PUBLIC.MEDICAL_DISCLAIMER },
 ] as const;
 
-export function SettingsScreen() {
-  const { logout, loggingOut } = useLogout();
-  const version = Constants.expoConfig?.version ?? "1.0.0";
+type LinkEntry = { icon: typeof ClipboardList; label: string; route: string };
 
+function LinkGroup({ title, links }: { title: string; links: readonly LinkEntry[] }) {
   return (
-    <Screen scroll contentContainerStyle={styles.content}>
-      <View style={styles.headerGroup}>
-        <AppText variant="h1">Cài đặt</AppText>
-        <AppText color={colors.muted}>Thông tin pháp lý, hỗ trợ và quản lý tài khoản.</AppText>
-      </View>
-
+    <View style={styles.group}>
+      <AppText variant="caption" color={colors.subtle}>
+        {title}
+      </AppText>
       <Card variant="soft" style={styles.card}>
-        {LINKS.map(({ icon: Icon, label, route }, index) => (
+        {links.map(({ icon: Icon, label, route }, index) => (
           <Pressable
             key={route}
             accessibilityRole="button"
@@ -49,6 +51,23 @@ export function SettingsScreen() {
           </Pressable>
         ))}
       </Card>
+    </View>
+  );
+}
+
+export function SettingsScreen() {
+  const { logout, loggingOut } = useLogout();
+  const version = Constants.expoConfig?.version ?? "1.0.0";
+
+  return (
+    <Screen scroll contentContainerStyle={styles.content}>
+      <View style={styles.headerGroup}>
+        <AppText variant="h1">Cài đặt</AppText>
+        <AppText color={colors.muted}>Thông tin pháp lý, hỗ trợ và quản lý tài khoản.</AppText>
+      </View>
+
+      <LinkGroup title="Tính năng" links={FEATURE_LINKS} />
+      <LinkGroup title="Hỗ trợ & pháp lý" links={LEGAL_LINKS} />
 
       <Pressable accessibilityRole="button" onPress={logout} disabled={loggingOut} style={styles.logoutButton}>
         {loggingOut ? (
@@ -75,6 +94,9 @@ const styles = StyleSheet.create({
   },
   headerGroup: {
     gap: spacing.xs,
+  },
+  group: {
+    gap: spacing.sm,
   },
   card: {
     padding: 0,
