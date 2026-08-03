@@ -126,7 +126,7 @@ export function MedicationFormSheet({
             <Switch
               value={form.isReminderEnabled}
               onValueChange={(value) => onSetField("isReminderEnabled", value)}
-              trackColor={{ false: colors.line, true: colors.lime }}
+              trackColor={{ false: colors.line, true: colors.teal }}
               thumbColor={colors.paper}
             />
           </View>

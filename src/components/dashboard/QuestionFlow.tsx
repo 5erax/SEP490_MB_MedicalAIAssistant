@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: radius.pill,
-    backgroundColor: colors.limeDark,
+    backgroundColor: colors.teal,
   },
   actions: {
     gap: spacing.md,

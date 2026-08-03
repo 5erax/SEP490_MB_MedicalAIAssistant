@@ -197,7 +197,7 @@ export function MedicalProfileSection({
                 onPress={() => onChange("bloodType", type)}
                 style={[styles.bloodTypeChip, selected && styles.bloodTypeChipSelected]}
               >
-                <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                   {type || "Chưa rõ"}
                 </AppText>
               </Pressable>
@@ -326,7 +326,7 @@ const styles = StyleSheet.create({
   },
   bloodTypeChipSelected: {
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   measurementRow: {
     flexDirection: "row",

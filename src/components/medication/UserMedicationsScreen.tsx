@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
     ...shadows.hard,
   },
 });

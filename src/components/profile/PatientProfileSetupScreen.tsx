@@ -48,7 +48,7 @@ export function PatientProfileSetupScreen() {
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.headerGroup}>
-        <AppText variant="eyebrow" color={colors.limeDark}>
+        <AppText variant="eyebrow" color={colors.teal}>
           Thiết lập hồ sơ
         </AppText>
         <AppText variant="h1">Hoàn thiện hồ sơ sức khỏe</AppText>
@@ -123,7 +123,7 @@ export function PatientProfileSetupScreen() {
                   onPress={() => updateField("gender", value)}
                   style={[styles.segment, selected && styles.segmentSelected]}
                 >
-                  <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                  <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                     {label}
                   </AppText>
                 </Pressable>
@@ -174,7 +174,7 @@ export function PatientProfileSetupScreen() {
                   onPress={() => updateField("bloodType", type)}
                   style={[styles.bloodTypeChip, selected && styles.bloodTypeChipSelected]}
                 >
-                  <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                  <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                     {type || "Chưa rõ"}
                   </AppText>
                 </Pressable>
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   segmentSelected: {
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   privacyNote: {
     flexDirection: "row",
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
   bloodTypeChipSelected: {
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   measurementRow: {
     flexDirection: "row",

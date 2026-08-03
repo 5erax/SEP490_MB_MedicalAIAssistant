@@ -101,7 +101,7 @@ export function PersonalInfoSection({
                 onPress={() => onChange("gender", value)}
                 style={[styles.segment, selected && styles.segmentSelected]}
               >
-                <AppText variant="bodyStrong" color={selected ? colors.ink : colors.muted}>
+                <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
                   {label}
                 </AppText>
               </Pressable>
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   segmentSelected: {
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
   dateInput: {
     minHeight: 48,

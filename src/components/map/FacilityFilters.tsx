@@ -39,7 +39,7 @@ export function FacilityFilters({ searchText, onChangeSearchText, selectedType, 
               onPress={() => onChangeType(option.key)}
               style={[styles.chip, selected && styles.chipSelected]}
             >
-              <AppText variant="caption" color={selected ? colors.ink : colors.muted}>
+              <AppText variant="caption" color={selected ? colors.white : colors.muted}>
                 {option.label}
               </AppText>
             </Pressable>
@@ -67,6 +67,6 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     borderColor: colors.ink,
-    backgroundColor: colors.lime,
+    backgroundColor: colors.teal,
   },
 });

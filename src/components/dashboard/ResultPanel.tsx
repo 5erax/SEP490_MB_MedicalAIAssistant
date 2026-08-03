@@ -25,7 +25,7 @@ function confidencePercent(value: number | undefined) {
 function FacilityRow({ facility, index, department, userLocation }: { facility: ClinicalFacility; index: number; department: ReturnType<typeof getRecommendedDepartment>; userLocation: GeoPoint | null }) {
   return (
     <View style={styles.facilityRow}>
-      <AppText variant="bodyStrong" color={colors.limeDark}>
+      <AppText variant="bodyStrong" color={colors.teal}>
         #{index + 1}
       </AppText>
       <View style={styles.facilityText}>

@@ -96,7 +96,7 @@ export function SpecialtyIntakeScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerTextGroup}>
-          <AppText variant="eyebrow" color={colors.limeDark}>
+          <AppText variant="eyebrow" color={colors.teal}>
             Tư vấn chuyên khoa
           </AppText>
           <AppText variant="h1">Gợi ý chuyên khoa qua triệu chứng</AppText>
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.line,
   },
   stepDotActive: {
-    backgroundColor: colors.limeDark,
+    backgroundColor: colors.teal,
   },
   stepDotComplete: {
     backgroundColor: colors.teal,
