@@ -6,16 +6,50 @@
 // API verified against the installed package's own TypeScript definitions
 // (node_modules/@maplibre/maplibre-react-native), not just docs, since this
 // component cannot be exercised in this sandbox.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Camera, type CameraRef, Map, Marker, type MapRef } from "@maplibre/maplibre-react-native";
+import {
+  Camera,
+  type CameraRef,
+  GeoJSONSource,
+  type GeoJSONSourceRef,
+  Layer,
+  Map,
+  Marker,
+  type MapRef,
+} from "@maplibre/maplibre-react-native";
 
 import { AppText, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import type { FacilityMapViewProps, MapLoadStatus } from "./FacilityMapView.types";
 
-const FREE_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const WEB_ALIGNED_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const MAP_STYLE = process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? WEB_ALIGNED_MAP_STYLE;
 const MAP_LOAD_TIMEOUT_MS = 12_000;
+const MIN_ZOOM = 9;
+const MAX_ZOOM = 18;
+const CLUSTER_MAX_ZOOM = 14;
+const CAMERA_ANIMATION_MS = 420;
+const MAP_BOUNDS: [number, number, number, number] = [106.3, 10.35, 107.15, 11.15];
+const DEFAULT_CENTER: [number, number] = [106.700424, 10.775658];
+
+type FacilityFeatureProperties = {
+  facilityId: string;
+  title: string;
+  typeLabel: string;
+  selected: boolean;
+};
+
+type FacilityFeature = GeoJSON.Feature<GeoJSON.Point, FacilityFeatureProperties>;
+type FacilityFeatureCollection = GeoJSON.FeatureCollection<GeoJSON.Point, FacilityFeatureProperties>;
+
+function isFacilityFeature(feature: GeoJSON.Feature): feature is FacilityFeature {
+  return feature.geometry?.type === "Point" && typeof feature.properties?.facilityId === "string";
+}
+
+function getFeatureCoordinates(feature: GeoJSON.Feature) {
+  return feature.geometry?.type === "Point" ? feature.geometry.coordinates : null;
+}
 
 export function FacilityMapViewMapLibre({
   facilities,
@@ -28,8 +62,38 @@ export function FacilityMapViewMapLibre({
   const [status, setStatus] = useState<MapLoadStatus>("loading");
   const mapRef = useRef<MapRef>(null);
   const cameraRef = useRef<CameraRef>(null);
+  const facilitySourceRef = useRef<GeoJSONSourceRef>(null);
 
   const mappableFacilities = useMemo(() => facilities.filter((facility) => facility.hasValidCoordinates), [facilities]);
+
+  const facilitiesById = useMemo(() => {
+    const next = new globalThis.Map<string, (typeof mappableFacilities)[number]>();
+    mappableFacilities.forEach((facility) => next.set(facility.facilityId, facility));
+    return next;
+  }, [mappableFacilities]);
+
+  const facilityFeatureCollection = useMemo<FacilityFeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: mappableFacilities.map(
+        (facility): FacilityFeature => ({
+          type: "Feature",
+          id: facility.facilityId,
+          geometry: {
+            type: "Point",
+            coordinates: [facility.longitude as number, facility.latitude as number],
+          },
+          properties: {
+            facilityId: facility.facilityId,
+            title: facility.facilityName,
+            typeLabel: facility.facilityTypeLabel || facility.facilityType || "Cơ sở y tế",
+            selected: selectedFacility?.facilityId === facility.facilityId,
+          },
+        }),
+      ),
+    }),
+    [mappableFacilities, selectedFacility?.facilityId],
+  );
 
   function updateStatus(next: MapLoadStatus) {
     setStatus((current) => {
@@ -81,6 +145,42 @@ export function FacilityMapViewMapLibre({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, selectedFacility?.facilityId]);
 
+  const handleFacilitySourcePress = useCallback(
+    async (event: { nativeEvent?: { features?: GeoJSON.Feature[] }; stopPropagation?: () => void }) => {
+      event.stopPropagation?.();
+      const feature = event.nativeEvent?.features?.[0];
+      if (!feature) return;
+
+      const coordinates = getFeatureCoordinates(feature);
+      if (!coordinates) return;
+
+      const clusterId = feature.properties?.cluster_id;
+      if (typeof clusterId === "number") {
+        const expansionZoom = await facilitySourceRef.current?.getClusterExpansionZoom(clusterId);
+        cameraRef.current?.easeTo({
+          center: coordinates as [number, number],
+          zoom: Math.min(expansionZoom ?? CLUSTER_MAX_ZOOM + 1, MAX_ZOOM),
+          duration: CAMERA_ANIMATION_MS,
+          easing: "ease",
+        });
+        return;
+      }
+
+      if (!isFacilityFeature(feature)) return;
+      const facility = facilitiesById.get(feature.properties.facilityId);
+      if (facility) {
+        onSelectFacility(facility);
+        cameraRef.current?.easeTo({
+          center: coordinates as [number, number],
+          zoom: 16,
+          duration: CAMERA_ANIMATION_MS,
+          easing: "ease",
+        });
+      }
+    },
+    [facilitiesById, onSelectFacility],
+  );
+
   if (status === "error") {
     return (
       <View style={styles.fallback}>
@@ -102,23 +202,124 @@ export function FacilityMapViewMapLibre({
       <Map
         ref={mapRef}
         style={styles.map}
-        mapStyle={FREE_MAP_STYLE}
+        mapStyle={MAP_STYLE}
         onDidFinishLoadingMap={() => updateStatus("ready")}
         onDidFailLoadingMap={() => updateStatus("error")}
+        preferredFramesPerSecond={60}
+        androidView="surface"
+        dragPan
+        touchZoom
+        doubleTapZoom
+        doubleTapHoldZoom
+        touchRotate
+        touchPitch={false}
+        compass
+        scaleBar={false}
+        attribution
         logo={false}
       >
-        <Camera ref={cameraRef} initialViewState={{ center: [106.700424, 10.775658], zoom: 11 }} />
+        <Camera
+          ref={cameraRef}
+          initialViewState={{ center: DEFAULT_CENTER, zoom: 11, bearing: 0, pitch: 0 }}
+          minZoom={MIN_ZOOM}
+          maxZoom={MAX_ZOOM}
+          maxBounds={MAP_BOUNDS}
+        />
 
-        {mappableFacilities.map((facility) => (
-          <Marker
-            key={facility.facilityId}
-            id={facility.facilityId}
-            lngLat={[facility.longitude as number, facility.latitude as number]}
-            onPress={() => onSelectFacility(facility)}
-          >
-            <View style={[styles.pin, selectedFacility?.facilityId === facility.facilityId && styles.pinSelected]} />
-          </Marker>
-        ))}
+        <GeoJSONSource
+          id="facility-points"
+          ref={facilitySourceRef}
+          data={facilityFeatureCollection}
+          cluster
+          clusterRadius={46}
+          clusterMaxZoom={CLUSTER_MAX_ZOOM}
+          clusterMinPoints={3}
+          maxzoom={MAX_ZOOM}
+          buffer={96}
+          tolerance={0.4}
+          onPress={handleFacilitySourcePress}
+        >
+          <Layer
+            id="facility-cluster-halo"
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-color": "rgba(8,127,140,0.18)",
+              "circle-radius": ["step", ["get", "point_count"], 22, 10, 27, 25, 33],
+              "circle-stroke-color": colors.white,
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="facility-cluster-dot"
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-color": colors.teal,
+              "circle-radius": ["step", ["get", "point_count"], 15, 10, 18, 25, 22],
+              "circle-stroke-color": colors.white,
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="facility-cluster-label"
+            type="symbol"
+            filter={["has", "point_count"]}
+            layout={{
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-size": 12,
+              "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+              "text-allow-overlap": true,
+              "text-ignore-placement": true,
+            }}
+            paint={{
+              "text-color": colors.white,
+            }}
+          />
+          <Layer
+            id="facility-point-halo"
+            type="circle"
+            filter={["!", ["has", "point_count"]]}
+            paint={{
+              "circle-color": ["case", ["get", "selected"], "rgba(180,35,24,0.2)", "rgba(8,127,140,0.14)"],
+              "circle-radius": ["case", ["get", "selected"], 19, 13],
+              "circle-stroke-color": colors.white,
+              "circle-stroke-width": 1,
+            }}
+          />
+          <Layer
+            id="facility-point-dot"
+            type="circle"
+            filter={["!", ["has", "point_count"]]}
+            paint={{
+              "circle-color": ["case", ["get", "selected"], colors.danger, colors.teal],
+              "circle-radius": ["case", ["get", "selected"], 10, 7],
+              "circle-stroke-color": colors.white,
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="facility-point-label"
+            type="symbol"
+            minzoom={14}
+            filter={["!", ["has", "point_count"]]}
+            layout={{
+              "text-field": ["get", "title"],
+              "text-size": 11,
+              "text-font": ["Open Sans Semibold", "Arial Unicode MS Regular"],
+              "text-offset": [0, 1.45],
+              "text-anchor": "top",
+              "text-max-width": 9,
+              "text-optional": true,
+              "text-padding": 4,
+            }}
+            paint={{
+              "text-color": colors.ink,
+              "text-halo-color": colors.white,
+              "text-halo-width": 1.4,
+            }}
+          />
+        </GeoJSONSource>
 
         {userLocation ? (
           <Marker id="user-location" lngLat={[userLocation.longitude, userLocation.latitude]}>
