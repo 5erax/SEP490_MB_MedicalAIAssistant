@@ -1,9 +1,9 @@
 // Expo Go cannot load @maplibre/maplibre-react-native's native module, so this
 // renders an interactive coordinate map with SVG. It keeps the user workflow
 // usable in Expo Go while the real MapLibre map still renders in a dev build.
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
+import Svg, { Line, Path, Rect } from "react-native-svg";
 import { Maximize2 } from "lucide-react-native";
 
 import { AppText } from "@/src/components/ui";
@@ -13,6 +13,14 @@ import type { FacilityMapViewProps } from "./FacilityMapView.types";
 type LayoutSize = {
   width: number;
   height: number;
+};
+
+type ProjectedFacility = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  facility: FacilityMapViewProps["facilities"][number];
 };
 
 const HCM_BOUNDS = {
@@ -49,6 +57,48 @@ function createBounds(points: { longitude: number; latitude: number }[]) {
   };
 }
 
+function projectPoint(
+  longitude: number,
+  latitude: number,
+  bounds: typeof HCM_BOUNDS,
+  layout: LayoutSize,
+) {
+  const width = Math.max(layout.width, 1);
+  const height = Math.max(layout.height, 1);
+  const drawableWidth = Math.max(width - MAP_PADDING * 2, 1);
+  const drawableHeight = Math.max(height - MAP_PADDING * 2, 1);
+  const x = MAP_PADDING + ((longitude - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * drawableWidth;
+  const y = MAP_PADDING + ((bounds.maxLat - latitude) / (bounds.maxLat - bounds.minLat)) * drawableHeight;
+
+  return {
+    x: Math.max(MAP_PADDING * 0.7, Math.min(width - MAP_PADDING * 0.7, x)),
+    y: Math.max(MAP_PADDING * 0.7, Math.min(height - MAP_PADDING * 0.7, y)),
+  };
+}
+
+function StaticMapBackground({ width, height }: LayoutSize) {
+  return (
+    <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+      <Rect width={width} height={height} fill="#eef4f5" />
+      <Path
+        d={`M ${width * 0.62} 0 C ${width * 0.58} ${height * 0.28}, ${width * 0.72} ${height * 0.48}, ${width * 0.66} ${height}`}
+        stroke="#cce3e8"
+        strokeWidth={36}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Line x1={-20} y1={height * 0.28} x2={width + 20} y2={height * 0.1} stroke="#ffffff" strokeWidth={9} />
+      <Line x1={-20} y1={height * 0.58} x2={width + 20} y2={height * 0.45} stroke="#ffffff" strokeWidth={8} />
+      <Line x1={width * 0.18} y1={-20} x2={width * 0.34} y2={height + 20} stroke="#ffffff" strokeWidth={8} />
+      <Line x1={width * 0.78} y1={-20} x2={width * 0.54} y2={height + 20} stroke="#ffffff" strokeWidth={7} />
+      <Line x1={-20} y1={height * 0.8} x2={width + 20} y2={height * 0.72} stroke="#dde8e5" strokeWidth={4} />
+      <Line x1={width * 0.44} y1={-20} x2={width * 0.52} y2={height + 20} stroke="#dde8e5" strokeWidth={4} />
+    </Svg>
+  );
+}
+
+const MemoizedMapBackground = memo(StaticMapBackground);
+
 export function FacilityMapViewFallback({
   facilities,
   selectedFacility,
@@ -77,81 +127,79 @@ export function FacilityMapViewFallback({
     onStatusChange?.(mappableFacilities.length > 0 ? "ready" : "error");
   }, [mappableFacilities.length, onStatusChange]);
 
-  function project(longitude: number, latitude: number) {
-    const width = Math.max(layout.width, 1);
-    const height = Math.max(layout.height, 1);
-    const drawableWidth = Math.max(width - MAP_PADDING * 2, 1);
-    const drawableHeight = Math.max(height - MAP_PADDING * 2, 1);
-    const x = MAP_PADDING + ((longitude - bounds.minLon) / (bounds.maxLon - bounds.minLon)) * drawableWidth;
-    const y = MAP_PADDING + ((bounds.maxLat - latitude) / (bounds.maxLat - bounds.minLat)) * drawableHeight;
+  const projectedFacilities = useMemo<ProjectedFacility[]>(() => {
+    if (layout.width <= 0 || layout.height <= 0) return [];
 
-    return {
-      x: Math.max(MAP_PADDING * 0.7, Math.min(width - MAP_PADDING * 0.7, x)),
-      y: Math.max(MAP_PADDING * 0.7, Math.min(height - MAP_PADDING * 0.7, y)),
-    };
-  }
+    return mappableFacilities.map((facility) => {
+      const point = projectPoint(facility.longitude as number, facility.latitude as number, bounds, layout);
+      return {
+        id: facility.facilityId,
+        label: facility.facilityName,
+        x: point.x,
+        y: point.y,
+        facility,
+      };
+    });
+  }, [bounds, layout, mappableFacilities]);
+
+  const projectedUserLocation = useMemo(() => {
+    if (!userLocation || layout.width <= 0 || layout.height <= 0) return null;
+    return projectPoint(userLocation.longitude, userLocation.latitude, bounds, layout);
+  }, [bounds, layout, userLocation]);
 
   return (
     <View
       style={styles.root}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
-        setLayout({ width, height });
+        setLayout((current) => (current.width === width && current.height === height ? current : { width, height }));
       }}
     >
       {layout.width > 0 && layout.height > 0 ? (
-        <Svg width={layout.width} height={layout.height} style={StyleSheet.absoluteFill}>
-          <Rect width={layout.width} height={layout.height} fill="#eef4f5" />
-          <Path
-            d={`M ${layout.width * 0.62} 0 C ${layout.width * 0.58} ${layout.height * 0.28}, ${layout.width * 0.72} ${layout.height * 0.48}, ${layout.width * 0.66} ${layout.height}`}
-            stroke="#cce3e8"
-            strokeWidth={42}
-            strokeLinecap="round"
-            fill="none"
-          />
-          <Line x1={-20} y1={layout.height * 0.28} x2={layout.width + 20} y2={layout.height * 0.1} stroke="#ffffff" strokeWidth={12} />
-          <Line x1={-20} y1={layout.height * 0.58} x2={layout.width + 20} y2={layout.height * 0.45} stroke="#ffffff" strokeWidth={10} />
-          <Line x1={layout.width * 0.18} y1={-20} x2={layout.width * 0.34} y2={layout.height + 20} stroke="#ffffff" strokeWidth={10} />
-          <Line x1={layout.width * 0.78} y1={-20} x2={layout.width * 0.54} y2={layout.height + 20} stroke="#ffffff" strokeWidth={9} />
-          <Line x1={-20} y1={layout.height * 0.8} x2={layout.width + 20} y2={layout.height * 0.72} stroke="#dde8e5" strokeWidth={5} />
-          <Line x1={layout.width * 0.44} y1={-20} x2={layout.width * 0.52} y2={layout.height + 20} stroke="#dde8e5" strokeWidth={5} />
-
-          {mappableFacilities.map((facility, index) => {
-            const point = project(facility.longitude as number, facility.latitude as number);
-            const selected = selectedFacility?.facilityId === facility.facilityId;
-            const radiusSize = selected ? 11 : 8;
-
+        <>
+          <MemoizedMapBackground width={layout.width} height={layout.height} />
+          {projectedFacilities.map((item, index) => {
+            const selected = selectedFacility?.facilityId === item.id;
             return (
-              <G key={facility.facilityId} onPress={() => onSelectFacility(facility)}>
-                <Circle cx={point.x} cy={point.y} r={radiusSize + 5} fill="rgba(8,127,140,0.14)" />
-                <Circle cx={point.x} cy={point.y} r={radiusSize} fill={selected ? colors.danger : colors.teal} stroke={colors.white} strokeWidth={3} />
-                {selected ? (
-                  <SvgText x={point.x + 14} y={point.y - 12} fill={colors.ink} fontSize="11" fontWeight="700">
-                    {facility.facilityName.slice(0, 24)}
-                  </SvgText>
-                ) : index < 8 ? (
-                  <SvgText x={point.x + 11} y={point.y - 9} fill="rgba(17,20,18,0.58)" fontSize="9" fontWeight="700">
-                    {index + 1}
-                  </SvgText>
-                ) : null}
-              </G>
+              <Pressable
+                key={item.id}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                onPress={() => onSelectFacility(item.facility)}
+                hitSlop={8}
+                style={[
+                  styles.pinHitbox,
+                  { left: item.x - 18, top: item.y - 18 },
+                  selected && styles.pinHitboxSelected,
+                ]}
+              >
+                <View style={[styles.pinHalo, selected && styles.pinHaloSelected]} />
+                <View style={[styles.pin, selected && styles.pinSelected]}>
+                  {index < 9 && !selected ? (
+                    <AppText variant="caption" color={colors.white} style={styles.pinIndex}>
+                      {index + 1}
+                    </AppText>
+                  ) : null}
+                </View>
+              </Pressable>
             );
           })}
-
-          {userLocation ? (
-            <G>
-              {(() => {
-                const point = project(userLocation.longitude, userLocation.latitude);
-                return (
-                  <>
-                    <Circle cx={point.x} cy={point.y} r={14} fill="rgba(29,78,216,0.14)" />
-                    <Circle cx={point.x} cy={point.y} r={7} fill={colors.blue} stroke={colors.white} strokeWidth={3} />
-                  </>
-                );
-              })()}
-            </G>
+          {selectedFacility ? (
+            <View style={styles.selectedLabel} pointerEvents="none">
+              <AppText variant="caption" color={colors.ink} numberOfLines={1}>
+                {selectedFacility.facilityName}
+              </AppText>
+            </View>
           ) : null}
-        </Svg>
+          {projectedUserLocation ? (
+            <View
+              pointerEvents="none"
+              style={[styles.userMarker, { left: projectedUserLocation.x - 10, top: projectedUserLocation.y - 10 }]}
+            >
+              <View style={styles.userDot} />
+            </View>
+          ) : null}
+        </>
       ) : null}
 
       <View pointerEvents="none" style={styles.badge}>
@@ -219,6 +267,78 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.86)",
     padding: spacing.xl,
+  },
+  pinHitbox: {
+    position: "absolute",
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinHitboxSelected: {
+    zIndex: 3,
+  },
+  pinHalo: {
+    position: "absolute",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(8,127,140,0.14)",
+  },
+  pinHaloSelected: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(180,35,24,0.14)",
+  },
+  pin: {
+    width: 17,
+    height: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.white,
+    borderRadius: 9,
+    backgroundColor: colors.teal,
+  },
+  pinSelected: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: colors.danger,
+  },
+  pinIndex: {
+    fontSize: 8,
+    lineHeight: 10,
+  },
+  selectedLabel: {
+    position: "absolute",
+    left: spacing.md,
+    right: spacing.md,
+    bottom: spacing["4xl"] + spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(17,20,18,0.12)",
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(255,255,255,0.94)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  userMarker: {
+    position: "absolute",
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    backgroundColor: "rgba(29,78,216,0.14)",
+  },
+  userDot: {
+    width: 12,
+    height: 12,
+    borderWidth: 2,
+    borderColor: colors.white,
+    borderRadius: 6,
+    backgroundColor: colors.blue,
   },
   quickPins: {
     position: "absolute",
