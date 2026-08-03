@@ -239,3 +239,63 @@ notification feature until Web defines the business flow/API.
 - Docs updated:
   - `docs/mobile-progress.md`
   - `docs/mobile-roadmap.md`
+
+## 2026-08-03 - Auth Brand Refactor
+
+Branch: `feature/mobile-auth-brand-refactor`
+
+Module: Authentication UI refresh.
+
+Goal:
+
+- Bring Mobile auth visuals closer to the current Web design language.
+- Remove oversized lime/green selected states from the register screen.
+- Keep Mobile UX native and keep all authentication business logic unchanged.
+
+Files added:
+
+- `docs/mobile-fe-gap-list.md`
+
+Files changed:
+
+- `src/components/ui/Button.tsx`
+- `src/components/ui/TextField.tsx`
+- `app/(public)/login.tsx`
+- `app/(public)/register.tsx`
+- `docs/mobile-progress.md`
+
+UI completed:
+
+- Primary button style now uses the Web teal/info treatment with white text.
+- Text fields use the Web focus color and softer focused background.
+- Login hero chips and eyebrow no longer rely on lime as the dominant color.
+- Register gender segmented control now uses teal selected state with white text.
+- Register checkbox selected state now uses teal instead of lime.
+- Auth loading states now use white spinner/text on primary buttons.
+- Auth card and hero radius tightened from oversized mobile cards to the Web refresh rhythm.
+
+API integrated:
+
+- No API changes. Existing auth APIs remain unchanged:
+  - `POST /api/authentication/login`
+  - `POST /api/authentication/register`
+
+Hooks/services/context/navigation:
+
+- No hook, service, context, or navigation changes.
+
+Verification:
+
+- `npm run lint`
+
+Known issues:
+
+- Runtime emulator visual QA still needs a manual pass on Login and Register.
+- This pass only refactors Auth surfaces and shared controls. Other green/lime-heavy areas will be handled module by module.
+
+Todo:
+
+- Open Login and Register on emulator.
+- Verify disabled/loading button states.
+- Verify gender selected state no longer shows lime/green.
+- Continue next feature module from roadmap: `feature/mobile-medical-records`.

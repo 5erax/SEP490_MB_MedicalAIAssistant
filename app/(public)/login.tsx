@@ -22,7 +22,7 @@ import { useAuth } from "@/src/providers";
 import { useToast } from "@/src/hooks/useToast";
 import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
 import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
-import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
+import { colors, radius, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
 import { isGoogleAuthConfigured } from "@/src/config/env";
 
@@ -129,7 +129,7 @@ export default function LoginScreen() {
             </View>
 
             <View style={styles.heroCopyGroup}>
-              <AppText variant="eyebrow" color={colors.lime}>
+              <AppText variant="eyebrow" color={colors.teal}>
                 Welcome back
               </AppText>
               <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
@@ -143,7 +143,7 @@ export default function LoginScreen() {
             <View style={styles.heroChips}>
               {["Bảo mật", "AI hỗ trợ", "Hồ sơ sức khỏe"].map((item) => (
                 <View key={item} style={styles.heroChip}>
-                  <AppText variant="caption" color={colors.lime}>
+                  <AppText variant="caption" color={colors.white}>
                     {item}
                   </AppText>
                 </View>
@@ -230,8 +230,10 @@ export default function LoginScreen() {
               <Button fullWidth disabled={disabled} onPress={handleLogin} style={styles.submitButton}>
                 {submitting ? (
                   <View style={styles.loadingLabel}>
-                    <ActivityIndicator color={colors.ink} size="small" />
-                    <AppText variant="bodyStrong">Đang đăng nhập...</AppText>
+                    <ActivityIndicator color={colors.white} size="small" />
+                    <AppText variant="bodyStrong" color={colors.white}>
+                      Đang đăng nhập...
+                    </AppText>
                   </View>
                 ) : (
                   "Đăng nhập"
@@ -268,7 +270,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: spacing.lg,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
   hero: {
@@ -277,7 +279,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.ink,
     padding: spacing.xl,
   },
@@ -292,10 +294,9 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderColor: "rgba(255,255,255,0.18)",
     borderRadius: radius.md,
-    backgroundColor: colors.lime,
-    ...shadows.hard,
+    backgroundColor: colors.paper,
   },
   heroCopyGroup: {
     gap: spacing.md,
@@ -316,9 +317,9 @@ const styles = StyleSheet.create({
   },
   heroChip: {
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
+    borderColor: "rgba(255,255,255,0.18)",
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -326,7 +327,7 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     borderWidth: 1.5,
     borderColor: colors.ink,
-    borderRadius: radius.xl,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing["2xl"],
@@ -361,7 +362,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   inlineNote: {
-    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.sm,
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
