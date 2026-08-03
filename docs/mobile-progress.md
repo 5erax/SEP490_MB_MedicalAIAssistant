@@ -784,3 +784,101 @@ nghiệp vụ hay gọi API.
 có mặt).
 
 **PR:** [#12](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/12)
+
+---
+
+## Module 11: Medication
+
+**Chức năng đã hoàn thành**
+
+*`/my-medications` — "Thuốc & lịch nhắc" (CRUD thật, `access: "auth"`)*
+- Danh sách thuốc đang theo dõi, pull-to-refresh, empty/error state.
+- Thêm/sửa/xoá thuốc (bottom sheet form + xác nhận xoá bằng Alert).
+- Đặt ngày bắt đầu/kết thúc (date picker), bật/tắt nhắc nhở, thêm/xoá
+  nhiều giờ nhắc (time picker, hiển thị dạng chip, tự sắp xếp tăng dần).
+- Toast báo thành công cho thêm/sửa/xoá.
+
+*`/medication` — "Kiểm tra thuốc" (bản xem trước tại chỗ, `access: "premium"`)*
+- Chọn ảnh từ thư viện hoặc chụp ảnh trực tiếp để xem trước tại chỗ.
+- Nút "Kiểm tra trạng thái nhận diện" — khớp đúng hành vi Web: có độ trễ
+  giả rồi luôn hiện thông báo cố định "Tính năng đang được hoàn thiện",
+  không phân tích hay lưu ảnh (không có backend nhận diện thật trên Web
+  để port).
+- Lối vào: nút camera trong Chat AI (đã nối sẵn từ Module 4).
+
+**API đã tích hợp**
+- `GET /api/user-medications`
+- `POST /api/user-medications`
+- `PUT /api/user-medications/{id}`
+- `DELETE /api/user-medications/{id}`
+- `/medication`: không có (bản xem trước tại chỗ, không gọi API — khớp
+  đúng Web).
+
+**UI đã hoàn thành**
+- `app/(patient)/my-medications.tsx` (bọc `AuthGate`).
+- `app/(patient)/medication.tsx` (bọc `PremiumGate`, tái dùng từ Module 4).
+- `src/components/medication/{UserMedicationsScreen,MedicationCard,
+  MedicationFormSheet,MedicationScanScreen,index}.tsx`.
+
+**Route:** `ROUTES.PATIENT.MY_MEDICATIONS` = `/(patient)/my-medications`;
+`ROUTES.PATIENT.MEDICATION` = `/(patient)/medication` (đã có từ trước,
+nay có màn hình thật). Đã xoá hằng số `MEDICATION_RESULT` không dùng
+(Web không có trang kết quả riêng).
+
+**Hook:** `useUserMedications()` — port toàn bộ state/handler từ
+`UserMedicationsPage.jsx` (load, mở form thêm/sửa, thêm/xoá giờ nhắc,
+submit, xoá).
+
+**Service:** `userMedicationService.ts` (`userMedicationsApi.list/create/
+update/remove`). Không port `get(id)` và `replaceReminders` vì UI trên
+Web không gọi (giờ nhắc được gửi cùng payload tạo/sửa).
+
+**State:** `src/utils/medicationValidation.ts` — port nguyên vẹn
+`validateForm`, `buildPayload`, `toFormState`, `formatDateRange`,
+`getErrorMessage`, các hằng số giới hạn (`MAX_REMINDER_TIMES=12`,
+`MAX_MEDICINE_NAME_LENGTH=256`, `MAX_DOSAGE_LENGTH=1000`) và nội dung
+cảnh báo (disclaimer) từ `UserMedicationsPage.jsx` (Web không có file
+`medicationValidation.js` riêng — toàn bộ logic vốn nằm inline trong
+trang).
+
+**Known Issues**
+- Web đặt lối vào `/my-medications` trong menu tài khoản (account
+  dropdown) — thành phần này thuộc Module 13/14 (Profile/Settings) trên
+  Mobile, chưa tồn tại. Theo đúng mẫu đã dùng ở Module 9
+  (`PaymentHistoryScreen`), màn hình được xây trước dưới dạng route độc
+  lập; sẽ gắn lối vào đúng chỗ khi Module 13/14 hoàn thành.
+  `/medication` đã có lối vào thật từ nút camera trong Chat AI (Module 4),
+  khớp đúng Web.
+- Mobile bổ sung chụp ảnh trực tiếp bằng camera (`expo-image-picker`
+  `launchCameraAsync`) bên cạnh chọn từ thư viện — Web chỉ hỗ trợ
+  tải lên/kéo-thả (kèm thuộc tính `capture` ẩn trên input file). Đây là
+  khác biệt UX chủ đích cho thiết bị di động, không đổi hành vi cốt lõi
+  (vẫn chỉ xem trước tại chỗ, không phân tích).
+- Chưa test được luồng CRUD thật + camera trên thiết bị/tài khoản thật
+  (cần thiết bị thật, xem Hướng dẫn test).
+
+**Hướng dẫn test trên Mobile**
+1. Vào `/(patient)/my-medications` khi chưa đăng nhập → xác nhận
+   `AuthGate` chuyển hướng sang Đăng nhập.
+2. Đăng nhập → bấm nút "+" (FAB) → nhập tên thuốc, hướng dẫn dùng, chọn
+   ngày bắt đầu/kết thúc → lưu → xác nhận thuốc mới xuất hiện trong danh
+   sách + toast thành công.
+3. Bật "Nhắc nhở" mà chưa chọn ngày/giờ nhắc → xác nhận báo lỗi đúng như
+   mô tả (bắt buộc ngày bắt đầu/kết thúc/ít nhất 1 giờ nhắc).
+4. Thêm nhiều giờ nhắc trùng nhau → xác nhận báo lỗi "Không được trùng
+   giờ nhắc"; thêm quá 12 giờ → xác nhận báo lỗi giới hạn.
+5. Sửa một thuốc đã có → xác nhận form điền sẵn đúng dữ liệu cũ.
+6. Xoá một thuốc → xác nhận hộp thoại xác nhận + danh sách cập nhật sau
+   khi xoá.
+7. Kéo để làm mới danh sách.
+8. Vào `/(patient)/medication` với tài khoản chưa Premium → xác nhận
+   chuyển hướng sang `/pricing` (`PremiumGate`); với tài khoản Premium →
+   chọn ảnh từ thư viện hoặc chụp ảnh → bấm "Kiểm tra trạng thái nhận
+   diện" → xác nhận hiện đúng thông báo "đang hoàn thiện" sau độ trễ
+   ngắn.
+
+**Kết quả build:** `tsc --noEmit` sạch, `expo lint` sạch, `expo export
+--platform web` xuất bundle thành công (`/(patient)/my-medications` và
+`/(patient)/medication` đều có mặt).
+
+**PR:** [#14](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/14)
