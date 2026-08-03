@@ -22,10 +22,10 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   hard: {
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderWidth: 1,
+    borderColor: "rgba(17,20,18,0.18)",
     backgroundColor: colors.paper,
-    ...shadows.hard,
+    ...shadows.soft,
   },
   soft: {
     borderWidth: 1,
@@ -34,9 +34,8 @@ const styles = StyleSheet.create({
     ...shadows.soft,
   },
   dark: {
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: colors.ink,
     backgroundColor: colors.ink,
   },
 });
-
