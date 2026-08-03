@@ -20,7 +20,15 @@ export type UserSubscription = {
 
 export type Payment = {
   id: string;
+  planName?: string;
   statusName?: string;
+  status?: string;
+  amount?: number;
+  currency?: string;
+  provider?: string;
+  transactionReference?: string;
+  createdAt?: string;
+  updatedAt?: string;
   paidAt?: string;
   [key: string]: unknown;
 };

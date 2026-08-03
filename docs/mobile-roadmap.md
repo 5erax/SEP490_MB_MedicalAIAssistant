@@ -14,7 +14,7 @@ Chi tiết từng module xem [mobile-progress.md](./mobile-progress.md).
 - [x] Doctor
 - [x] Appointment
 - [x] Subscription
-- [ ] Payment
+- [x] Payment
 - [ ] Recovery Plan
 - [ ] Medication
 - [ ] Notifications

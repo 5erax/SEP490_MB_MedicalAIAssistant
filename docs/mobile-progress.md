@@ -644,3 +644,55 @@ trong `domainServices.ts`.
    hủy.
 5. Vào Chat AI với tài khoản chưa Premium → bấm "Xem gói dịch vụ" → xác
    nhận điều hướng đúng sang `/pricing` (không còn toast tạm).
+
+---
+
+## Module 9: Payment
+
+**Chức năng đã hoàn thành**
+- Lịch sử thanh toán: danh sách phân trang (10/trang), trạng thái
+  (Đang chờ/Đã thanh toán/Đã hủy/Thất bại), pull-to-refresh.
+- Chi tiết giao dịch (bottom sheet): mã thanh toán, gói, trạng thái, số
+  tiền, cổng thanh toán, mã giao dịch, ngày tạo/thanh toán/cập nhật.
+- Lối vào từ thẻ "Gói của bạn" ở `/pricing` (Module 8).
+
+**API đã tích hợp**
+- `GET /api/payments/me?PageNumber=&PageSize=`
+- `GET /api/payments/me/{id}`
+
+**UI đã hoàn thành**
+- `app/(patient)/payment-history.tsx` (bọc `AuthGate`).
+- `src/components/payment/{PaymentHistoryScreen,PaymentDetailSheet,PaymentStatusBadge,index}.tsx`.
+
+**State:** `src/utils/paymentPresentation.ts` — port nguyên vẹn
+`formatMoney`, `formatDateTime`, `getPaymentStatus`,
+`getHistoryErrorMessage`, `getDetailErrorMessage`,
+`normalizePaymentPage` từ `PaymentHistoryPanel.jsx`.
+
+**Known Issues**
+- **Không port `/payment/return` và `/payment/cancel` (PaymentResultPage.jsx)**:
+  hai trang này trên Web tồn tại để xử lý redirect callback từ PayOS về
+  đúng domain Web. Trên Mobile, PayOS không thể redirect thẳng vào app
+  bằng deep link trừ khi backend được cấu hình lại để trỏ về custom
+  scheme của app (`sep490mbmedicalaiassistant://...`) — việc này nằm
+  ngoài khả năng chỉnh sửa từ phía Mobile. Toàn bộ luồng phát hiện
+  thành công/hủy/lỗi sau thanh toán đã được xử lý đầy đủ bằng polling
+  ngay trong Module 8 (`useSubscription`), nên không bị thiếu chức năng
+  — chỉ khác cơ chế kỹ thuật so với Web.
+- `subscriptionUsageApi` (hiển thị hạn mức còn lại sau thanh toán thành
+  công trên `PaymentResultPage`) chưa port vì phụ thuộc trang đã bỏ qua
+  ở trên; có thể bổ sung riêng nếu cần hiển thị hạn mức ở nơi khác.
+- `PaymentHistoryScreen` hiện là route độc lập (`/payment-history`); Web
+  đặt nó làm 1 tab trong trang Hồ sơ cá nhân. Sẽ liên kết/tích hợp lại
+  đúng vị trí khi Module 13 (Profile) hoàn thành, theo đúng mẫu đã làm ở
+  Module 6/7 (xây trước dưới dạng độc lập, gắn vào đúng chỗ khi module
+  chủ quản lý ra đời).
+
+**Hướng dẫn test trên Mobile**
+1. Đăng nhập, vào `/pricing` → bấm "Lịch sử giao dịch" ở thẻ "Gói của
+   bạn" → xác nhận danh sách hiển thị đúng (hoặc empty state nếu chưa có
+   giao dịch nào).
+2. Bấm vào 1 giao dịch → xác nhận bottom sheet chi tiết hiện đúng thông
+   tin.
+3. Nếu có nhiều hơn 10 giao dịch → xác nhận nút chuyển trang hoạt động.
+4. Kéo để làm mới danh sách.
