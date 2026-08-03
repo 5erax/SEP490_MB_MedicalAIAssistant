@@ -2,7 +2,7 @@ import { Pressable, ScrollView, StyleSheet } from "react-native";
 import { CreditCard, FileHeart, LucideIcon, ReceiptText, ShieldCheck, User } from "lucide-react-native";
 
 import { AppText } from "@/src/components/ui";
-import { colors, radius, spacing } from "@/src/theme/tokens";
+import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 
 export type ProfileTabId = "info" | "medical" | "package" | "transactions" | "security";
 
@@ -16,7 +16,12 @@ const TABS: { id: ProfileTabId; label: string; icon: LucideIcon }[] = [
 
 export function ProfileTabs({ activeTab, onChange }: { activeTab: ProfileTabId; onChange: (tab: ProfileTabId) => void }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.root}
+      contentContainerStyle={styles.row}
+    >
       {TABS.map(({ id, label, icon: Icon }) => {
         const selected = activeTab === id;
         return (
@@ -27,7 +32,7 @@ export function ProfileTabs({ activeTab, onChange }: { activeTab: ProfileTabId; 
             onPress={() => onChange(id)}
             style={[styles.tab, selected && styles.tabSelected]}
           >
-            <Icon size={16} color={selected ? colors.white : colors.muted} />
+            <Icon size={15} color={selected ? colors.white : colors.muted} />
             <AppText variant="caption" color={selected ? colors.white : colors.muted}>
               {label}
             </AppText>
@@ -39,25 +44,29 @@ export function ProfileTabs({ activeTab, onChange }: { activeTab: ProfileTabId; 
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   row: {
     flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
   },
   tab: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    height: 40,
     gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.line,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.paperSoft,
   },
   tabSelected: {
-    borderColor: colors.teal,
     backgroundColor: colors.teal,
+    ...shadows.soft,
   },
 });
