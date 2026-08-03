@@ -16,6 +16,7 @@ const WEB_CHATBOT_BASE = "/api/web-chatbot";
 const SYMPTOM_ANALYSIS_BASE = "/api/symptom-analysis";
 const FEEDBACK_REVIEWS_BASE = "/api/feedback-reviews";
 const USER_MEDICATIONS_BASE = "/api/user-medications";
+const LAB_TESTS_BASE = "/api/lab-tests";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -104,6 +105,11 @@ export const ENDPOINTS = {
     BASE: USER_MEDICATIONS_BASE,
     BY_ID: (id: string | number) => byId(USER_MEDICATIONS_BASE, id),
     REMINDERS: (id: string | number) => `${byId(USER_MEDICATIONS_BASE, id)}/reminders`,
+  },
+  LAB_TESTS: {
+    ANALYZE: `${LAB_TESTS_BASE}/analyze`,
+    MY_SESSIONS: `${LAB_TESTS_BASE}/my-sessions`,
+    BY_SESSION: (sessionId: string) => byId(LAB_TESTS_BASE, sessionId),
   },
 } as const;
 
