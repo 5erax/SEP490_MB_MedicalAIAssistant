@@ -882,3 +882,41 @@ trang).
 `/(patient)/medication` đều có mặt).
 
 **PR:** [#14](https://github.com/5erax/SEP490_MB_MedicalAIAssistant/pull/14)
+
+---
+
+## Module 12: Notifications — bỏ qua có chủ đích
+
+Trước khi build module này, đã rà soát toàn bộ Web (`src/`, `docs/backend/
+contract-status.md`, `docs/backend/backlog.md`) để tìm phần tương ứng cần
+port, và xác nhận: **Web hoàn toàn không có tính năng Thông báo.**
+
+- Không có icon chuông, không có trang/inbox thông báo, không có
+  component danh sách thông báo ở bất kỳ đâu trong `src/`.
+- Không có endpoint `/api/notifications` (hay tương đương) — đối chiếu
+  với audit Swagger thật của backend (`docs/backend/contract-status.md`),
+  backend không có nhóm API nào cho thông báo.
+- `docs/backend/backlog.md` liệt kê "notification"/"reminder" (nhắc nhở)
+  chỉ như hạng mục backlog chưa triển khai, thuộc nhóm Appointment/
+  Treatment tracking — cần Product Owner duyệt phạm vi/mô hình dữ liệu
+  trước khi có API production, hiện chưa tồn tại.
+- Dữ liệu `isReminderEnabled`/`reminderTimes` ở Module 11 (Medication)
+  được Web lưu qua API nhưng **không có cơ chế gửi thông báo thật nào**
+  đi kèm — không gọi Notification API của trình duyệt, không có Service
+  Worker, không có `setTimeout`/`setInterval` hẹn giờ. Đây chỉ là dữ
+  liệu lịch nhắc được lưu lại, không phải hệ thống nhắc nhở đang hoạt
+  động.
+
+Vì không có trang, route, API hay hành vi nào trên Web để đối chiếu và
+port đúng nguyên tắc "Web là nguồn chuẩn", việc tự xây một tính năng
+Thông báo cho Mobile (dù dùng local notification native) sẽ là **tự
+thêm phạm vi sản phẩm mới** ngoài những gì Web đã có — vi phạm nguyên
+tắc không tự ý thay đổi/mở rộng Business Logic. Đã trình bày lựa chọn
+này với chủ nhiệm đồ án và được xác nhận: **bỏ qua Module 12, đánh lại
+số các module còn lại** (Profile → Module 12, Settings → Module 13).
+
+Nếu về sau Web triển khai tính năng Thông báo (ví dụ khi Treatment
+tracking/Appointment có backend thật), Mobile sẽ port lại đúng theo
+API/luồng mới tại thời điểm đó.
+
+---
