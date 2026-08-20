@@ -24,6 +24,8 @@ export function UserMedicationsScreen() {
     formErrors,
     submitting,
     removingId,
+    loadingDetailId,
+    updatingReminderId,
     openCreateForm,
     openEditForm,
     closeForm,
@@ -32,6 +34,7 @@ export function UserMedicationsScreen() {
     removeReminderTime,
     submit,
     remove,
+    disableReminders,
   } = useUserMedications();
 
   async function handleSubmit() {
@@ -52,6 +55,19 @@ export function UserMedicationsScreen() {
           if (result === "success") {
             showToast({ type: "success", message: "Đã xoá thuốc." });
           }
+        },
+      },
+    ]);
+  }
+
+  function handleDisableReminder(medication: UserMedication) {
+    Alert.alert("Tắt lịch nhắc?", `Thông tin ${medication.medicineName} vẫn được giữ trong danh sách.`, [
+      { text: "Đóng", style: "cancel" },
+      {
+        text: "Tắt lịch nhắc",
+        onPress: async () => {
+          const result = await disableReminders(medication);
+          if (result === "success") showToast({ type: "success", message: "Đã tắt lịch nhắc thuốc." });
         },
       },
     ]);
@@ -91,8 +107,11 @@ export function UserMedicationsScreen() {
             <MedicationCard
               medication={item}
               removing={removingId === item.id}
+              loadingDetail={loadingDetailId === item.id}
+              updatingReminder={updatingReminderId === item.id}
               onEdit={() => openEditForm(item)}
               onRemove={() => handleRemove(item)}
+              onDisableReminder={() => handleDisableReminder(item)}
             />
           )}
         />

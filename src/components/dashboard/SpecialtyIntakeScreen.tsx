@@ -44,6 +44,22 @@ function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string
   });
 }
 
+function openPreConsultation(result: ClinicalAnalysisResult | null, symptoms: string) {
+  const department = getRecommendedDepartment(result);
+  const topFacility = result?.recommendedFacilities?.[0] ?? null;
+  const facilityId = getFacilityId(topFacility);
+  if (!department?.departmentId) return;
+
+  router.push({
+    pathname: "/(patient)/pre-consultation" as never,
+    params: {
+      departmentId: department.departmentId,
+      symptoms,
+      ...(facilityId ? { facilityId } : {}),
+    },
+  });
+}
+
 export function SpecialtyIntakeScreen() {
   const { session } = useAuth();
   const {
@@ -201,6 +217,7 @@ export function SpecialtyIntakeScreen() {
           locationStatus={locationStatus}
           onRequestLocation={requestUserLocation}
           onOpenMap={() => openFacilities(result, sessionId)}
+          onPrepareConsultation={() => openPreConsultation(result, input)}
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}

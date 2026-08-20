@@ -216,17 +216,6 @@ export const symptomAnalysisApi = {
     await clearStoredClinicalMapSnapshot();
   },
 
-  /**
-   * Endpoint: POST /api/symptom-analysis/submit-diagnosis
-   */
-  submitDiagnosis(sessionId: string, answers: ClinicalAnswerItem[]) {
-    return apiRequest(ENDPOINTS.SYMPTOM_ANALYSIS.SUBMIT_DIAGNOSIS, {
-      method: "POST",
-      data: { sessionId, answers: Array.isArray(answers) ? answers : [] },
-      requiresAuth: true,
-    });
-  },
-
   listMySessions(pageNumber = 1, pageSize = 10, sessionType = "") {
     const search = new URLSearchParams({ PageNumber: String(pageNumber), PageSize: String(pageSize) });
     if (sessionType) search.set("sessionType", sessionType);

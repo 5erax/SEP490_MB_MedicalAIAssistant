@@ -7,7 +7,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import Constants from "expo-constants";
-import { ChevronRight, ClipboardList, FileWarning, LifeBuoy, LockKeyhole, LogOut } from "lucide-react-native";
+import { ChevronRight, ClipboardCheck, ClipboardList, FileWarning, LifeBuoy, LockKeyhole, LogOut } from "lucide-react-native";
 
 import { AppText, Card, Screen } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -17,7 +17,10 @@ import { ROUTES } from "@/src/navigation/routes";
 // Web's only entry point for Medical Records is a persistent sidebar nav
 // item (excluded from Web's own mobile bottom-nav set) — Settings is the
 // closest native equivalent to a secondary, always-reachable nav hub.
-const FEATURE_LINKS = [{ icon: ClipboardList, label: "Phân tích xét nghiệm", route: ROUTES.PATIENT.RECORDS }] as const;
+const FEATURE_LINKS = [
+  { icon: ClipboardCheck, label: "Tư vấn trước khám", route: ROUTES.PATIENT.PRE_CONSULTATION },
+  { icon: ClipboardList, label: "Phân tích xét nghiệm", route: ROUTES.PATIENT.RECORDS },
+] as const;
 
 const LEGAL_LINKS = [
   { icon: LifeBuoy, label: "Trung tâm hỗ trợ", route: ROUTES.PUBLIC.SUPPORT },

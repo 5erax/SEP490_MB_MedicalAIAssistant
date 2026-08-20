@@ -13,6 +13,7 @@ type ResultPanelProps = {
   locationStatus: LocationStatus;
   onRequestLocation: () => void;
   onOpenMap: () => void;
+  onPrepareConsultation: () => void;
   onNewSymptom: () => void;
 };
 
@@ -39,7 +40,7 @@ function FacilityRow({ facility, index, department, userLocation }: { facility: 
   );
 }
 
-export function ResultPanel({ result, userLocation, locationStatus, onRequestLocation, onOpenMap, onNewSymptom }: ResultPanelProps) {
+export function ResultPanel({ result, userLocation, locationStatus, onRequestLocation, onOpenMap, onPrepareConsultation, onNewSymptom }: ResultPanelProps) {
   const department = getRecommendedDepartment(result);
   const facilities = sortRecommendedFacilities(result, userLocation);
   const confidence = confidencePercent(department?.confidenceScore);
@@ -141,6 +142,12 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           </View>
         )}
       </Card>
+
+      {department?.departmentId ? (
+        <Button fullWidth onPress={onPrepareConsultation}>
+          Chuẩn bị câu hỏi trước khi đi khám
+        </Button>
+      ) : null}
 
       <Button variant="secondary" fullWidth onPress={onNewSymptom}>
         Nhập triệu chứng mới

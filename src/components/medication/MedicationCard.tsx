@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import { Pencil, Trash2 } from "lucide-react-native";
+import { BellOff, Pencil, Trash2 } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -9,11 +9,22 @@ import { formatMedicationDateRange } from "@/src/utils/medicationValidation";
 type MedicationCardProps = {
   medication: UserMedication;
   removing: boolean;
+  loadingDetail: boolean;
+  updatingReminder: boolean;
   onEdit: () => void;
   onRemove: () => void;
+  onDisableReminder: () => void;
 };
 
-export function MedicationCard({ medication, removing, onEdit, onRemove }: MedicationCardProps) {
+export function MedicationCard({
+  medication,
+  removing,
+  loadingDetail,
+  updatingReminder,
+  onEdit,
+  onRemove,
+  onDisableReminder,
+}: MedicationCardProps) {
   const reminderTimes = (medication.reminderTimes ?? [])
     .map((entry) => (entry?.timeOfDay ? String(entry.timeOfDay).slice(0, 5) : ""))
     .filter(Boolean);
@@ -45,10 +56,18 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
       ) : null}
 
       <View style={styles.actions}>
-        <Button variant="secondary" size="sm" onPress={onEdit} style={styles.actionButton}>
+        {medication.isReminderEnabled ? (
+          <Button variant="secondary" size="sm" onPress={onDisableReminder} disabled={updatingReminder} style={styles.actionButton}>
+            <View style={styles.actionInline}>
+              <BellOff size={15} color={colors.ink} />
+              <AppText variant="bodyStrong">{updatingReminder ? "Đang tắt..." : "Tắt nhắc"}</AppText>
+            </View>
+          </Button>
+        ) : null}
+        <Button variant="secondary" size="sm" onPress={onEdit} disabled={loadingDetail} style={styles.actionButton}>
           <View style={styles.actionInline}>
             <Pencil size={15} color={colors.ink} />
-            <AppText variant="bodyStrong">Sửa</AppText>
+            <AppText variant="bodyStrong">{loadingDetail ? "Đang tải..." : "Sửa"}</AppText>
           </View>
         </Button>
         <Button variant="danger" size="sm" onPress={onRemove} disabled={removing} style={styles.actionButton}>

@@ -8,6 +8,10 @@ export const userMedicationsApi = {
     return apiRequest<UserMedication[]>(ENDPOINTS.USER_MEDICATIONS.BASE, { requiresAuth: true });
   },
 
+  get(id: string) {
+    return apiRequest<UserMedication>(ENDPOINTS.USER_MEDICATIONS.BY_ID(id), { requiresAuth: true });
+  },
+
   create(payload: UserMedicationPayload) {
     return apiRequest<UserMedication>(ENDPOINTS.USER_MEDICATIONS.BASE, {
       method: "POST",
@@ -26,5 +30,13 @@ export const userMedicationsApi = {
 
   remove(id: string) {
     return apiRequest(ENDPOINTS.USER_MEDICATIONS.BY_ID(id), { method: "DELETE", requiresAuth: true });
+  },
+
+  replaceReminders(id: string, payload: Pick<UserMedicationPayload, "isReminderEnabled" | "reminderTimes">) {
+    return apiRequest<UserMedication>(ENDPOINTS.USER_MEDICATIONS.REMINDERS(id), {
+      method: "PUT",
+      data: payload,
+      requiresAuth: true,
+    });
   },
 };

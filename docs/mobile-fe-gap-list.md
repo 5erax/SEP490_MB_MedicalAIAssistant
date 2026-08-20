@@ -39,10 +39,19 @@ This file tracks the USER features that Mobile still needs to reach functional p
 
 ## Partial / Needs Resync
 
-- [ ] AI Consultation / Chat
-  - Mobile has the core premium chatbot.
-  - Web has richer assessment and consultation-session flows.
-  - Need to resync quota handling, session metadata, result states, error states, and navigation.
+- [x] AI Consultation / Chat — consultation-session parity completed on 2026-08-20.
+  - Core premium chatbot remains unchanged.
+  - Added the authenticated pre-consultation journey: select a department,
+    carry symptom/facility context from specialty intake, choose an expected
+    appointment time, generate doctor questions, register a reminder, complete
+    the session, and view checklist/question summaries and history.
+  - APIs integrated:
+    - `POST /api/consultation-sessions/generate-questions-for-consultant-session`
+    - `GET /api/consultation-sessions/my-sessions`
+    - `GET /api/consultation-sessions/{sessionId}`
+    - `POST /api/consultation-sessions/{sessionId}/register-reminder`
+    - `GET /api/consultation-sessions/{sessionId}/summary`
+    - `POST /api/consultation-sessions/{sessionId}/complete`
 
 - [x] Subscription / Pricing / Usage — done, PR #28.
   - Profile's "Gói dịch vụ" tab now shows per-feature quota cards from
@@ -61,12 +70,12 @@ This file tracks the USER features that Mobile still needs to reach functional p
     since the auto-reconcile payment-result/return page was never built
     (PayOS can't deep-link into the app without backend config).
 
-- [ ] Medication
-  - Mobile has medication CRUD basics.
-  - Need to confirm and complete medication detail and reminder replacement parity.
-  - APIs/flows to verify:
+- [x] Medication detail and reminder replacement — completed on 2026-08-20.
+  - Edit now loads the owned medication detail before opening the form.
+  - Active reminders can be disabled without deleting the medication.
+  - APIs integrated:
     - `GET /api/user-medications/{id}`
-    - Replace/update reminders flow from Web.
+    - `PUT /api/user-medications/{id}/reminders`
 
 - [ ] Google Sign-In
   - Mobile has partial auth service support.
@@ -85,6 +94,6 @@ This file tracks the USER features that Mobile still needs to reach functional p
 1. ~~Medical Records / Lab Tests~~ — done, PR #26.
 2. ~~Recovery Plan~~ — done, PR #27 (realtime sync deliberately skipped).
 3. ~~Subscription / Usage / Payment resync~~ — done, PR #28.
-4. Medication detail and reminders parity
-5. AI Consultation resync
+4. ~~Medication detail and reminders parity~~ — done.
+5. ~~AI Consultation resync~~ — consultation-session journey done.
 6. Google Sign-In native configuration

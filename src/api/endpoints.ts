@@ -20,6 +20,7 @@ const LAB_TESTS_BASE = "/api/lab-tests";
 const SUBSCRIPTION_USAGE_BASE = "/api/me/subscription-usage";
 const RECOVERY_PLAN_REQUESTS_BASE = "/api/recovery-plan-requests";
 const RECOVERY_PLANS_BASE = "/api/recovery-plans";
+const CONSULTATION_SESSIONS_BASE = "/api/consultation-sessions";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -59,9 +60,16 @@ export const ENDPOINTS = {
   SYMPTOM_ANALYSIS: {
     SUGGEST_CLINICAL_QUESTIONS: `${SYMPTOM_ANALYSIS_BASE}/suggest-clinical-questions`,
     SUBMIT_CLINICAL_QUESTION_ANSWERS: `${SYMPTOM_ANALYSIS_BASE}/submit-clinical-question-answers`,
-    SUBMIT_DIAGNOSIS: `${SYMPTOM_ANALYSIS_BASE}/submit-diagnosis`,
     MY_SESSIONS: `${SYMPTOM_ANALYSIS_BASE}/my-sessions`,
     BY_SESSION: (sessionId: string) => byId(SYMPTOM_ANALYSIS_BASE, sessionId),
+  },
+  CONSULTATION_SESSIONS: {
+    GENERATE_QUESTIONS: `${CONSULTATION_SESSIONS_BASE}/generate-questions-for-consultant-session`,
+    MY_SESSIONS: `${CONSULTATION_SESSIONS_BASE}/my-sessions`,
+    BY_ID: (sessionId: string) => byId(CONSULTATION_SESSIONS_BASE, sessionId),
+    REGISTER_REMINDER: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/register-reminder`,
+    SUMMARY: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/summary`,
+    COMPLETE: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/complete`,
   },
   DOCTORS: {
     BASE: DOCTORS_BASE,

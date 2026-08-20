@@ -1,5 +1,46 @@
 # Mobile Progress Log - MediMate AI User Scope
 
+## 2026-08-20 - Important Patient Flow Completion
+
+Branch: `codex/mobile-important-flows`
+
+Modules: Pre-consultation, medication parity, live Swagger contract cleanup.
+
+Completed:
+
+- Added a native pre-consultation screen linked from Settings and directly
+  from the specialty recommendation result.
+- Preserved department, facility, and symptom context during the handoff.
+- Added question generation with processing polling, appointment date/time,
+  reminder registration, completion, checklist/question summary, and history.
+- Added medication detail loading before edit and a safe reminder-disable
+  action that keeps the medication record.
+- Removed the unused `/api/symptom-analysis/submit-diagnosis` client endpoint;
+  it is not present in the production Swagger contract on 2026-08-20.
+
+APIs integrated:
+
+- `POST /api/consultation-sessions/generate-questions-for-consultant-session`
+- `GET /api/consultation-sessions/my-sessions`
+- `GET /api/consultation-sessions/{sessionId}`
+- `POST /api/consultation-sessions/{sessionId}/register-reminder`
+- `GET /api/consultation-sessions/{sessionId}/summary`
+- `POST /api/consultation-sessions/{sessionId}/complete`
+- `GET /api/user-medications/{id}`
+- `PUT /api/user-medications/{id}/reminders`
+
+Verification:
+
+- `tsc --noEmit`
+- ESLint across the app
+- Expo web static export, including `/pre-consultation`
+- `git diff --check`
+
+Remaining external setup:
+
+- Native Google Sign-In still requires platform client IDs and provider
+  configuration; it cannot be completed safely from source/Swagger alone.
+
 ## 2026-08-03 - Native Map Tile And Performance Audit
 
 Branch: `main`

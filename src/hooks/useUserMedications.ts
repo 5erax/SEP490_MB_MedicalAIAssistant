@@ -27,6 +27,8 @@ export function useUserMedications() {
   const [formErrors, setFormErrors] = useState<MedicationFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
+  const [updatingReminderId, setUpdatingReminderId] = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -56,11 +58,21 @@ export function useUserMedications() {
     setFormVisible(true);
   }
 
-  function openEditForm(medication: UserMedication) {
-    setEditingId(medication.id);
-    setForm(toMedicationFormState(medication));
-    setFormErrors({});
-    setFormVisible(true);
+  async function openEditForm(medication: UserMedication) {
+    setLoadingDetailId(medication.id);
+    try {
+      const response = (await userMedicationsApi.get(medication.id)) as { data?: UserMedication };
+      const detail = response?.data ?? medication;
+      setMedications((current) => current.map((item) => (item.id === detail.id ? detail : item)));
+      setEditingId(detail.id);
+      setForm(toMedicationFormState(detail));
+      setFormErrors({});
+      setFormVisible(true);
+    } catch (error) {
+      setListError(getMedicationErrorMessage(error, "Không thể tải chi tiết thuốc. Vui lòng thử lại."));
+    } finally {
+      setLoadingDetailId(null);
+    }
   }
 
   function closeForm() {
@@ -130,6 +142,28 @@ export function useUserMedications() {
     }
   }
 
+  async function disableReminders(medication: UserMedication) {
+    setUpdatingReminderId(medication.id);
+    try {
+      const reminderTimes = (medication.reminderTimes ?? [])
+        .map((entry) => (entry?.timeOfDay ? String(entry.timeOfDay).slice(0, 8) : ""))
+        .filter(Boolean);
+      await userMedicationsApi.replaceReminders(medication.id, {
+        isReminderEnabled: false,
+        reminderTimes,
+      });
+      setMedications((current) =>
+        current.map((item) => (item.id === medication.id ? { ...item, isReminderEnabled: false } : item)),
+      );
+      return "success" as const;
+    } catch (error) {
+      setListError(getMedicationErrorMessage(error, "Không thể tắt lịch nhắc. Vui lòng thử lại."));
+      return "error" as const;
+    } finally {
+      setUpdatingReminderId(null);
+    }
+  }
+
   return {
     medications,
     loading,
@@ -142,6 +176,8 @@ export function useUserMedications() {
     formErrors,
     submitting,
     removingId,
+    loadingDetailId,
+    updatingReminderId,
     openCreateForm,
     openEditForm,
     closeForm,
@@ -150,5 +186,6 @@ export function useUserMedications() {
     removeReminderTime,
     submit,
     remove,
+    disableReminders,
   };
 }
