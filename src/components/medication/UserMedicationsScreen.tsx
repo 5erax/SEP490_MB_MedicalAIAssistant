@@ -1,6 +1,6 @@
 // Ported from Web's UserMedicationsPage.jsx — real CRUD feature backed by
 // /api/user-medications (access: "auth", not premium-gated on Web).
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { Plus } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
@@ -165,10 +165,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.teal,
     backgroundColor: colors.teal,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.24,
-    shadowRadius: 20,
-    elevation: 5,
+    ...Platform.select({
+      web: { boxShadow: "0 12px 20px rgba(8,127,140,0.24)" },
+      default: { shadowColor: colors.teal, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.24, shadowRadius: 20, elevation: 5 },
+    }),
   },
 });

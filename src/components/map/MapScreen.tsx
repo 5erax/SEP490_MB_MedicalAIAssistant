@@ -151,7 +151,7 @@ export function MapScreen() {
         />
       </View>
 
-      <View pointerEvents="box-none" style={styles.floatingActions}>
+      <View style={styles.floatingActions}>
         <Button
           variant="secondary"
           size="sm"
@@ -383,6 +383,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   floatingActions: {
+    pointerEvents: "box-none",
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,

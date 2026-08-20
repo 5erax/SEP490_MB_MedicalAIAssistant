@@ -329,7 +329,7 @@ export function FacilityMapViewMapLibre({
       </Map>
 
       {status === "loading" ? (
-        <View pointerEvents="none" style={styles.loadingOverlay}>
+        <View style={styles.loadingOverlay}>
           <ActivityIndicator color={colors.teal} />
           <AppText variant="caption" color={colors.muted}>
             Đang tải bản đồ…
@@ -357,6 +357,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   loadingOverlay: {
+    pointerEvents: "none",
     position: "absolute",
     top: spacing.lg,
     left: spacing.lg,

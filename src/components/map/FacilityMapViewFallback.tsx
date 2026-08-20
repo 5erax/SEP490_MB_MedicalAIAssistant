@@ -359,7 +359,6 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
             ))}
             {projectedUserLocation ? (
               <View
-                pointerEvents="none"
                 style={[styles.userMarker, { left: projectedUserLocation.x - 10, top: projectedUserLocation.y - 10 }]}
               >
                 <View style={styles.userDot} />
@@ -369,7 +368,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
         </GestureDetector>
       ) : null}
 
-      <View pointerEvents="none" style={styles.badge}>
+      <View style={styles.badge}>
         <Maximize2 size={14} color={colors.teal} />
         <AppText variant="caption" color={colors.teal}>
           Bản đồ Expo Go
@@ -398,7 +397,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
       ) : null}
 
       {selectedFacility ? (
-        <View style={styles.selectedLabel} pointerEvents="none">
+        <View style={styles.selectedLabel}>
           <AppText variant="caption" color={colors.ink} numberOfLines={1}>
             {selectedFacility.facilityName}
           </AppText>
@@ -439,6 +438,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   badge: {
+    pointerEvents: "none",
     position: "absolute",
     top: spacing.md,
     left: spacing.md,
@@ -533,6 +533,7 @@ const styles = StyleSheet.create({
     lineHeight: 10,
   },
   selectedLabel: {
+    pointerEvents: "none",
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,
@@ -545,6 +546,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   userMarker: {
+    pointerEvents: "none",
     position: "absolute",
     width: 20,
     height: 20,

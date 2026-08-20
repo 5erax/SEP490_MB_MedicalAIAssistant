@@ -64,7 +64,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <View pointerEvents="box-none" style={[styles.host, { top: insets.top + spacing.sm }]}>
+      <View style={[styles.host, { top: insets.top + spacing.sm }]}>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} leaving={toast.leaving} onDismiss={dismissToast} onLeft={removeToast} />
         ))}
@@ -84,6 +84,7 @@ export function useToast() {
 
 const styles = StyleSheet.create({
   host: {
+    pointerEvents: "box-none",
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,

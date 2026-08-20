@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Pressable, PressableProps, StyleSheet, TextStyle, ViewStyle } from "react-native";
+import { Platform, Pressable, PressableProps, StyleSheet, TextStyle, ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
 
 import { colors, radius, spacing, typography } from "@/src/theme/tokens";
@@ -96,11 +96,10 @@ const styles = StyleSheet.create({
   primary: {
     borderColor: colors.teal,
     backgroundColor: colors.teal,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: 3,
+    ...Platform.select({
+      web: { boxShadow: "0 10px 18px rgba(8,127,140,0.20)" },
+      default: { shadowColor: colors.teal, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 18, elevation: 3 },
+    }),
   },
   secondary: {
     backgroundColor: colors.paper,
@@ -112,11 +111,10 @@ const styles = StyleSheet.create({
   dark: {
     backgroundColor: colors.ink,
     borderColor: colors.ink,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    elevation: 3,
+    ...Platform.select({
+      web: { boxShadow: "0 10px 18px rgba(17,20,18,0.16)" },
+      default: { shadowColor: colors.ink, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.16, shadowRadius: 18, elevation: 3 },
+    }),
   },
   danger: {
     backgroundColor: colors.danger,

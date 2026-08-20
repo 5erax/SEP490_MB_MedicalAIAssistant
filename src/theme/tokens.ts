@@ -103,20 +103,14 @@ export const typography = {
 } as const;
 
 export const shadows = {
-  hard: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-  },
-  soft: {
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.08,
-    shadowRadius: 30,
-    elevation: 3,
-  },
+  hard: Platform.select({
+    web: { boxShadow: `4px 4px 0 ${colors.ink}` },
+    default: { shadowColor: colors.ink, shadowOffset: { width: 4, height: 4 }, shadowOpacity: 1, shadowRadius: 0, elevation: 4 },
+  })!,
+  soft: Platform.select({
+    web: { boxShadow: "0 18px 30px rgba(17,20,18,0.08)" },
+    default: { shadowColor: colors.ink, shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.08, shadowRadius: 30, elevation: 3 },
+  })!,
 } as const;
 
 export const appTheme = {
