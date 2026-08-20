@@ -23,6 +23,11 @@ const RECOVERY_PLANS_BASE = "/api/recovery-plans";
 const CONSULTATION_SESSIONS_BASE = "/api/consultation-sessions";
 const DOCTOR_RECOVERY_REQUESTS_BASE = "/api/doctor/recovery-plan-requests";
 const DOCTOR_RECOVERY_PLANS_BASE = "/api/doctor/recovery-plans";
+const ICD_CHAPTERS_BASE = "/api/icd-chapters";
+const CLINICAL_QUESTIONS_BASE = "/api/clinical-questions";
+const CHECKLIST_ITEMS_BASE = "/api/checklist-items";
+const LAB_INDICATORS_BASE = "/api/lab-indicators";
+const DOCTOR_INVITATIONS_BASE = "/api/admin/doctor-invitations";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -126,6 +131,9 @@ export const ENDPOINTS = {
     ANALYZE: `${LAB_TESTS_BASE}/analyze`,
     MY_SESSIONS: `${LAB_TESTS_BASE}/my-sessions`,
     BY_SESSION: (sessionId: string) => byId(LAB_TESTS_BASE, sessionId),
+    OCR_EXTRACTS: (sessionId: string) => `${byId(LAB_TESTS_BASE, sessionId)}/ocr-extracts`,
+    TREND_INDICATORS: `${LAB_TESTS_BASE}/analytics/indicators`,
+    INDICATOR_TREND: (indicatorId: string) => `${LAB_TESTS_BASE}/analytics/indicators/${encodeURIComponent(indicatorId)}/trend`,
   },
   SUBSCRIPTION_USAGE: {
     ME: SUBSCRIPTION_USAGE_BASE,
@@ -141,6 +149,8 @@ export const ENDPOINTS = {
     ME: `${RECOVERY_PLANS_BASE}/me`,
     BY_ID: (planId: string) => byId(RECOVERY_PLANS_BASE, planId),
     START: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/start`,
+    CANCEL: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/cancel`,
+    FEEDBACK: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/feedback`,
   },
   DOCTOR_RECOVERY_REQUESTS: {
     OPEN: `${DOCTOR_RECOVERY_REQUESTS_BASE}/open`,
@@ -156,7 +166,28 @@ export const ENDPOINTS = {
   },
   DOCTOR_RECOVERY_PLANS: {
     BY_ID: (planId: string) => byId(DOCTOR_RECOVERY_PLANS_BASE, planId),
+    PHASES: (planId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases`,
+    PHASE: (planId: string, phaseId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases/${encodeURIComponent(phaseId)}`,
+    NUTRIENTS: (planId: string, phaseId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases/${encodeURIComponent(phaseId)}/nutrients`,
+    NUTRIENT: (planId: string, phaseId: string, nutrientId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases/${encodeURIComponent(phaseId)}/nutrients/${encodeURIComponent(nutrientId)}`,
+    FOODS: (planId: string, phaseId: string, nutrientId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases/${encodeURIComponent(phaseId)}/nutrients/${encodeURIComponent(nutrientId)}/foods`,
+    FOOD: (planId: string, phaseId: string, nutrientId: string, foodId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/phases/${encodeURIComponent(phaseId)}/nutrients/${encodeURIComponent(nutrientId)}/foods/${encodeURIComponent(foodId)}`,
     PUBLISH: (planId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/publish`,
+    FEEDBACK_ANALYTICS: `${DOCTOR_RECOVERY_PLANS_BASE}/analytics/feedback`,
+  },
+  ADMIN_MODULES: {
+    USERS: USERS_BASE,
+    DOCTORS: DOCTORS_BASE,
+    DOCTOR_INVITATIONS: DOCTOR_INVITATIONS_BASE,
+    FACILITIES: FACILITIES_BASE,
+    DEPARTMENTS: DEPARTMENTS_BASE,
+    ICD_CHAPTERS: ICD_CHAPTERS_BASE,
+    CLINICAL_QUESTIONS: CLINICAL_QUESTIONS_BASE,
+    CHECKLIST_ITEMS: CHECKLIST_ITEMS_BASE,
+    LAB_INDICATORS: LAB_INDICATORS_BASE,
+    AI_CONFIGS: AI_CONFIGS_BASE,
+    SUBSCRIPTION_PLANS: SUBSCRIPTION_PLANS_BASE,
+    PAYMENTS: PAYMENTS_BASE,
   },
 } as const;
 

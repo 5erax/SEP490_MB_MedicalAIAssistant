@@ -1,0 +1,14 @@
+appId: com.medimate.medicalaiassistant
+name: Doctor recovery queue smoke
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${DOCTOR_EMAIL}
+- tapOn: "Mật khẩu"
+- inputText: ${DOCTOR_PASSWORD}
+- tapOn: "Đăng nhập"
+- assertVisible: "Không gian bác sĩ"
+- assertVisible: "Hàng đợi chung"
+- tapOn: "Yêu cầu của tôi"
+- assertVisible: "Yêu cầu của tôi"

@@ -9,7 +9,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { authService } from "@/src/services/authService";
 import { labTestsApi } from "@/src/services/labTestService";
 import { PickedDocument, uploadMedicalDocumentToCloudinary, validateMedicalDocument } from "@/src/services/cloudinaryUploadService";
-import { LabSessionStatus, LabTestSession } from "@/src/types/labTest";
+import { LabOcrExtract, LabSessionStatus, LabTestSession } from "@/src/types/labTest";
 import { UserProfile } from "@/src/types/user";
 import { calculateAgeAtTest, genderToAnalysisGender, todayInputValue } from "@/src/utils/labTestPresentation";
 
@@ -46,6 +46,7 @@ export function useMedicalRecords() {
   const [selectedSession, setSelectedSession] = useState<LabTestSession | null>(null);
   const [detailState, setDetailState] = useState<"idle" | SectionState>("idle");
   const [detailError, setDetailError] = useState("");
+  const [ocrExtracts, setOcrExtracts] = useState<LabOcrExtract[]>([]);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -89,8 +90,12 @@ export function useMedicalRecords() {
     if (!quiet) setDetailState("loading");
     setDetailError("");
     try {
-      const response = await labTestsApi.get(sessionId);
+      const [response, extractsResponse] = await Promise.all([
+        labTestsApi.get(sessionId),
+        labTestsApi.ocrExtracts(sessionId).catch(() => ({ data: [] as LabOcrExtract[] })),
+      ]);
       setSelectedSession(response.data ?? null);
+      setOcrExtracts(extractsResponse.data ?? []);
       setDetailState("ready");
     } catch (error) {
       if (!quiet) {
@@ -127,6 +132,7 @@ export function useMedicalRecords() {
     setSelectedSession(null);
     setDetailState("idle");
     setDetailError("");
+    setOcrExtracts([]);
   }
 
   async function pickDocument() {
@@ -239,6 +245,7 @@ export function useMedicalRecords() {
     reloadHistory: () => loadHistory(historyPage, historyFilter),
 
     selectedSession,
+    ocrExtracts,
     detailState,
     detailError,
     selectSession,

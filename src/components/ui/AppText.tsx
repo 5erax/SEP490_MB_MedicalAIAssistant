@@ -13,9 +13,11 @@ type AppTextProps = TextProps & {
 };
 
 export function AppText({ children, variant = "body", color, center, style, ...props }: AppTextProps) {
+  const accessibilityRole = props.accessibilityRole ?? (["h1", "h2", "h3"].includes(variant) ? "header" : undefined);
   return (
     <Text
       {...props}
+      accessibilityRole={accessibilityRole}
       style={[
         styles.base,
         typography[variant] as TextStyle,

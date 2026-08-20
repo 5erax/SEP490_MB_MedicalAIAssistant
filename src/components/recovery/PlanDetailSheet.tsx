@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { ChevronDown, ChevronUp, Moon, ShieldAlert, X } from "lucide-react-native";
 
-import { AppText, Badge, Button, LoadingState } from "@/src/components/ui";
+import { ApiMessage, AppText, Badge, Button, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { RecoveryPlan, RecoveryPlanPhase } from "@/src/types/recoveryPlan";
 import { formatDateOnly, PLAN_STATUS } from "@/src/utils/recoveryPlanPresentation";
@@ -78,12 +78,34 @@ type PlanDetailSheetProps = {
   plan: RecoveryPlan | null;
   state: "idle" | "loading" | "ready" | "error";
   starting: boolean;
+  updating: boolean;
   onClose: () => void;
   onStart: (planId: string) => void;
+  onCancel: (planId: string, reason: string) => Promise<"success" | "error">;
+  onFeedback: (planId: string, rating: number, note: string) => Promise<"success" | "error" | "invalid">;
 };
 
-export function PlanDetailSheet({ visible, plan, state, starting, onClose, onStart }: PlanDetailSheetProps) {
+export function PlanDetailSheet({ visible, plan, state, starting, updating, onClose, onStart, onCancel, onFeedback }: PlanDetailSheetProps) {
+  const [rating, setRating] = useState(0);
+  const [feedbackNote, setFeedbackNote] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [formMessage, setFormMessage] = useState("");
   const status = plan ? PLAN_STATUS[plan.status] : null;
+
+  function confirmCancel() {
+    if (!plan) return;
+    Alert.alert("Hủy kế hoạch phục hồi?", "Tiến trình hiện tại sẽ dừng. Thao tác này được xử lý và xác nhận bởi máy chủ.", [
+      { text: "Giữ kế hoạch", style: "cancel" },
+      { text: "Hủy kế hoạch", style: "destructive", onPress: async () => { const result = await onCancel(plan.id, cancelReason); if (result === "success") setCancelReason(""); } },
+    ]);
+  }
+
+  async function sendFeedback() {
+    if (!plan) return;
+    const result = await onFeedback(plan.id, rating, feedbackNote);
+    if (result === "success") { setFormMessage("Đánh giá đã được lưu trên hệ thống."); setFeedbackNote(""); }
+    else if (result === "invalid") setFormMessage("Vui lòng chọn từ 1 đến 5 sao và kiểm tra nội dung nhận xét.");
+  }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -153,6 +175,24 @@ export function PlanDetailSheet({ visible, plan, state, starting, onClose, onSta
                 <Button fullWidth disabled={starting} onPress={() => onStart(plan.id)}>
                   {starting ? "Đang bắt đầu..." : "Bắt đầu kế hoạch"}
                 </Button>
+              ) : null}
+
+              {plan.status === "active" ? (
+                <View style={styles.actionCard}>
+                  <AppText variant="h3">Dừng kế hoạch</AppText>
+                  <TextField label="Lý do (không bắt buộc)" value={cancelReason} onChangeText={setCancelReason} maxLength={500} editable={!updating} />
+                  <Button variant="danger" disabled={updating} onPress={confirmCancel}>{updating ? "Đang xử lý..." : "Hủy kế hoạch"}</Button>
+                </View>
+              ) : null}
+
+              {plan.status === "active" || plan.status === "completed" ? (
+                <View style={styles.actionCard}>
+                  <AppText variant="h3">Đánh giá kế hoạch</AppText>
+                  <View accessibilityRole="radiogroup" style={styles.ratingRow}>{[1, 2, 3, 4, 5].map((star) => <Pressable key={star} accessibilityRole="radio" accessibilityLabel={`${star} sao`} accessibilityState={{ checked: rating === star }} disabled={updating} onPress={() => setRating(star)} style={[styles.ratingButton, rating === star && styles.ratingButtonSelected]}><AppText color={rating === star ? colors.white : colors.ink}>{star} ★</AppText></Pressable>)}</View>
+                  <TextField label="Nhận xét (không bắt buộc)" value={feedbackNote} onChangeText={setFeedbackNote} maxLength={2000} multiline editable={!updating} />
+                  <ApiMessage type="success" message={formMessage} />
+                  <Button disabled={updating || rating === 0} onPress={sendFeedback}>{updating ? "Đang gửi..." : "Gửi đánh giá"}</Button>
+                </View>
               ) : null}
             </>
           ) : null}
@@ -264,4 +304,8 @@ const styles = StyleSheet.create({
   recheckText: {
     flex: 1,
   },
+  actionCard: { gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper, padding: spacing.md },
+  ratingRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  ratingButton: { minWidth: 48, minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.md },
+  ratingButtonSelected: { backgroundColor: colors.teal, borderColor: colors.teal },
 });

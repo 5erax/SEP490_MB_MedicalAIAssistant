@@ -1,0 +1,17 @@
+appId: com.medimate.medicalaiassistant
+name: Admin representative catalog form
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${ADMIN_EMAIL}
+- tapOn: "Mật khẩu"
+- inputText: ${ADMIN_PASSWORD}
+- tapOn: "Đăng nhập"
+- assertVisible: "Tổng quan hệ thống"
+- scrollUntilVisible:
+    element: "Chuyên khoa"
+    direction: DOWN
+- tapOn: "Thêm"
+- assertVisible: "Thêm chuyên khoa"
+- assertVisible: "Lưu chuyên khoa"

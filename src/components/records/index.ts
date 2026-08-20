@@ -3,3 +3,4 @@ export * from "./ResultCard";
 export * from "./SessionCard";
 export * from "./SessionDetailSheet";
 export * from "./UploadRecordSheet";
+export * from "./LabTrendsPanel";

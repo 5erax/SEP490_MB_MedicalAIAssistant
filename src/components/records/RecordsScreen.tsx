@@ -15,6 +15,7 @@ import { LabSessionStatus } from "@/src/types/labTest";
 import { SessionCard } from "./SessionCard";
 import { SessionDetailSheet } from "./SessionDetailSheet";
 import { UploadRecordSheet } from "./UploadRecordSheet";
+import { LabTrendsPanel } from "./LabTrendsPanel";
 
 const FILTERS: { value: LabSessionStatus | ""; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -45,6 +46,7 @@ export function RecordsScreen() {
     historyInfo,
     reloadHistory,
     selectedSession,
+    ocrExtracts,
     detailState,
     detailError,
     selectSession,
@@ -107,6 +109,8 @@ export function RecordsScreen() {
         })}
       </ScrollView>
 
+      <View style={styles.trends}><LabTrendsPanel /></View>
+
       {historyState === "loading" && sessions.length === 0 ? (
         <View style={styles.padded}>
           <SkeletonGroup lines={5} />
@@ -162,6 +166,7 @@ export function RecordsScreen() {
       <SessionDetailSheet
         visible={detailVisible}
         session={selectedSession}
+        ocrExtracts={ocrExtracts}
         state={detailState}
         error={detailError}
         onClose={() => {
@@ -203,6 +208,7 @@ const styles = StyleSheet.create({
   padded: {
     padding: spacing.lg,
   },
+  trends: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
   listContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing["4xl"],

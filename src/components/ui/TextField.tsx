@@ -20,6 +20,9 @@ export function TextField({ label, error, hint, style, onBlur, onFocus, ...props
       </AppText>
       <TextInput
         {...props}
+        accessibilityLabel={props.accessibilityLabel ?? label}
+        accessibilityHint={props.accessibilityHint ?? error ?? hint}
+        accessibilityState={{ ...props.accessibilityState, disabled: props.editable === false }}
         onFocus={(event) => {
           setFocused(true);
           onFocus?.(event);

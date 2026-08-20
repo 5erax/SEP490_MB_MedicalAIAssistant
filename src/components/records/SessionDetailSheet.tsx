@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, ShieldAlert, X } from "lucide-react-native";
 
 import { AppText, Badge, Button, EmptyState, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
-import { LabTestSession } from "@/src/types/labTest";
+import { LabOcrExtract, LabTestSession } from "@/src/types/labTest";
 import { formatDateOnly, getSessionStatusPresentation } from "@/src/utils/labTestPresentation";
 import { ResultCard } from "./ResultCard";
 
@@ -13,13 +13,14 @@ const GENDER_LABEL: Record<string, string> = { male: "Nam", female: "Nữ" };
 type SessionDetailSheetProps = {
   visible: boolean;
   session: LabTestSession | null;
+  ocrExtracts: LabOcrExtract[];
   state: "idle" | "loading" | "ready" | "error";
   error: string;
   onClose: () => void;
   onRetry: () => void;
 };
 
-export function SessionDetailSheet({ visible, session, state, error, onClose, onRetry }: SessionDetailSheetProps) {
+export function SessionDetailSheet({ visible, session, ocrExtracts, state, error, onClose, onRetry }: SessionDetailSheetProps) {
   const [showRawText, setShowRawText] = useState(false);
   const status = session ? getSessionStatusPresentation(session.status) : null;
 
@@ -98,6 +99,14 @@ export function SessionDetailSheet({ visible, session, state, error, onClose, on
               {(session.results ?? []).map((result) => (
                 <ResultCard key={result.resultDetailId} result={result} />
               ))}
+
+              {ocrExtracts.length ? (
+                <View style={styles.rawTextGroup}>
+                  <AppText variant="h3">Dữ liệu OCR cần đối chiếu</AppText>
+                  <AppText variant="caption" color={colors.muted}>Nguồn: văn bản trích xuất từ tài liệu bạn đã tải lên. Hãy đối chiếu với phiếu gốc; OCR có thể nhận sai tên, giá trị, đơn vị hoặc khoảng tham chiếu.</AppText>
+                  {ocrExtracts.map((extract) => <View key={extract.ocrExtractId} style={styles.extractRow}><AppText variant="bodyStrong">{extract.extractedTestName || `Dòng ${extract.rowIndex + 1}`}</AppText><AppText color={colors.muted}>{[extract.extractedValue, extract.extractedUnit, extract.extractedReferenceText].filter(Boolean).join(" · ") || "Không đọc được giá trị"}</AppText></View>)}
+                </View>
+              ) : null}
 
               {session.rawOcrText ? (
                 <View style={styles.rawTextGroup}>
@@ -207,6 +216,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
+  extractRow: { gap: spacing.xs, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paperSoft, padding: spacing.md },
   disclaimer: {
     flexDirection: "row",
     alignItems: "flex-start",

@@ -1,0 +1,15 @@
+appId: com.medimate.medicalaiassistant
+name: Auth login and logout
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Đăng nhập"
+- tapOn: "Email"
+- inputText: ${PATIENT_EMAIL}
+- tapOn: "Mật khẩu"
+- inputText: ${PATIENT_PASSWORD}
+- tapOn: "Đăng nhập"
+- assertVisible: "MediMate AI"
+- tapOn: "Cài đặt"
+- tapOn: "Đăng xuất"
+- assertVisible: "Đăng nhập"

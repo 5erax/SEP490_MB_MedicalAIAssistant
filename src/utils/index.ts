@@ -1,4 +1,5 @@
 export * from "./errors";
+export * from "./doctorRecovery";
 export * from "./format";
 export * from "./jwt";
 export * from "./pagination";

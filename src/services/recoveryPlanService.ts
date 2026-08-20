@@ -66,4 +66,20 @@ export const recoveryPlansApi = {
   start(planId: string) {
     return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.START(planId), { method: "POST", requiresAuth: true });
   },
+
+  cancel(planId: string, cancellationReasonCode: string | null, cancellationReason: string | null) {
+    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.CANCEL(planId), {
+      method: "POST",
+      data: { cancellationReasonCode, cancellationReason },
+      requiresAuth: true,
+    });
+  },
+
+  feedback(planId: string, rating: number, note: string | null) {
+    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.FEEDBACK(planId), {
+      method: "POST",
+      data: { rating, note },
+      requiresAuth: true,
+    });
+  },
 };

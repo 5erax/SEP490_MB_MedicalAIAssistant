@@ -108,6 +108,18 @@ export function RecoveryPlanScreen() {
     }
   }
 
+  async function handleCancelPlan(planId: string, reason: string) {
+    const result = await recovery.cancelPlan(planId, reason);
+    showToast({ type: result.status === "success" ? "success" : "error", message: result.status === "success" ? "Đã hủy kế hoạch phục hồi." : result.message });
+    return result.status;
+  }
+
+  async function handlePlanFeedback(planId: string, rating: number, note: string) {
+    const result = await recovery.submitPlanFeedback(planId, rating, note);
+    showToast({ type: result.status === "success" ? "success" : "error", message: result.status === "success" ? "Cảm ơn bạn đã gửi đánh giá." : result.message });
+    return result.status;
+  }
+
   async function handleRefresh() {
     setRefreshing(true);
     recovery.reloadAll();
@@ -223,11 +235,14 @@ export function RecoveryPlanScreen() {
         plan={recovery.selectedPlan}
         state={recovery.planDetailState}
         starting={Boolean(recovery.startingId)}
+        updating={recovery.updatingPlan}
         onClose={() => {
           setPlanDetailVisible(false);
           recovery.clearSelectedPlan();
         }}
         onStart={handleStartPlan}
+        onCancel={handleCancelPlan}
+        onFeedback={handlePlanFeedback}
       />
     </Screen>
   );

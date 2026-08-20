@@ -36,6 +36,7 @@ export function Button({
       accessibilityRole="button"
       {...props}
       disabled={disabled}
+      accessibilityState={{ ...props.accessibilityState, disabled: Boolean(disabled) }}
       onPress={(event) => {
         if (!disabled && variant === "primary") {
           Haptics.selectionAsync();
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   sm: {
-    minHeight: 38,
+    minHeight: 44,
     paddingHorizontal: spacing.md,
   },
   primary: {

@@ -63,3 +63,44 @@ export type AnalyzeLabTestPayload = {
   patientAgeAtTest: number;
   testDate: string;
 };
+
+export type LabOcrExtract = {
+  ocrExtractId: string;
+  testSessionId: string;
+  rowIndex: number;
+  extractedTestName?: string | null;
+  extractedValue?: string | null;
+  extractedUnit?: string | null;
+  extractedReferenceText?: string | null;
+  createdAt?: string;
+};
+
+export type LabTrendIndicator = {
+  indicatorId: string;
+  symbol?: string | null;
+  name?: string | null;
+  unit?: string | null;
+  measurementCount: number;
+  firstTestDate?: string;
+  latestTestDate?: string;
+};
+
+export type LabTrendPoint = {
+  sessionId: string;
+  testDate: string;
+  value: number;
+  status: LabResultStatus;
+  referenceMin?: number | null;
+  referenceMax?: number | null;
+  unit?: string | null;
+  deviationPercent?: number | null;
+  facilityName?: string | null;
+};
+
+export type LabIndicatorTrend = LabTrendIndicator & {
+  latestValue?: number | null;
+  previousValue?: number | null;
+  trend?: string;
+  hasMixedUnits?: boolean;
+  points?: LabTrendPoint[];
+};

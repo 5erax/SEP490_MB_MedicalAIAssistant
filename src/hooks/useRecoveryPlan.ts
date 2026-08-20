@@ -53,6 +53,7 @@ export function useRecoveryPlan() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [providingInfo, setProvidingInfo] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [updatingPlan, setUpdatingPlan] = useState(false);
 
   const loadQuota = useCallback(async () => {
     setQuotaState("loading");
@@ -242,6 +243,36 @@ export function useRecoveryPlan() {
     }
   }
 
+  async function cancelPlan(planId: string, reason: string) {
+    setUpdatingPlan(true);
+    try {
+      const response = await recoveryPlansApi.cancel(planId, "patient_request", reason.trim() || null);
+      setSelectedPlan(response.data ?? null);
+      loadPlans(plansPage);
+      return { status: "success" as const };
+    } catch (error) {
+      return { status: "error" as const, message: getRecoveryErrorMessage(errorPayload(error), "Không thể hủy kế hoạch. Vui lòng thử lại.") };
+    } finally {
+      setUpdatingPlan(false);
+    }
+  }
+
+  async function submitPlanFeedback(planId: string, rating: number, note: string) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) return { status: "invalid" as const, message: "Chọn mức đánh giá từ 1 đến 5 sao." };
+    if (note.trim().length > 2000) return { status: "invalid" as const, message: "Nhận xét không được vượt quá 2.000 ký tự." };
+    setUpdatingPlan(true);
+    try {
+      const response = await recoveryPlansApi.feedback(planId, rating, note.trim() || null);
+      setSelectedPlan(response.data ?? selectedPlan);
+      loadPlans(plansPage);
+      return { status: "success" as const };
+    } catch (error) {
+      return { status: "error" as const, message: getRecoveryErrorMessage(errorPayload(error), "Không thể gửi đánh giá. Vui lòng thử lại.") };
+    } finally {
+      setUpdatingPlan(false);
+    }
+  }
+
   return {
     quota,
     quotaState,
@@ -288,6 +319,9 @@ export function useRecoveryPlan() {
     submitMoreInformation,
     startingId,
     startPlan,
+    updatingPlan,
+    cancelPlan,
+    submitPlanFeedback,
 
     reloadAll,
   };

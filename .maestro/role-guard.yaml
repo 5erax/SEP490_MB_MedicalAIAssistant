@@ -1,0 +1,14 @@
+appId: com.medimate.medicalaiassistant
+name: Patient role guard
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: ${PATIENT_EMAIL}
+- tapOn: "Mật khẩu"
+- inputText: ${PATIENT_PASSWORD}
+- tapOn: "Đăng nhập"
+- openLink: "sep490mbmedicalaiassistant://admin/dashboard"
+- assertNotVisible: "Tổng quan hệ thống"
+- openLink: "sep490mbmedicalaiassistant://doctor/dashboard"
+- assertNotVisible: "Không gian bác sĩ"

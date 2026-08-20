@@ -1,7 +1,7 @@
 // Ported from src/services/labTestService.js (Web).
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
-import { AnalyzeLabTestPayload, LabTestSession } from "@/src/types/labTest";
+import { AnalyzeLabTestPayload, LabIndicatorTrend, LabOcrExtract, LabTestSession, LabTrendIndicator } from "@/src/types/labTest";
 
 export type LabSessionPage = {
   items: LabTestSession[];
@@ -36,5 +36,17 @@ export const labTestsApi = {
 
   get(sessionId: string) {
     return apiRequest<LabTestSession>(ENDPOINTS.LAB_TESTS.BY_SESSION(sessionId), { requiresAuth: true });
+  },
+
+  ocrExtracts(sessionId: string) {
+    return apiRequest<LabOcrExtract[]>(ENDPOINTS.LAB_TESTS.OCR_EXTRACTS(sessionId), { requiresAuth: true });
+  },
+
+  trendIndicators(from?: string, to?: string) {
+    return apiRequest<LabTrendIndicator[]>(withQuery(ENDPOINTS.LAB_TESTS.TREND_INDICATORS, { from, to }), { requiresAuth: true });
+  },
+
+  indicatorTrend(indicatorId: string, from?: string, to?: string) {
+    return apiRequest<LabIndicatorTrend>(withQuery(ENDPOINTS.LAB_TESTS.INDICATOR_TREND(indicatorId), { from, to }), { requiresAuth: true });
   },
 };
