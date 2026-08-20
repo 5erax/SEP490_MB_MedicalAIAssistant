@@ -7,6 +7,7 @@ import {
   getStoredSession,
   patchStoredSession,
   setStoredSession,
+  subscribeStoredSession,
 } from "@/src/services/sessionStorage";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -32,6 +33,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     restoreSession();
   }, [restoreSession]);
+
+  useEffect(() => subscribeStoredSession(setSessionState), []);
 
   const setSession = useCallback(async (nextSession: AuthSession) => {
     await setStoredSession(nextSession);

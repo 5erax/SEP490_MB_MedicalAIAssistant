@@ -2,6 +2,7 @@ export * from "./api";
 export * from "./auth";
 export * from "./chat";
 export * from "./doctor";
+export * from "./doctorRecovery";
 export * from "./facility";
 export * from "./subscription";
 export * from "./symptomAnalysis";

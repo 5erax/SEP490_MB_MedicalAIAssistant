@@ -90,17 +90,16 @@ File `.env.example`:
 
 ```env
 EXPO_PUBLIC_APP_ENV=development
-EXPO_PUBLIC_API_BASE_URL=http://52.77.210.243:8080
+EXPO_PUBLIC_API_BASE_URL=https://api.example.com
+MEDIMATE_ALLOW_DEV_HTTP=false
 ```
 
 Mobile đọc config qua `src/config/env.ts`.
 
-Thứ tự lấy API URL:
-
-1. `process.env.EXPO_PUBLIC_API_BASE_URL`
-2. Fallback: `http://52.77.210.243:8080`
-
-Khi đổi môi trường backend, chỉ cần tạo `.env` từ `.env.example` và thay `EXPO_PUBLIC_API_BASE_URL`.
+Mobile đọc `process.env.EXPO_PUBLIC_API_BASE_URL`; fallback chỉ là placeholder
+không thể kết nối. Preview/production sẽ dừng sớm nếu URL không dùng HTTPS.
+HTTP chỉ được phép cho development build khi đặt thêm
+`MEDIMATE_ALLOW_DEV_HTTP=true`.
 
 ## 4. API Flow
 

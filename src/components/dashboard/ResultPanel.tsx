@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, StyleSheet, View } from "react-native";
 import { MapPin } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
@@ -45,6 +45,15 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
   const facilities = sortRecommendedFacilities(result, userLocation);
   const confidence = confidencePercent(department?.confidenceScore);
 
+  async function callEmergencyServices() {
+    const phoneUrl = "tel:115";
+    if (await Linking.canOpenURL(phoneUrl)) {
+      await Linking.openURL(phoneUrl);
+      return;
+    }
+    Alert.alert("Không thể mở cuộc gọi", "Hãy gọi 115 bằng ứng dụng điện thoại hoặc nhờ người bên cạnh hỗ trợ.");
+  }
+
   return (
     <View style={styles.group}>
       <Card variant="hard" style={styles.card}>
@@ -64,9 +73,18 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
         </AppText>
         {department?.isEmergencySuggested ? (
           <View style={styles.emergencyBadge}>
-            <AppText variant="caption" color={colors.warning}>
-              Kết quả ghi nhận dấu hiệu cần được ưu tiên đánh giá tại cơ sở y tế.
+            <AppText variant="bodyStrong" color={colors.danger}>
+              Có dấu hiệu cần được đánh giá khẩn cấp
             </AppText>
+            <AppText variant="caption" color={colors.ink}>
+              Nếu đang khó thở, đau ngực, ngất, co giật hoặc tình trạng xấu nhanh, hãy gọi 115 ngay. Không chờ kết quả AI và không tự lái xe nếu không an toàn.
+            </AppText>
+            <Button variant="danger" fullWidth onPress={callEmergencyServices} accessibilityLabel="Gọi cấp cứu 115">
+              Gọi cấp cứu 115
+            </Button>
+            <Button variant="secondary" fullWidth onPress={onOpenMap}>
+              Tìm cơ sở cấp cứu gần đây
+            </Button>
           </View>
         ) : null}
         <AppText variant="caption" color={colors.subtle}>
@@ -174,8 +192,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   emergencyBadge: {
+    gap: spacing.sm,
     borderRadius: 10,
-    backgroundColor: colors.warningBg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerBg,
     padding: spacing.md,
   },
   facilityHead: {

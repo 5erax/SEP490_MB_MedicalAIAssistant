@@ -18,6 +18,7 @@ export type RegisterPayload = {
   address?: string;
   gender?: number;
   dateOfBirth?: string | null;
+  otp: string;
 };
 
 // Ported 1:1 from src/services/authService.js (Web) — normalizeAuthResponse().
@@ -59,19 +60,18 @@ export const authService = {
    * Endpoint: POST /api/authentication/register
    */
   async register(payload: RegisterPayload) {
-    const response = await apiRequest<AuthSession>(ENDPOINTS.AUTH.REGISTER, {
+    await apiRequest<UserProfile>(ENDPOINTS.AUTH.REGISTER, {
       method: "POST",
       data: payload,
     });
+    return authService.login({ email: payload.email, password: payload.password });
+  },
 
-    if (!response.data?.accessToken) {
-      return authService.login({
-        email: payload.email,
-        password: payload.password,
-      });
-    }
-
-    return response;
+  sendRegisterOtp(email: string) {
+    return apiRequest(ENDPOINTS.AUTH.SEND_REGISTER_OTP, {
+      method: "POST",
+      data: { email },
+    });
   },
 
   registerStaff(payload: RegisterPayload) {
@@ -96,7 +96,6 @@ export const authService = {
   refresh() {
     return apiRequest<AuthSession>(ENDPOINTS.AUTH.REFRESH, {
       method: "POST",
-      requiresAuth: true,
     });
   },
 
@@ -123,6 +122,14 @@ export const authService = {
     return apiRequest(ENDPOINTS.AUTH.CHANGE_PASSWORD, {
       method: "POST",
       data: payload,
+    });
+  },
+
+  updatePassword(payload: { currentPassword: string; newPassword: string; confirmNewPassword: string }) {
+    return apiRequest(ENDPOINTS.AUTH.UPDATE_PASSWORD, {
+      method: "POST",
+      data: payload,
+      requiresAuth: true,
     });
   },
 

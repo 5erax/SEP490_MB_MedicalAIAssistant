@@ -9,12 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
@@ -65,14 +60,6 @@
         {
           "photosPermission": "MediMate AI cần quyền truy cập ảnh để bạn đính kèm hình vào đánh giá cơ sở y tế hoặc xem trước ảnh thuốc.",
           "cameraPermission": "MediMate AI cần quyền dùng camera để chụp ảnh xem trước nhãn thuốc."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
         }
       ]
     ],

@@ -183,16 +183,16 @@ Secondary stack screens:
 
 Role routing:
 
-- `admin` -> show unsupported mobile screen with CTA "Use Web Admin" in MVP.
-- `staff` -> show unsupported mobile screen with CTA "Use Web Staff Workspace" in MVP.
+- `admin` -> native admin overview; incomplete modules are tracked in `docs/mobile-parity.md`.
+- `doctor` -> native recovery-request workspace.
+- `staff` -> protected native blocker until Staff-specific backend authority is defined.
 - default -> patient tabs.
 
 ## 6. API Mapping
 
-Base URL from web docs:
-
-- Development/prod backend currently points to `http://52.77.210.243:8080` in web documentation.
-- Mobile should use `EXPO_PUBLIC_API_BASE_URL` instead of Vite env.
+The API origin comes only from `EXPO_PUBLIC_API_BASE_URL`. Preview and
+production require HTTPS. An HTTP origin can be enabled only for an explicit
+local-development build with `MEDIMATE_ALLOW_DEV_HTTP=true`.
 
 ### Auth
 

@@ -1,34 +1,31 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import { AuthSession } from "@/src/types/auth";
-import { isExpiredToken } from "@/src/utils/jwt";
 
-// SecureStore is only implemented on Android/iOS/tvOS. The web preview uses
-// AsyncStorage (localStorage-backed on web) so authenticated UI flows can be
-// exercised in a browser. Native builds continue to resolve sessionStorage.ts
-// and keep access/refresh tokens in the encrypted platform keystore.
+// Web is a development preview target, not the shipped mobile security model.
+// Keep credentials in memory only: never persist bearer tokens in localStorage
+// or AsyncStorage. Reloading the browser intentionally requires a new login.
+let memorySession: AuthSession | null = null;
+type SessionListener = (session: AuthSession | null) => void;
+const sessionListeners = new Set<SessionListener>();
+
+function notifySessionListeners(session: AuthSession | null) {
+  sessionListeners.forEach((listener) => listener(session));
+}
+
+export function subscribeStoredSession(listener: SessionListener) {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
+
 export async function getStoredSession(): Promise<AuthSession | null> {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEYS.authSession);
-    if (!raw) return null;
-
-    const session = JSON.parse(raw) as AuthSession;
-    if (!session.accessToken) return null;
-    if (isExpiredToken(session.accessToken)) {
-      await clearStoredSession();
-      return null;
-    }
-
-    return session;
-  } catch {
-    await clearStoredSession();
-    return null;
-  }
+  if (!memorySession?.accessToken) return null;
+  return memorySession;
 }
 
 export async function setStoredSession(session: AuthSession) {
-  await AsyncStorage.setItem(STORAGE_KEYS.authSession, JSON.stringify(session));
+  memorySession = session;
+  notifySessionListeners(session);
 }
 
 export async function patchStoredSession(patch: Partial<AuthSession>) {
@@ -39,5 +36,6 @@ export async function patchStoredSession(patch: Partial<AuthSession>) {
 }
 
 export async function clearStoredSession() {
-  await AsyncStorage.removeItem(STORAGE_KEYS.authSession);
+  memorySession = null;
+  notifySessionListeners(null);
 }

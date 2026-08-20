@@ -1,9 +1,10 @@
-import { AuthGate, RolePlaceholderScreen } from "@/src/components/auth";
+import { AuthGate } from "@/src/components/auth";
+import { StaffWorkspace } from "@/src/components/staff";
 
-export default function StaffDashboardPlaceholder() {
+export default function StaffDashboard() {
   return (
     <AuthGate allowedRole="staff">
-      <RolePlaceholderScreen title="Staff Dashboard" role="STAFF" />
+      <StaffWorkspace />
     </AuthGate>
   );
 }

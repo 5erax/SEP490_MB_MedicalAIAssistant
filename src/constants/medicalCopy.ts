@@ -1,6 +1,6 @@
 export const MEDICAL_DISCLAIMER =
-  "MediMate AI chi ho tro tham khao, khong thay the chan doan, ke don hoac tu van truc tiep tu bac si.";
+  "MediMate AI chỉ hỗ trợ tham khảo, không thay thế chẩn đoán, kê đơn hoặc tư vấn trực tiếp từ bác sĩ.";
 
 export const EMERGENCY_NOTICE =
-  "Neu co dau hieu cap cuu nhu kho tho nang, dau nguc, ngat, co giat hoac trieu chung xau nhanh, hay goi cap cuu hoac den co so y te gan nhat.";
+  "Nếu có dấu hiệu cấp cứu như khó thở nặng, đau ngực, ngất, co giật hoặc triệu chứng xấu nhanh, hãy gọi 115 hoặc đến cơ sở y tế gần nhất.";
 

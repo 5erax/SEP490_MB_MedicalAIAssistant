@@ -16,6 +16,9 @@ function withQuery(path: string, params: Record<string, string | number | undefi
 }
 
 export const subscriptionPlansApi = {
+  list() {
+    return apiRequest<SubscriptionPlan[]>(ENDPOINTS.SUBSCRIPTION_PLANS.BASE, { requiresAuth: true });
+  },
   active() {
     return apiRequest<SubscriptionPlan[]>(ENDPOINTS.SUBSCRIPTION_PLANS.ACTIVE);
   },

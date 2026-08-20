@@ -21,17 +21,21 @@ const SUBSCRIPTION_USAGE_BASE = "/api/me/subscription-usage";
 const RECOVERY_PLAN_REQUESTS_BASE = "/api/recovery-plan-requests";
 const RECOVERY_PLANS_BASE = "/api/recovery-plans";
 const CONSULTATION_SESSIONS_BASE = "/api/consultation-sessions";
+const DOCTOR_RECOVERY_REQUESTS_BASE = "/api/doctor/recovery-plan-requests";
+const DOCTOR_RECOVERY_PLANS_BASE = "/api/doctor/recovery-plans";
 
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: `${AUTH_BASE}/login`,
     REGISTER: `${AUTH_BASE}/register`,
+    SEND_REGISTER_OTP: `${AUTH_BASE}/send-register-otp`,
     REGISTER_STAFF: `${AUTH_BASE}/register/staff`,
     GOOGLE: `${AUTH_BASE}/google`,
     REFRESH: `${AUTH_BASE}/refresh`,
     LOGOUT: `${AUTH_BASE}/logout`,
     FORGOT_PASSWORD: `${AUTH_BASE}/forgot-password`,
     CHANGE_PASSWORD: `${AUTH_BASE}/change-password`,
+    UPDATE_PASSWORD: `${AUTH_BASE}/update-password`,
     APPROVE_STAFF: (userId: string | number) => `${AUTH_BASE}/${userId}/approve-staff`,
   },
   USERS: {
@@ -137,6 +141,22 @@ export const ENDPOINTS = {
     ME: `${RECOVERY_PLANS_BASE}/me`,
     BY_ID: (planId: string) => byId(RECOVERY_PLANS_BASE, planId),
     START: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/start`,
+  },
+  DOCTOR_RECOVERY_REQUESTS: {
+    OPEN: `${DOCTOR_RECOVERY_REQUESTS_BASE}/open`,
+    MINE: `${DOCTOR_RECOVERY_REQUESTS_BASE}/mine`,
+    BY_ID: (requestId: string) => byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId),
+    CLINICAL_CONTEXT: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/clinical-context`,
+    ACCEPT: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/accept`,
+    START_REVIEW: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/start-review`,
+    RELEASE: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/release`,
+    REQUEST_INFORMATION: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/request-more-information`,
+    REJECT: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/reject`,
+    CREATE_PLAN: (requestId: string) => `${byId(DOCTOR_RECOVERY_REQUESTS_BASE, requestId)}/plan`,
+  },
+  DOCTOR_RECOVERY_PLANS: {
+    BY_ID: (planId: string) => byId(DOCTOR_RECOVERY_PLANS_BASE, planId),
+    PUBLISH: (planId: string) => `${byId(DOCTOR_RECOVERY_PLANS_BASE, planId)}/publish`,
   },
 } as const;
 

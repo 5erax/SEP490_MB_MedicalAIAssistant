@@ -3,7 +3,6 @@ import * as SecureStore from "expo-secure-store";
 
 import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import { AuthSession } from "@/src/types/auth";
-import { isExpiredToken } from "@/src/utils/jwt";
 
 // Tokens live in SecureStore (Keychain/Keystore); the rest of the session
 // (display fields, role/entitlement flags) lives in AsyncStorage. SecureStore
@@ -15,6 +14,20 @@ type StoredTokens = {
   accessToken?: string;
   refreshToken?: string;
 };
+
+type SessionListener = (session: AuthSession | null) => void;
+const sessionListeners = new Set<SessionListener>();
+
+function notifySessionListeners(session: AuthSession | null) {
+  sessionListeners.forEach((listener) => listener(session));
+}
+
+export function subscribeStoredSession(listener: SessionListener) {
+  sessionListeners.add(listener);
+  return () => {
+    sessionListeners.delete(listener);
+  };
+}
 
 async function getStoredTokens(): Promise<StoredTokens | null> {
   try {
@@ -44,11 +57,8 @@ export async function getStoredSession(): Promise<AuthSession | null> {
     const rest = raw ? (JSON.parse(raw) as Partial<AuthSession>) : {};
     const session = { ...rest, ...tokens } as AuthSession;
 
-    if (session.accessToken && isExpiredToken(session.accessToken)) {
-      await clearStoredSession();
-      return null;
-    }
-
+    // Keep an expired access token long enough for the API layer to exchange
+    // the backend's HttpOnly refresh cookie. It is never sent as a valid token.
     return session.accessToken ? session : null;
   } catch {
     await clearStoredSession();
@@ -62,6 +72,7 @@ export async function setStoredSession(session: AuthSession) {
     setStoredTokens({ accessToken, refreshToken }),
     AsyncStorage.setItem(STORAGE_KEYS.authSession, JSON.stringify(rest)),
   ]);
+  notifySessionListeners(session);
 }
 
 export async function patchStoredSession(patch: Partial<AuthSession>) {
@@ -73,4 +84,5 @@ export async function patchStoredSession(patch: Partial<AuthSession>) {
 
 export async function clearStoredSession() {
   await Promise.all([clearStoredTokens(), AsyncStorage.removeItem(STORAGE_KEYS.authSession)]);
+  notifySessionListeners(null);
 }

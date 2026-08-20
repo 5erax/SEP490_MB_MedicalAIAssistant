@@ -11,6 +11,10 @@ export type ActiveFacilityFilters = {
 };
 
 export const medicalFacilitiesApi = {
+  list(pageNumber = 1, pageSize = 10) {
+    const query = new URLSearchParams({ PageNumber: String(pageNumber), PageSize: String(pageSize) });
+    return apiRequest(`${ENDPOINTS.MEDICAL_FACILITIES.BASE}?${query}`, { requiresAuth: true });
+  },
   active(filters: ActiveFacilityFilters = {}) {
     const search = new URLSearchParams();
     if (filters.departmentId) search.set("departmentId", filters.departmentId);

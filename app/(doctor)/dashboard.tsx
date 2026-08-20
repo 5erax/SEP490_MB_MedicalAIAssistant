@@ -1,9 +1,10 @@
-import { AuthGate, RolePlaceholderScreen } from "@/src/components/auth";
+import { AuthGate } from "@/src/components/auth";
+import { DoctorRecoveryWorkspace } from "@/src/components/doctor";
 
-export default function DoctorDashboardPlaceholder() {
+export default function DoctorDashboard() {
   return (
     <AuthGate allowedRole="doctor">
-      <RolePlaceholderScreen title="Doctor Dashboard" role="DOCTOR" />
+      <DoctorRecoveryWorkspace />
     </AuthGate>
   );
 }

@@ -1,9 +1,10 @@
-import { AuthGate, RolePlaceholderScreen } from "@/src/components/auth";
+import { AdminWorkspace } from "@/src/components/admin";
+import { AuthGate } from "@/src/components/auth";
 
-export default function AdminDashboardPlaceholder() {
+export default function AdminDashboard() {
   return (
     <AuthGate allowedRole="admin">
-      <RolePlaceholderScreen title="Admin Dashboard" role="ADMIN" />
+      <AdminWorkspace />
     </AuthGate>
   );
 }

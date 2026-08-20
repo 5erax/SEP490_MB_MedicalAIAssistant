@@ -1,12 +1,20 @@
-import { create, type AxiosRequestConfig } from "axios";
+import { create, type AxiosError, type AxiosRequestConfig } from "axios";
 
 import { env } from "@/src/config/env";
 import { ApiResponse } from "@/src/types/api";
+import { AuthSession } from "@/src/types/auth";
 import { getErrorMessage } from "@/src/utils/errors";
-import { getStoredSession } from "@/src/services/sessionStorage";
+import {
+  clearStoredSession,
+  getStoredSession,
+  setStoredSession,
+} from "@/src/services/sessionStorage";
+import { isExpiredToken } from "@/src/utils/jwt";
 
 export type ApiRequestConfig = AxiosRequestConfig & {
   requiresAuth?: boolean;
+  skipAuthRefresh?: boolean;
+  authRetried?: boolean;
 };
 
 export class ApiError extends Error {
@@ -35,10 +43,46 @@ function formatApiErrors(errors: ApiResponse["errors"]) {
 export const apiClient = create({
   baseURL: env.apiBaseUrl,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     Accept: "application/json",
   },
 });
+
+const refreshClient = create({
+  baseURL: env.apiBaseUrl,
+  timeout: 30000,
+  withCredentials: true,
+  headers: { Accept: "application/json" },
+});
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const current = await getStoredSession();
+      const response = await refreshClient.post<ApiResponse<AuthSession>>(
+        "/api/authentication/refresh",
+      );
+      const data = response.data?.data;
+      const accessToken = typeof data?.accessToken === "string" ? data.accessToken : "";
+      if (!accessToken) throw new Error("Backend không trả access token mới.");
+
+      await setStoredSession({ ...(current ?? {}), ...data, accessToken });
+      return accessToken;
+    } catch (error) {
+      await clearStoredSession();
+      throw error;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
 
 apiClient.interceptors.request.use(async (config) => {
   const requestConfig = config as ApiRequestConfig;
@@ -46,7 +90,10 @@ apiClient.interceptors.request.use(async (config) => {
   if (requestConfig.requiresAuth) {
     const session = await getStoredSession();
     if (session?.accessToken) {
-      config.headers.Authorization = `Bearer ${session.accessToken}`;
+      const accessToken = isExpiredToken(session.accessToken)
+        ? await refreshAccessToken()
+        : session.accessToken;
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
   }
 
@@ -68,8 +115,30 @@ apiClient.interceptors.response.use(
 
     return response;
   },
-  (error) => {
-    throw new ApiError(getErrorMessage(error), error.response?.status, error.response?.data);
+  async (error: AxiosError) => {
+    const requestConfig = error.config as ApiRequestConfig | undefined;
+    if (
+      error.response?.status === 401 &&
+      requestConfig?.requiresAuth &&
+      !requestConfig.authRetried &&
+      !requestConfig.skipAuthRefresh
+    ) {
+      try {
+        const accessToken = await refreshAccessToken();
+        requestConfig.authRetried = true;
+        requestConfig.headers = requestConfig.headers ?? {};
+        requestConfig.headers.Authorization = `Bearer ${accessToken}`;
+        return apiClient.request(requestConfig);
+      } catch {
+        // Fall through to the normalized authentication error below.
+      }
+    }
+
+    throw new ApiError(
+      getErrorMessage(error),
+      error.response?.status,
+      error.response?.data,
+    );
   },
 );
 

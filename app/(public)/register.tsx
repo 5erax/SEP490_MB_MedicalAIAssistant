@@ -28,6 +28,7 @@ import { isValidEmail } from "@/src/utils";
 type RegisterForm = {
   displayName: string;
   email: string;
+  otp: string;
   userName: string;
   address: string;
   gender: "1" | "2";
@@ -41,6 +42,7 @@ type RegisterErrors = Partial<Record<keyof RegisterForm | "accepted", string>>;
 const initialForm: RegisterForm = {
   displayName: "",
   email: "",
+  otp: "",
   userName: "",
   address: "",
   gender: "1",
@@ -65,6 +67,7 @@ function validateRegisterForm(form: RegisterForm, accepted: boolean) {
     errors.email = "Email chưa đúng định dạng.";
   }
   if (!form.userName.trim()) errors.userName = "Vui lòng nhập tên đăng nhập.";
+  if (!form.otp.trim()) errors.otp = "Vui lòng nhập mã OTP đã gửi tới email.";
   if (!form.password) {
     errors.password = "Vui lòng nhập mật khẩu.";
   }
@@ -103,6 +106,7 @@ function buildRegisterPayload(form: RegisterForm): RegisterPayload {
     dateOfBirth: form.dateOfBirth.trim() || null,
     password: form.password,
     confirmPassword: form.confirmPassword,
+    otp: form.otp.trim(),
   };
 }
 
@@ -117,6 +121,8 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const disabled = useMemo(() => submitting, [submitting]);
 
@@ -127,10 +133,32 @@ export default function RegisterScreen() {
     }
   }
 
-  // Matches Web's SignupPage: register returns an AuthSession, so the app
-  // auto-logs the user in and routes to their post-auth destination
-  // (including the first-login patient-profile-setup redirect) instead of
-  // bouncing back to the login screen.
+  async function handleSendOtp() {
+    setApiError("");
+    if (!isValidEmail(form.email.trim())) {
+      setErrors((current) => ({ ...current, email: "Nhập email hợp lệ trước khi nhận mã OTP." }));
+      return;
+    }
+
+    setSendingOtp(true);
+    try {
+      await authService.sendRegisterOtp(form.email.trim());
+      setOtpSent(true);
+      showToast({
+        type: "success",
+        title: "Đã gửi mã OTP",
+        message: "Kiểm tra hộp thư và thư rác của bạn.",
+      });
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Không thể gửi mã OTP. Vui lòng thử lại.");
+    } finally {
+      setSendingOtp(false);
+    }
+  }
+
+  // The backend registration response is a user record, not an AuthSession.
+  // authService performs a login only after OTP registration succeeds, then
+  // this screen routes to the normal first-login/profile destination.
   async function handleRegister() {
     const nextErrors = validateRegisterForm(form, accepted);
     setErrors(nextErrors);
@@ -240,6 +268,30 @@ export default function RegisterScreen() {
                 error={errors.userName}
                 editable={!submitting}
               />
+
+              <View style={styles.otpGroup}>
+                <TextField
+                  label="Mã OTP xác thực email"
+                  value={form.otp}
+                  onChangeText={(value) => updateField("otp", value)}
+                  placeholder="Nhập mã trong email"
+                  keyboardType="number-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  textContentType="oneTimeCode"
+                  error={errors.otp}
+                  hint={otpSent ? "Mã đã được gửi. Mỗi mã chỉ có hiệu lực trong thời gian giới hạn." : undefined}
+                  editable={!submitting}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={sendingOtp || submitting}
+                  onPress={handleSendOtp}
+                >
+                  {sendingOtp ? "Đang gửi..." : otpSent ? "Gửi lại OTP" : "Nhận mã OTP"}
+                </Button>
+              </View>
 
               <TextField
                 label="Địa chỉ"
@@ -517,6 +569,9 @@ const styles = StyleSheet.create({
   },
   passwordWrap: {
     position: "relative",
+  },
+  otpGroup: {
+    gap: spacing.sm,
   },
   passwordInput: {
     paddingRight: 64,

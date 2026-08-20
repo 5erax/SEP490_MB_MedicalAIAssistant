@@ -12,6 +12,9 @@ export const usersService = {
   remove(userId: string) {
     return apiRequest(ENDPOINTS.USERS.BY_ID(userId), { method: "DELETE", requiresAuth: true });
   },
+  restore(userId: string) {
+    return apiRequest(`${ENDPOINTS.USERS.BY_ID(userId)}/restore`, { method: "POST", requiresAuth: true });
+  },
   approve(userId: string) {
     return apiRequest(ENDPOINTS.AUTH.APPROVE_STAFF(userId), { method: "POST", requiresAuth: true });
   },
