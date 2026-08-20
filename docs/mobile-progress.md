@@ -41,6 +41,13 @@ Remaining external setup:
 - Native Google Sign-In still requires platform client IDs and provider
   configuration; it cannot be completed safely from source/Swagger alone.
 
+### Web auth storage follow-up
+
+- Added `src/services/sessionStorage.web.ts` so browser previews do not call
+  native-only `expo-secure-store` methods.
+- Web stores the preview session through AsyncStorage/localStorage; Android
+  and iOS continue using encrypted SecureStore through `sessionStorage.ts`.
+
 ## 2026-08-03 - Native Map Tile And Performance Audit
 
 Branch: `main`
