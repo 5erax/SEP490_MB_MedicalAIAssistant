@@ -73,4 +73,20 @@ export type ClinicalAnswerItem = {
   answers: Record<string, boolean>;
 };
 
+export type ClinicalDiagnosis = {
+  rank: number;
+  diseaseName: string;
+  icd10Code?: string;
+  searchKeyword?: string;
+  clinicalReasoning?: string;
+  paGivenB: number;
+  [key: string]: unknown;
+};
+
+export type ClinicalDiagnosisResult = {
+  diagnoses: ClinicalDiagnosis[];
+  recommendedDepartment: ClinicalDepartment | null;
+  [key: string]: unknown;
+};
+
 export type AnswerValue = string | Record<string, boolean> | boolean | undefined;

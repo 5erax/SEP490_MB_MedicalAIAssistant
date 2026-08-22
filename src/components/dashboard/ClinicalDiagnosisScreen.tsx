@@ -1,51 +1,24 @@
-// Ported from src/pages/DashboardPage.jsx (Web) — "Tư vấn chuyên khoa".
-//
-// Deliberate Mobile UX adaptation (flow/data unchanged): on Web, submitting
-// the last answer immediately navigates away to /map, so the inline result
-// panel is rarely actually seen. On mobile we show the result panel first
-// and let the user explicitly tap "Mở bản đồ" — avoids a jarring
-// auto-navigation and matches standard mobile UX (confirm before leaving
-// the current flow). The destination (Nearby Clinics/Map, same query
-// params: source/facilityId/departmentId/sessionId) is unchanged.
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
-import { ChevronRight, History, Stethoscope, ShieldCheck } from "lucide-react-native";
+// Ported from src/pages/MedicalAssistantPage.jsx (Web) — the "Chẩn đoán lâm
+// sàng" primary nav item (route /symptom, order 30 right after Dashboard).
+// Distinct flow from SpecialtyIntakeScreen: same intake/question UI
+// (IntakeForm, QuestionFlow are reused as-is, they're already generic), but
+// submits to submit-diagnosis and shows a ranked disease/ICD-10 result
+// instead of a department/facility recommendation.
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { History, ShieldCheck } from "lucide-react-native";
 
-import { AppText, Button, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
-import { useSymptomIntake } from "@/src/hooks/useSymptomIntake";
-import { useUserLocation } from "@/src/hooks/useUserLocation";
-import { useAuth } from "@/src/providers";
-import { shouldSetupPatientProfile } from "@/src/utils/roles";
-import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
-import { ClinicalAnalysisResult } from "@/src/types/symptomAnalysis";
+import { useClinicalDiagnosis } from "@/src/hooks/useClinicalDiagnosis";
 import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
+import { DiagnosisResultPanel } from "./DiagnosisResultPanel";
 import { IntakeForm } from "./IntakeForm";
-import { dismissProfileNudgeForSession, isProfileNudgeDismissed, ProfileNudgeCard } from "./ProfileNudgeCard";
 import { QuestionFlow } from "./QuestionFlow";
-import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
 
-function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string) {
-  const department = getRecommendedDepartment(result);
-  const topFacility = result?.recommendedFacilities?.[0] ?? null;
-  const facilityId = getFacilityId(topFacility);
-
-  router.push({
-    pathname: "/(patient)/map" as never,
-    params: {
-      source: "clinical",
-      ...(facilityId ? { facilityId } : {}),
-      ...(department?.departmentId ? { departmentId: department.departmentId } : {}),
-      ...(sessionId ? { sessionId } : {}),
-    },
-  });
-}
-
-export function SpecialtyIntakeScreen() {
-  const { session } = useAuth();
+export function ClinicalDiagnosisScreen() {
   const {
     answeredCount,
     answers,
@@ -57,52 +30,31 @@ export function SpecialtyIntakeScreen() {
     questions,
     resetDiagnosis,
     result,
-    sessionId,
     setCurrentQuestionIndex,
     setInput,
     startDiagnosis,
     status,
     submitAnswers,
     updateAnswer,
-  } = useSymptomIntake();
+  } = useClinicalDiagnosis();
 
-  const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
   const [historyVisible, setHistoryVisible] = useState(false);
-  const [profileNudgeVisible, setProfileNudgeVisible] = useState(
-    shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
-  );
 
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
   const activeStep = status === "result" ? 2 : ["questions", "submitting"].includes(status) ? 1 : 0;
 
-  useEffect(() => {
-    if (status !== "result") return;
-    // Once the user has seen the result inline (see module note above), the
-    // Web behavior of jumping straight to the map is offered as an explicit
-    // action instead — nothing to auto-run here.
-  }, [status]);
-
   return (
     <Screen scroll contentContainerStyle={styles.content}>
-      {showIntakeForm && profileNudgeVisible ? (
-        <ProfileNudgeCard
-          onDismiss={() => {
-            dismissProfileNudgeForSession();
-            setProfileNudgeVisible(false);
-          }}
-        />
-      ) : null}
-
       <View style={styles.header}>
         <View style={styles.headerTextGroup}>
           <AppText variant="eyebrow" color={colors.teal}>
-            Tư vấn chuyên khoa
+            Chẩn đoán lâm sàng
           </AppText>
-          <AppText variant="h1">Gợi ý chuyên khoa qua triệu chứng</AppText>
+          <AppText variant="h1">Phân tích lâm sàng qua triệu chứng</AppText>
           <AppText color={colors.muted}>
-            Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y
-            tế phù hợp.
+            Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi tổng hợp các khả năng bệnh
+            tham khảo, kèm mã ICD-10.
           </AppText>
         </View>
         <Button variant="secondary" size="sm" onPress={() => setHistoryVisible(true)}>
@@ -116,24 +68,9 @@ export function SpecialtyIntakeScreen() {
       <View style={styles.scopeNote}>
         <ShieldCheck size={18} color={colors.teal} />
         <AppText variant="caption" color={colors.muted} style={styles.scopeNoteText}>
-          Kết quả không thay thế chẩn đoán hoặc điều trị của bác sĩ.
+          Kết quả chỉ mang tính tham khảo, không thay thế chẩn đoán của bác sĩ.
         </AppText>
       </View>
-
-      <Pressable accessibilityRole="button" onPress={() => router.push("/(patient)/symptom" as never)}>
-        <Card variant="soft" style={styles.diagnosisLinkCard}>
-          <View style={styles.diagnosisLinkIcon}>
-            <Stethoscope size={20} color={colors.teal} />
-          </View>
-          <View style={styles.diagnosisLinkText}>
-            <AppText variant="bodyStrong">Chẩn đoán lâm sàng chi tiết</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Xem các khả năng bệnh được xếp hạng kèm mã ICD-10, tách riêng khỏi gợi ý chuyên khoa ở trên.
-            </AppText>
-          </View>
-          <ChevronRight size={18} color={colors.subtle} />
-        </Card>
-      </Pressable>
 
       <View style={styles.stepper}>
         {STEP_LABELS.map((label, index) => (
@@ -168,7 +105,7 @@ export function SpecialtyIntakeScreen() {
 
       {error ? (
         <View style={styles.errorGroup}>
-          <EmptyState title="Không thể kết nối dịch vụ gợi ý chuyên khoa" description={error} />
+          <EmptyState title="Không thể kết nối dịch vụ chẩn đoán" description={error} />
           <View style={styles.recoveryActions}>
             <Button variant="secondary" onPress={() => resetDiagnosis()}>
               Quay lại biểu mẫu
@@ -210,17 +147,10 @@ export function SpecialtyIntakeScreen() {
       ) : null}
 
       {status === "result" ? (
-        <ResultPanel
-          result={result}
-          userLocation={userLocation}
-          locationStatus={locationStatus}
-          onRequestLocation={requestUserLocation}
-          onOpenMap={() => openFacilities(result, sessionId)}
-          onNewSymptom={() => resetDiagnosis({ clearInput: true })}
-        />
+        <DiagnosisResultPanel result={result} onNewSymptom={() => resetDiagnosis({ clearInput: true })} />
       ) : null}
 
-      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="department" />
+      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="diagnoses" />
     </Screen>
   );
 }
@@ -255,23 +185,6 @@ const styles = StyleSheet.create({
   },
   scopeNoteText: {
     flex: 1,
-  },
-  diagnosisLinkCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-  },
-  diagnosisLinkIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.mint,
-  },
-  diagnosisLinkText: {
-    flex: 1,
-    gap: spacing.xs / 2,
   },
   stepper: {
     flexDirection: "row",

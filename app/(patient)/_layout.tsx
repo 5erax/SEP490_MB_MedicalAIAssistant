@@ -56,6 +56,7 @@ export default function PatientLayout() {
           tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
         }}
       />
+      <Tabs.Screen name="symptom" options={{ href: null }} />
       <Tabs.Screen name="medication" options={{ href: null }} />
       <Tabs.Screen name="my-medications" options={{ href: null }} />
       <Tabs.Screen name="payment-history" options={{ href: null }} />

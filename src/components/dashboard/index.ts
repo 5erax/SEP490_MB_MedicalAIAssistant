@@ -1,5 +1,7 @@
 export * from "./AnalysisHistorySheet";
 export * from "./AnswerButtons";
+export * from "./ClinicalDiagnosisScreen";
+export * from "./DiagnosisResultPanel";
 export * from "./IntakeForm";
 export * from "./ProfileNudgeCard";
 export * from "./QuestionFlow";
