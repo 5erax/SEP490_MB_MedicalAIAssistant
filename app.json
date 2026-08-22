@@ -13,8 +13,10 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
-      }
+        },
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.medimate.medicalaiassistant"
     },
     "android": {
       "adaptiveIcon": {
