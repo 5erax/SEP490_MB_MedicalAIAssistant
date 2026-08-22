@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ChevronRight, History, Stethoscope, ShieldCheck } from "lucide-react-native";
+import { CalendarClock, ChevronRight, History, Stethoscope, ShieldCheck } from "lucide-react-native";
 
 import { AppText, Button, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -119,6 +119,21 @@ export function SpecialtyIntakeScreen() {
           Kết quả không thay thế chẩn đoán hoặc điều trị của bác sĩ.
         </AppText>
       </View>
+
+      <Pressable accessibilityRole="button" onPress={() => router.push("/(patient)/pre-consultation" as never)}>
+        <Card variant="soft" style={styles.diagnosisLinkCard}>
+          <View style={styles.diagnosisLinkIcon}>
+            <CalendarClock size={20} color={colors.teal} />
+          </View>
+          <View style={styles.diagnosisLinkText}>
+            <AppText variant="bodyStrong">Tư vấn trước khám</AppText>
+            <AppText variant="caption" color={colors.muted}>
+              Chuẩn bị checklist, câu hỏi cho bác sĩ và nhắc lịch trước buổi khám.
+            </AppText>
+          </View>
+          <ChevronRight size={18} color={colors.subtle} />
+        </Card>
+      </Pressable>
 
       <Pressable accessibilityRole="button" onPress={() => router.push("/(patient)/symptom" as never)}>
         <Card variant="soft" style={styles.diagnosisLinkCard}>

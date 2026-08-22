@@ -20,6 +20,8 @@ const LAB_TESTS_BASE = "/api/lab-tests";
 const SUBSCRIPTION_USAGE_BASE = "/api/me/subscription-usage";
 const RECOVERY_PLAN_REQUESTS_BASE = "/api/recovery-plan-requests";
 const RECOVERY_PLANS_BASE = "/api/recovery-plans";
+const CONSULTATION_SESSIONS_BASE = "/api/consultation-sessions";
+const CHECKLIST_ITEMS_BASE = "/api/checklist-items";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -130,6 +132,17 @@ export const ENDPOINTS = {
     ME: `${RECOVERY_PLANS_BASE}/me`,
     BY_ID: (planId: string) => byId(RECOVERY_PLANS_BASE, planId),
     START: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/start`,
+  },
+  CONSULTATION_SESSIONS: {
+    GENERATE_QUESTIONS: `${CONSULTATION_SESSIONS_BASE}/generate-questions-for-consultant-session`,
+    MY_SESSIONS: `${CONSULTATION_SESSIONS_BASE}/my-sessions`,
+    BY_ID: (sessionId: string) => byId(CONSULTATION_SESSIONS_BASE, sessionId),
+    REGISTER_REMINDER: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/register-reminder`,
+    SUMMARY: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/summary`,
+    COMPLETE: (sessionId: string) => `${byId(CONSULTATION_SESSIONS_BASE, sessionId)}/complete`,
+  },
+  CHECKLIST_ITEMS: {
+    BY_DEPARTMENT: (departmentId: string) => `${CHECKLIST_ITEMS_BASE}/by-department/${encodeURIComponent(departmentId)}`,
   },
 } as const;
 
