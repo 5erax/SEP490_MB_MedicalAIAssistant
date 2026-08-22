@@ -24,6 +24,7 @@ const RECOVERY_PLANS_BASE = "/api/recovery-plans";
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: `${AUTH_BASE}/login`,
+    SEND_REGISTER_OTP: `${AUTH_BASE}/send-register-otp`,
     REGISTER: `${AUTH_BASE}/register`,
     REGISTER_STAFF: `${AUTH_BASE}/register/staff`,
     GOOGLE: `${AUTH_BASE}/google`,

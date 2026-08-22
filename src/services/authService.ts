@@ -18,6 +18,7 @@ export type RegisterPayload = {
   address?: string;
   gender?: number;
   dateOfBirth?: string | null;
+  otp: string;
 };
 
 // Ported 1:1 from src/services/authService.js (Web) — normalizeAuthResponse().
@@ -50,6 +51,18 @@ export const authService = {
     return apiRequest<AuthSession>(ENDPOINTS.AUTH.LOGIN, {
       method: "POST",
       data: payload,
+    });
+  },
+
+  /**
+   * Screen: RegisterScreen
+   * Workflow: Authentication
+   * Endpoint: POST /api/authentication/send-register-otp
+   */
+  sendRegisterOtp(email: string) {
+    return apiRequest(ENDPOINTS.AUTH.SEND_REGISTER_OTP, {
+      method: "POST",
+      data: { email },
     });
   },
 

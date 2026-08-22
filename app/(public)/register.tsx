@@ -34,6 +34,7 @@ type RegisterForm = {
   dateOfBirth: string;
   password: string;
   confirmPassword: string;
+  otp: string;
 };
 
 type RegisterErrors = Partial<Record<keyof RegisterForm | "accepted", string>>;
@@ -47,6 +48,7 @@ const initialForm: RegisterForm = {
   dateOfBirth: "",
   password: "",
   confirmPassword: "",
+  otp: "",
 };
 
 const PASSWORD_HINT = "Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường, số và ký tự đặc biệt.";
@@ -103,6 +105,7 @@ function buildRegisterPayload(form: RegisterForm): RegisterPayload {
     dateOfBirth: form.dateOfBirth.trim() || null,
     password: form.password,
     confirmPassword: form.confirmPassword,
+    otp: form.otp.trim(),
   };
 }
 
@@ -117,13 +120,41 @@ export default function RegisterScreen() {
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
 
-  const disabled = useMemo(() => submitting, [submitting]);
+  const disabled = useMemo(() => submitting || sendingOtp, [submitting, sendingOtp]);
 
   function updateField<Key extends keyof RegisterForm>(key: Key, value: RegisterForm[Key]) {
-    setForm((current) => ({ ...current, [key]: value }));
+    const emailChangedAfterOtp = key === "email" && otpRequested;
+
+    setForm((current) => ({ ...current, [key]: value, ...(emailChangedAfterOtp ? { otp: "" } : {}) }));
     if (errors[key]) {
       setErrors((current) => ({ ...current, [key]: undefined }));
+    }
+    if (emailChangedAfterOtp) {
+      setOtpRequested(false);
+    }
+  }
+
+  // Matches Web's SignupPage: registration requires a verified email OTP
+  // before the account can be created.
+  async function sendOtp() {
+    setSendingOtp(true);
+    setApiError("");
+    try {
+      const email = form.email.trim().toLowerCase();
+      const response = await authService.sendRegisterOtp(email);
+      setOtpRequested(true);
+      showToast({
+        type: "success",
+        title: "Đã gửi mã xác thực",
+        message: response.message || `Đã gửi mã xác thực đến ${email}.`,
+      });
+    } catch (error) {
+      setApiError(error instanceof Error ? error.message : "Không thể gửi mã xác thực. Vui lòng thử lại.");
+    } finally {
+      setSendingOtp(false);
     }
   }
 
@@ -137,6 +168,16 @@ export default function RegisterScreen() {
     setApiError("");
 
     if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    if (!otpRequested) {
+      await sendOtp();
+      return;
+    }
+
+    if (!form.otp.trim()) {
+      setErrors((current) => ({ ...current, otp: "Vui lòng nhập mã xác thực." }));
       return;
     }
 
@@ -249,6 +290,34 @@ export default function RegisterScreen() {
                 error={errors.address}
                 editable={!submitting}
               />
+
+              {otpRequested ? (
+                <View style={styles.otpRow}>
+                  <View style={styles.otpInput}>
+                    <TextField
+                      label="Mã xác thực"
+                      value={form.otp}
+                      onChangeText={(value) => updateField("otp", value)}
+                      placeholder="Nhập mã 6 số"
+                      keyboardType="number-pad"
+                      textContentType="oneTimeCode"
+                      error={errors.otp}
+                      hint={errors.otp ? undefined : `Mã đã được gửi đến ${form.email.trim()}.`}
+                      editable={!submitting}
+                    />
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={sendOtp}
+                    disabled={sendingOtp}
+                    style={styles.otpResend}
+                  >
+                    <AppText variant="caption" color={colors.teal}>
+                      {sendingOtp ? "Đang gửi lại..." : "Gửi lại mã"}
+                    </AppText>
+                  </Pressable>
+                </View>
+              ) : null}
 
               <View style={styles.fieldGroup}>
                 <AppText variant="caption" color={colors.muted}>
@@ -371,15 +440,17 @@ export default function RegisterScreen() {
               ) : null}
 
               <Button fullWidth disabled={disabled} onPress={handleRegister} style={styles.submitButton}>
-                {submitting ? (
+                {submitting || sendingOtp ? (
                   <View style={styles.loadingLabel}>
                     <ActivityIndicator color={colors.white} size="small" />
                     <AppText variant="bodyStrong" color={colors.white}>
-                      Đang tạo tài khoản...
+                      {sendingOtp ? "Đang gửi mã..." : "Đang tạo tài khoản..."}
                     </AppText>
                   </View>
-                ) : (
+                ) : otpRequested ? (
                   "Tạo tài khoản"
+                ) : (
+                  "Gửi mã xác thực"
                 )}
               </Button>
 
@@ -486,6 +557,19 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: spacing.sm,
+  },
+  otpRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.sm,
+  },
+  otpInput: {
+    flex: 1,
+  },
+  otpResend: {
+    minHeight: 48,
+    justifyContent: "center",
+    paddingHorizontal: spacing.sm,
   },
   segmented: {
     flexDirection: "row",
