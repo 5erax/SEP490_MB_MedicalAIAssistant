@@ -16,6 +16,8 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { makeRedirectUri, Prompt, ResponseType, useAuthRequest } from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 
 import { authService, normalizeAuthSession } from "@/src/services";
 import { useAuth } from "@/src/providers";
@@ -24,7 +26,9 @@ import { ApiMessage, AppText, Button, TextField } from "@/src/components/ui";
 import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
-import { isGoogleAuthConfigured } from "@/src/config/env";
+import { env, isGoogleAuthConfigured } from "@/src/config/env";
+
+WebBrowser.maybeCompleteAuthSession();
 
 type LoginErrors = {
   email?: string;
@@ -53,24 +57,93 @@ function validateLoginForm(email: string, password: string) {
 
 const PASSWORD_HINT = "Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường, số và ký tự đặc biệt.";
 
+const GOOGLE_DISABLED_CLIENT_ID = "google-login-disabled";
+const GOOGLE_DISCOVERY = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+  userInfoEndpoint: "https://openidconnect.googleapis.com/v1/userinfo",
+};
+
 export default function LoginScreen() {
   const { isRestoring, session, setSession } = useAuth();
   const { showToast } = useToast();
   const googleLoginEnabled = isGoogleAuthConfigured();
+  const googleClientId = env.googleAndroidClientId || env.googleIosClientId || env.googleWebClientId || GOOGLE_DISABLED_CLIENT_ID;
+  const googleRedirectUri = useMemo(() => makeRedirectUri({ scheme: "sep490mbmedicalaiassistant" }), []);
+  const googleNonce = useMemo(() => `${Date.now()}-${Math.random().toString(16).slice(2)}`, []);
+  const [googleRequest, googleResponse, promptGoogleLogin] = useAuthRequest({
+    clientId: googleClientId,
+    redirectUri: googleRedirectUri,
+    responseType: ResponseType.IdToken,
+    scopes: ["openid", "profile", "email"],
+    prompt: Prompt.SelectAccount,
+    usePKCE: false,
+    extraParams: { nonce: googleNonce },
+  }, GOOGLE_DISCOVERY);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<LoginErrors>({});
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
-  const disabled = useMemo(() => submitting || !email.trim() || !password, [email, password, submitting]);
+  const disabled = useMemo(() => submitting || googleSubmitting || !email.trim() || !password, [email, password, googleSubmitting, submitting]);
+  const googleDisabled = submitting || googleSubmitting || !googleLoginEnabled || !googleRequest;
 
   useEffect(() => {
     if (!isRestoring && session) {
       router.replace(getInitialRouteForSession(session));
     }
   }, [isRestoring, session]);
+
+  useEffect(() => {
+    if (!googleResponse) return;
+
+    async function finishGoogleLogin() {
+      if (googleResponse?.type === "cancel" || googleResponse?.type === "dismiss") {
+        setGoogleSubmitting(false);
+        return;
+      }
+
+      if (googleResponse?.type !== "success") {
+        setApiError("Dang nhap Google khong hoan tat. Vui long thu lai.");
+        setGoogleSubmitting(false);
+        return;
+      }
+
+      const idToken = googleResponse.params.id_token;
+      if (!idToken) {
+        setApiError("Google chua tra ma xac thuc. Kiem tra lai Google client id cua ung dung.");
+        setGoogleSubmitting(false);
+        return;
+      }
+
+      try {
+        const response = await authService.googleLogin(idToken);
+        const nextSession = normalizeAuthSession(response);
+
+        if (!nextSession?.accessToken) {
+          throw new Error("Backend chua tra access token. Vui long thu lai.");
+        }
+
+        await setSession(nextSession);
+        showToast({
+          type: "success",
+          title: "Dang nhap Google thanh cong",
+          message: "Dang mo khong gian phu hop voi tai khoan cua ban.",
+        });
+        router.replace(getInitialRouteForSession(nextSession));
+      } catch (error) {
+        setApiError(error instanceof Error ? error.message : "Dang nhap Google that bai. Vui long thu lai.");
+      } finally {
+        setGoogleSubmitting(false);
+      }
+    }
+
+    finishGoogleLogin();
+  }, [googleResponse, setSession, showToast]);
 
   async function handleLogin() {
     const nextErrors = validateLoginForm(email, password);
@@ -100,6 +173,26 @@ export default function LoginScreen() {
       setApiError(error instanceof Error ? error.message : "Đăng nhập thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setApiError("");
+
+    if (!googleLoginEnabled) {
+      setApiError("Dang nhap Google chua duoc cau hinh. Hay them EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID hoac client id Android/iOS.");
+      return;
+    }
+
+    setGoogleSubmitting(true);
+    try {
+      const result = await promptGoogleLogin();
+      if (result.type === "cancel" || result.type === "dismiss") {
+        setGoogleSubmitting(false);
+      }
+    } catch (error) {
+      setGoogleSubmitting(false);
+      setApiError(error instanceof Error ? error.message : "Khong mo duoc Google Sign-In. Vui long thu lai.");
     }
   }
 
@@ -160,6 +253,34 @@ export default function LoginScreen() {
             </View>
 
             <ApiMessage type="error" message={apiError} />
+
+            <Button
+              variant="secondary"
+              fullWidth
+              disabled={googleDisabled}
+              onPress={handleGoogleLogin}
+              style={styles.googleButton}
+            >
+              {googleSubmitting ? (
+                <View style={styles.loadingLabel}>
+                  <ActivityIndicator color={colors.ink} size="small" />
+                  <AppText variant="bodyStrong" color={colors.ink}>
+                    Dang mo Google...
+                  </AppText>
+                </View>
+              ) : (
+                <View style={styles.googleLabel}>
+                  <View style={styles.googleMark}>
+                    <AppText variant="bodyStrong" color={colors.teal}>
+                      G
+                    </AppText>
+                  </View>
+                  <AppText variant="bodyStrong" color={colors.ink}>
+                    Tiep tuc voi Google
+                  </AppText>
+                </View>
+              )}
+            </Button>
 
             {!googleLoginEnabled ? (
               <View style={styles.inlineNote}>
@@ -360,6 +481,25 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: spacing.xs,
+  },
+  googleButton: {
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.white,
+  },
+  googleLabel: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  googleMark: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 24,
+    height: 24,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paperSoft,
   },
   inlineNote: {
     borderWidth: 1,

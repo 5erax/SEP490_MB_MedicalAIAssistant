@@ -17,8 +17,11 @@ export const env = {
   appEnv: process.env.EXPO_PUBLIC_APP_ENV || "development",
   // Web Client ID from Google Cloud Console, required by
   // @react-native-google-signin for the idToken flow against our backend.
-  // Left unset until the team registers Android/iOS OAuth clients.
+  // Android/iOS client IDs are preferred on native builds. googleWebClientId
+  // remains useful for Expo Go/web and as the backend audience for id tokens.
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "",
+  googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "",
+  googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "",
   // Same unsigned Cloudinary upload preset Web's .env.production uses
   // (VITE_CLOUDINARY_*) — an unsigned preset is designed to be public/
   // client-exposed (restricted server-side by Cloudinary settings, not by
@@ -34,6 +37,6 @@ export const env = {
 // always-on, so the UI degrades gracefully when native OAuth clients aren't
 // registered yet.
 export function isGoogleAuthConfigured() {
-  return Boolean(env.googleWebClientId);
+  return Boolean(env.googleWebClientId || env.googleAndroidClientId || env.googleIosClientId);
 }
 
