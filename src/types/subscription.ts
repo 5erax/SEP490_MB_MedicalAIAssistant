@@ -45,8 +45,10 @@ export type PayOsCheckout = {
 // vụ" tab (full per-feature list), and PricingPage's post-checkout cache
 // warm (fetched but not rendered there).
 export type SubscriptionUsageQuota = {
+  code?: string;
   quotaCode?: string;
   quotaName?: string;
+  grantedCount?: number;
   limitValue?: number;
   remainingCount?: number;
   usedCount?: number;

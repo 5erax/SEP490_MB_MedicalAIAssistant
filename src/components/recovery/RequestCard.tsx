@@ -1,23 +1,45 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronRight, ClipboardList } from "lucide-react-native";
 
-import { AppText, Badge } from "@/src/components/ui";
+import { AppText } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { RecoveryPlanRequest } from "@/src/types/recoveryPlan";
-import { formatDateOnly, getDiseaseGroupLabel, REQUEST_STATUS } from "@/src/utils/recoveryPlanPresentation";
+import { formatDateOnly, getDiseaseGroupLabel, REQUEST_STATUS, StatusTone } from "@/src/utils/recoveryPlanPresentation";
+
+const toneStyle: Record<StatusTone, { bg: string; fg: string }> = {
+  warning: { bg: colors.warningBg, fg: colors.warning },
+  success: { bg: colors.successBg, fg: colors.success },
+  danger: { bg: colors.dangerBg, fg: colors.danger },
+  neutral: { bg: colors.paperSoft, fg: colors.muted },
+};
 
 export function RequestCard({ request, onPress }: { request: RecoveryPlanRequest; onPress: () => void }) {
   const status = REQUEST_STATUS[request.status];
+  const tone = toneStyle[status.tone];
 
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
-      <View style={styles.main}>
-        <AppText variant="bodyStrong">{getDiseaseGroupLabel(request.diseaseGroup)}</AppText>
-        <AppText variant="caption" color={colors.subtle}>
-          {formatDateOnly(request.requestedAt)}
-        </AppText>
+      <View style={styles.iconWrap}>
+        <ClipboardList size={19} color={colors.teal} />
       </View>
-      <Badge tone={status.tone}>{status.label}</Badge>
+      <View style={styles.main}>
+        <View style={styles.titleRow}>
+          <AppText variant="bodyStrong" style={styles.title} numberOfLines={1}>
+            {getDiseaseGroupLabel(request.diseaseGroup)}
+          </AppText>
+          <View style={[styles.statusPill, { backgroundColor: tone.bg }]}>
+            <AppText variant="caption" color={tone.fg} numberOfLines={1}>
+              {status.label}
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.timelineRow}>
+          <View style={styles.dot} />
+          <AppText variant="caption" color={colors.muted}>
+            Gửi ngày {formatDateOnly(request.requestedAt)}
+          </AppText>
+        </View>
+      </View>
       <ChevronRight size={18} color={colors.subtle} />
     </Pressable>
   );
@@ -25,17 +47,54 @@ export function RequestCard({ request, onPress }: { request: RecoveryPlanRequest
 
 const styles = StyleSheet.create({
   row: {
+    minHeight: 84,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
-    padding: spacing.lg,
+    padding: spacing.md,
+  },
+  iconWrap: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
   },
   main: {
     flex: 1,
-    gap: spacing.xs / 2,
+    minWidth: 0,
+    gap: spacing.sm,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  title: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statusPill: {
+    maxWidth: 142,
+    minHeight: 28,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+  },
+  timelineRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
   },
 });

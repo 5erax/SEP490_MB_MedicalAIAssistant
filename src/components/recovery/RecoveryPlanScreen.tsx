@@ -1,15 +1,9 @@
-// Ported from Web's RecoveryPlanPage.jsx — redesigned as a single scrolling
-// native screen (quota card, CTA, requests list, plans list) instead of
-// Web's desktop split-panel layout, with detail/create each in their own
-// full-screen sheet. Realtime SignalR sync is intentionally not ported —
-// pull-to-refresh + a manual reload cover the same need without adding a
-// native SignalR dependency; see docs/mobile-progress.md.
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
-import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useRecoveryPlan, useToast } from "@/src/hooks";
 import { RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { CreateRequestSheet } from "./CreateRequestSheet";
@@ -18,6 +12,25 @@ import { PlanDetailSheet } from "./PlanDetailSheet";
 import { QuotaCard } from "./QuotaCard";
 import { RequestCard } from "./RequestCard";
 import { RequestDetailSheet } from "./RequestDetailSheet";
+
+const palette = {
+  bg: colors.bg,
+  surface: colors.paper,
+  ink: colors.ink,
+  muted: colors.muted,
+  faint: colors.subtle,
+  line: colors.line,
+  primary: colors.teal,
+  primaryDark: colors.limeDark,
+  mint: colors.mint,
+  white: colors.white,
+  heroBg: colors.limeDark,
+  heroOverlay: "rgba(255,255,255,0.16)",
+  success: "#15803d",
+  successBg: "#dcfce7",
+  warning: colors.warning,
+  warningBg: colors.warningBg,
+};
 
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   if (totalPages <= 1) return null;
@@ -30,9 +43,9 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
         onPress={() => onChange(Math.max(1, page - 1))}
         style={[styles.pageButton, page <= 1 && styles.pageButtonDisabled]}
       >
-        <ChevronLeft size={16} color={colors.ink} />
+        <ChevronLeft size={16} color={palette.ink} />
       </Pressable>
-      <AppText variant="caption" color={colors.subtle}>
+      <AppText variant="caption" color={palette.muted}>
         Trang {page}/{totalPages}
       </AppText>
       <Pressable
@@ -42,8 +55,35 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
         onPress={() => onChange(Math.min(totalPages, page + 1))}
         style={[styles.pageButton, page >= totalPages && styles.pageButtonDisabled]}
       >
-        <ChevronRight size={16} color={colors.ink} />
+        <ChevronRight size={16} color={palette.ink} />
       </Pressable>
+    </View>
+  );
+}
+
+function SnapshotTile({
+  label,
+  value,
+  tone,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  tone: keyof typeof TONE_STYLES;
+  icon: typeof ClipboardList;
+}) {
+  const toneStyle = TONE_STYLES[tone];
+  return (
+    <View style={styles.snapshotTile}>
+      <View style={[styles.snapshotChip, toneStyle.chip]}>
+        <Icon size={16} color={toneStyle.icon} />
+      </View>
+      <AppText variant="h3" color={palette.ink}>
+        {value}
+      </AppText>
+      <AppText variant="caption" color={palette.muted} style={styles.snapshotLabel}>
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -61,6 +101,11 @@ export function RecoveryPlanScreen() {
     recovery.quotaState === "error" ||
     !recovery.quota ||
     Number(recovery.quota.remainingCount) <= 0;
+  const activePlans = recovery.plans.filter((plan) => plan.status === "active" || plan.status === "readyToStart").length;
+  const waitingRequests = recovery.requests.filter((request) =>
+    ["waitingForDoctor", "assigned", "inReview", "needMoreInformation"].includes(request.status),
+  ).length;
+  const latestPlan = recovery.plans[0];
 
   async function handleCreateSubmit() {
     const result = await recovery.submitCreateRequest();
@@ -116,16 +161,38 @@ export function RecoveryPlanScreen() {
 
   return (
     <Screen padded={false} style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      >
-        <View style={styles.header}>
-          <AppText variant="eyebrow" color={colors.teal}>
-            Theo dõi sau khám
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+        <View style={styles.hero}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroIcon}>
+              <HeartPulse size={24} color={palette.white} />
+            </View>
+            <View style={styles.heroPill}>
+              <Sparkles size={13} color={palette.white} />
+              <AppText variant="caption" color={palette.white}>
+                Theo dõi sau khám
+              </AppText>
+            </View>
+          </View>
+          <AppText variant="h1" color={palette.white} style={styles.heroTitle}>
+            Kế hoạch phục hồi
           </AppText>
-          <AppText variant="h1">Kế hoạch phục hồi</AppText>
-          <AppText color={colors.muted}>Gửi yêu cầu để bác sĩ lên kế hoạch phục hồi cá nhân dựa trên tình trạng của bạn.</AppText>
+          <AppText color="rgba(255,255,255,0.86)" style={styles.heroCopy}>
+            Gửi tình trạng của bạn, theo dõi bác sĩ xử lý, rồi bắt đầu kế hoạch ăn uống - nghỉ ngơi phù hợp.
+          </AppText>
+          <View style={styles.snapshotRow}>
+            <SnapshotTile label="Yêu cầu đang xử lý" value={waitingRequests} tone="warning" icon={ClipboardList} />
+            <SnapshotTile label="Kế hoạch sẵn sàng" value={activePlans} tone="success" icon={Route} />
+            <SnapshotTile label="Tổng kế hoạch" value={recovery.plans.length} tone="info" icon={HeartPulse} />
+          </View>
+          {latestPlan ? (
+            <View style={styles.latestStrip}>
+              <Route size={16} color={palette.white} />
+              <AppText variant="caption" color={palette.white} style={styles.latestText} numberOfLines={1}>
+                Gần nhất: {latestPlan.planName}
+              </AppText>
+            </View>
+          ) : null}
         </View>
 
         <QuotaCard
@@ -142,20 +209,30 @@ export function RecoveryPlanScreen() {
           onPress={() => setCreateVisible(true)}
           style={[styles.createButton, requestCreationDisabled && styles.createButtonDisabled]}
         >
-          <Plus size={18} color={colors.white} />
-          <AppText variant="bodyStrong" color={colors.white}>
+          <Plus size={18} color={palette.white} />
+          <AppText variant="bodyStrong" color={palette.white}>
             Yêu cầu kế hoạch mới
           </AppText>
         </Pressable>
 
         <View style={styles.section}>
-          <AppText variant="h3">Yêu cầu của bạn</AppText>
+          <View style={styles.sectionHeader}>
+            <ClipboardList size={20} color={palette.primaryDark} />
+            <View style={styles.sectionTitleWrap}>
+              <AppText variant="h3" color={palette.ink}>
+                Yêu cầu của bạn
+              </AppText>
+              <AppText variant="caption" color={palette.faint}>
+                Theo dõi tiến độ bác sĩ tiếp nhận
+              </AppText>
+            </View>
+          </View>
           {recovery.requestsState === "loading" && recovery.requests.length === 0 ? (
             <SkeletonGroup lines={3} />
           ) : recovery.requestsState === "error" ? (
             <EmptyState title="Không tải được danh sách yêu cầu" description={recovery.requestsError} />
           ) : recovery.requests.length === 0 ? (
-            <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bắt đầu theo dõi kế hoạch phục hồi." />
+            <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bác sĩ lập kế hoạch phục hồi cho bạn." />
           ) : (
             <View style={styles.list}>
               {recovery.requests.map((request) => (
@@ -167,7 +244,17 @@ export function RecoveryPlanScreen() {
         </View>
 
         <View style={styles.section}>
-          <AppText variant="h3">Kế hoạch đã nhận</AppText>
+          <View style={styles.sectionHeader}>
+            <Route size={20} color={palette.primaryDark} />
+            <View style={styles.sectionTitleWrap}>
+              <AppText variant="h3" color={palette.ink}>
+                Kế hoạch đã nhận
+              </AppText>
+              <AppText variant="caption" color={palette.faint}>
+                Xem lộ trình phục hồi và bắt đầu khi sẵn sàng
+              </AppText>
+            </View>
+          </View>
           {recovery.plansState === "loading" && recovery.plans.length === 0 ? (
             <SkeletonGroup lines={3} />
           ) : recovery.plansState === "error" ? (
@@ -184,7 +271,7 @@ export function RecoveryPlanScreen() {
           <Pagination page={recovery.plansPage} totalPages={recovery.plansInfo.totalPages} onChange={recovery.setPlansPage} />
         </View>
 
-        <AppText variant="caption" color={colors.subtle}>
+        <AppText variant="caption" color={palette.faint} style={styles.disclaimer}>
           Thông tin hỗ trợ, không thay thế chăm sóc y tế. Trong tình huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
         </AppText>
       </ScrollView>
@@ -236,24 +323,112 @@ export function RecoveryPlanScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: palette.bg,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
     gap: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
-  header: {
+  hero: {
+    gap: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: palette.heroBg,
+    padding: spacing.xl,
+    shadowColor: palette.primaryDark,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.28,
+    shadowRadius: 30,
+    elevation: 4,
+  },
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: palette.heroOverlay,
+  },
+  heroPill: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: palette.heroOverlay,
+    paddingHorizontal: spacing.md,
+  },
+  heroTitle: {
+    maxWidth: 300,
+  },
+  heroCopy: {
+    maxWidth: 330,
+  },
+  snapshotRow: {
+    flexDirection: "row",
     gap: spacing.sm,
   },
+  snapshotTile: {
+    flex: 1,
+    minHeight: 96,
+    justifyContent: "space-between",
+    borderRadius: radius.md,
+    backgroundColor: palette.surface,
+    padding: spacing.md,
+  },
+  snapshotChip: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.sm,
+  },
+  chipWarning: {
+    backgroundColor: palette.warningBg,
+  },
+  chipSuccess: {
+    backgroundColor: palette.successBg,
+  },
+  chipInfo: {
+    backgroundColor: palette.mint,
+  },
+  snapshotLabel: {
+    minHeight: 34,
+  },
+  latestStrip: {
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: palette.heroOverlay,
+    paddingHorizontal: spacing.md,
+  },
+  latestText: {
+    flex: 1,
+  },
   createButton: {
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.teal,
+    borderRadius: radius.pill,
+    backgroundColor: palette.primary,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    ...shadows.soft,
+    shadowColor: palette.primaryDark,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    elevation: 3,
   },
   createButtonDisabled: {
     opacity: 0.5,
@@ -261,14 +436,25 @@ const styles = StyleSheet.create({
   section: {
     gap: spacing.md,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  sectionTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
   list: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   pagination: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.md,
+    paddingVertical: spacing.xs,
   },
   pageButton: {
     width: 32,
@@ -277,9 +463,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: palette.line,
+    backgroundColor: palette.surface,
   },
   pageButtonDisabled: {
     opacity: 0.4,
   },
+  disclaimer: {
+    paddingHorizontal: spacing.xs,
+  },
 });
+
+const TONE_STYLES = {
+  warning: { chip: styles.chipWarning, icon: palette.warning },
+  success: { chip: styles.chipSuccess, icon: palette.success },
+  info: { chip: styles.chipInfo, icon: palette.primaryDark },
+} as const;

@@ -1,5 +1,3 @@
-// Ported from the status/error maps inline in RecoveryPlanPage.jsx (Web) —
-// there is no separate presentation file on Web either.
 import { ApiErrorPayload } from "@/src/types/api";
 import { DiseaseGroup, RecoveryPlanRequestStatus, RecoveryPlanStatus } from "@/src/types/recoveryPlan";
 
@@ -48,7 +46,15 @@ function normalizeErrorCode(value: unknown) {
 
 export function getApiErrorCode(payload: ApiErrorPayload | undefined) {
   const errors = payload?.errors;
-  const candidates: unknown[] = [Array.isArray(errors) ? errors : []].flat();
+  const candidates: unknown[] = [];
+
+  if (Array.isArray(errors)) {
+    candidates.push(...errors);
+  } else if (errors && typeof errors === "object") {
+    candidates.push(...Object.keys(errors), ...Object.values(errors).flat());
+  } else if (errors) {
+    candidates.push(errors);
+  }
 
   for (const candidate of candidates) {
     if (candidate && typeof candidate === "object") {
@@ -60,10 +66,13 @@ export function getApiErrorCode(payload: ApiErrorPayload | undefined) {
     if (normalized) return normalized;
   }
 
-  return "";
+  return normalizeErrorCode((payload as { code?: string } | undefined)?.code);
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
+  NO_CREDIT_PACKAGE: "Bạn chưa có lượt sử dụng. Hãy mua gói lượt để bắt đầu dịch vụ này.",
+  SERVICE_CREDIT_EXHAUSTED: "Bạn đã dùng hết lượt. Mua thêm lượt để tiếp tục sử dụng các dịch vụ MediMate.",
+  SERVICE_CREDIT_NOT_CONFIGURED: "Dịch vụ lượt dùng chưa sẵn sàng. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
   NO_ACTIVE_SUBSCRIPTION: "Bạn cần một gói đang hoạt động để yêu cầu kế hoạch phục hồi.",
   RECOVERY_PLAN_QUOTA_NOT_CONFIGURED: "Hạn mức kế hoạch phục hồi chưa được cấu hình. Vui lòng thử lại sau.",
   RECOVERY_PLAN_QUOTA_EXHAUSTED: "Bạn đã dùng hết lượt trong chu kỳ hiện tại.",
@@ -78,7 +87,8 @@ export function getRecoveryErrorMessage(payload: ApiErrorPayload | undefined, fa
 }
 
 export function isNoActiveSubscriptionError(payload: ApiErrorPayload | undefined) {
-  return getApiErrorCode(payload) === "NO_ACTIVE_SUBSCRIPTION";
+  const code = getApiErrorCode(payload);
+  return code === "NO_ACTIVE_SUBSCRIPTION" || code === "NO_CREDIT_PACKAGE" || code === "SERVICE_CREDIT_EXHAUSTED";
 }
 
 export function makeIdempotencyKey() {
@@ -89,8 +99,8 @@ export function makeIdempotencyKey() {
 }
 
 export function formatDateOnly(value: unknown) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value as string);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(date);
 }

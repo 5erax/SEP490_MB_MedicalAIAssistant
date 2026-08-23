@@ -1,7 +1,8 @@
-// Ported from src/services/subscriptionUsageService.js (Web).
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
 import { SubscriptionUsageQuota } from "@/src/types/subscription";
+
+const SERVICE_CREDIT_CODE = "SERVICE_CREDIT";
 
 export const subscriptionUsageApi = {
   getUsage() {
@@ -9,12 +10,39 @@ export const subscriptionUsageApi = {
   },
 };
 
-// Ported from normalizeQuota() in RecoveryPlanPage.jsx — the response can be
-// a single quota object or an array of per-feature quotas; pick the one
-// whose quotaCode mentions "recovery", falling back to the first entry.
+function normalizeCode(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
+function toCount(value: unknown, fallback = 0) {
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : fallback;
+}
+
 export function normalizeRecoveryQuota(data: SubscriptionUsageQuota | SubscriptionUsageQuota[] | undefined) {
-  if (Array.isArray(data)) {
-    return data.find((item) => String(item.quotaCode).toLowerCase().includes("recovery")) ?? data[0] ?? null;
-  }
-  return data ?? null;
+  const candidate = Array.isArray(data)
+    ? data.find((item) => normalizeCode(item.quotaCode ?? item.code) === normalizeCode(SERVICE_CREDIT_CODE)) ?? data[0] ?? null
+    : data ?? null;
+
+  if (!candidate || typeof candidate !== "object") return null;
+
+  const usedCount = toCount(candidate.usedCount);
+  const reservedCount = toCount(candidate.reservedCount);
+  const hasRemaining = candidate.remainingCount !== undefined && candidate.remainingCount !== null;
+  const remainingCount = hasRemaining ? toCount(candidate.remainingCount) : null;
+  const grantedFallback = usedCount + reservedCount + (remainingCount ?? 0);
+  const grantedCount = toCount(candidate.grantedCount ?? candidate.limitValue, grantedFallback);
+
+  return {
+    ...candidate,
+    quotaCode: SERVICE_CREDIT_CODE,
+    grantedCount,
+    limitValue: grantedCount,
+    usedCount,
+    reservedCount,
+    remainingCount: remainingCount ?? Math.max(0, grantedCount - usedCount - reservedCount),
+  };
 }
