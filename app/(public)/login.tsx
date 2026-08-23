@@ -16,8 +16,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { makeRedirectUri, Prompt, ResponseType, useAuthRequest } from "expo-auth-session";
-import * as WebBrowser from "expo-web-browser";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 
 import { authService, normalizeAuthSession } from "@/src/services";
 import { useAuth } from "@/src/providers";
@@ -27,8 +26,6 @@ import { getInitialRouteForSession, ROUTES } from "@/src/navigation";
 import { colors, radius, shadows, spacing, typography } from "@/src/theme/tokens";
 import { isValidEmail } from "@/src/utils";
 import { env, isGoogleAuthConfigured } from "@/src/config/env";
-
-WebBrowser.maybeCompleteAuthSession();
 
 type LoginErrors = {
   email?: string;
@@ -57,30 +54,10 @@ function validateLoginForm(email: string, password: string) {
 
 const PASSWORD_HINT = "Tối thiểu 8 ký tự, nên có chữ hoa, chữ thường, số và ký tự đặc biệt.";
 
-const GOOGLE_DISABLED_CLIENT_ID = "google-login-disabled";
-const GOOGLE_DISCOVERY = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-  userInfoEndpoint: "https://openidconnect.googleapis.com/v1/userinfo",
-};
-
 export default function LoginScreen() {
   const { isRestoring, session, setSession } = useAuth();
   const { showToast } = useToast();
   const googleLoginEnabled = isGoogleAuthConfigured();
-  const googleClientId = env.googleAndroidClientId || env.googleIosClientId || env.googleWebClientId || GOOGLE_DISABLED_CLIENT_ID;
-  const googleRedirectUri = useMemo(() => makeRedirectUri({ scheme: "sep490mbmedicalaiassistant" }), []);
-  const googleNonce = useMemo(() => `${Date.now()}-${Math.random().toString(16).slice(2)}`, []);
-  const [googleRequest, googleResponse, promptGoogleLogin] = useAuthRequest({
-    clientId: googleClientId,
-    redirectUri: googleRedirectUri,
-    responseType: ResponseType.IdToken,
-    scopes: ["openid", "profile", "email"],
-    prompt: Prompt.SelectAccount,
-    usePKCE: false,
-    extraParams: { nonce: googleNonce },
-  }, GOOGLE_DISCOVERY);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -90,7 +67,7 @@ export default function LoginScreen() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const disabled = useMemo(() => submitting || googleSubmitting || !email.trim() || !password, [email, password, googleSubmitting, submitting]);
-  const googleDisabled = submitting || googleSubmitting || !googleLoginEnabled || !googleRequest;
+  const googleDisabled = submitting || googleSubmitting || !googleLoginEnabled;
 
   useEffect(() => {
     if (!isRestoring && session) {
@@ -99,51 +76,15 @@ export default function LoginScreen() {
   }, [isRestoring, session]);
 
   useEffect(() => {
-    if (!googleResponse) return;
+    if (!googleLoginEnabled) return;
 
-    async function finishGoogleLogin() {
-      if (googleResponse?.type === "cancel" || googleResponse?.type === "dismiss") {
-        setGoogleSubmitting(false);
-        return;
-      }
-
-      if (googleResponse?.type !== "success") {
-        setApiError("Dang nhap Google khong hoan tat. Vui long thu lai.");
-        setGoogleSubmitting(false);
-        return;
-      }
-
-      const idToken = googleResponse.params.id_token;
-      if (!idToken) {
-        setApiError("Google chua tra ma xac thuc. Kiem tra lai Google client id cua ung dung.");
-        setGoogleSubmitting(false);
-        return;
-      }
-
-      try {
-        const response = await authService.googleLogin(idToken);
-        const nextSession = normalizeAuthSession(response);
-
-        if (!nextSession?.accessToken) {
-          throw new Error("Backend chua tra access token. Vui long thu lai.");
-        }
-
-        await setSession(nextSession);
-        showToast({
-          type: "success",
-          title: "Dang nhap Google thanh cong",
-          message: "Dang mo khong gian phu hop voi tai khoan cua ban.",
-        });
-        router.replace(getInitialRouteForSession(nextSession));
-      } catch (error) {
-        setApiError(error instanceof Error ? error.message : "Dang nhap Google that bai. Vui long thu lai.");
-      } finally {
-        setGoogleSubmitting(false);
-      }
-    }
-
-    finishGoogleLogin();
-  }, [googleResponse, setSession, showToast]);
+    GoogleSignin.configure({
+      webClientId: env.googleWebClientId,
+      iosClientId: env.googleIosClientId || undefined,
+      scopes: ["profile", "email"],
+      offlineAccess: false,
+    });
+  }, [googleLoginEnabled]);
 
   async function handleLogin() {
     const nextErrors = validateLoginForm(email, password);
@@ -180,19 +121,63 @@ export default function LoginScreen() {
     setApiError("");
 
     if (!googleLoginEnabled) {
-      setApiError("Dang nhap Google chua duoc cau hinh. Hay them EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID hoac client id Android/iOS.");
+      setApiError("Dang nhap Google chua duoc cau hinh. Hay them EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.");
       return;
     }
 
     setGoogleSubmitting(true);
     try {
-      const result = await promptGoogleLogin();
-      if (result.type === "cancel" || result.type === "dismiss") {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      await GoogleSignin.signOut().catch(() => null);
+
+      const result = await GoogleSignin.signIn();
+      if (result.type === "cancelled") {
         setGoogleSubmitting(false);
+        return;
       }
+
+      const idToken = result.data.idToken || (await GoogleSignin.getTokens()).idToken;
+      if (!idToken) {
+        throw new Error("Google chua tra idToken. Kiem tra webClientId va Android OAuth SHA-1 trong Google Cloud.");
+      }
+
+      const response = await authService.googleLogin(idToken);
+      const nextSession = normalizeAuthSession(response);
+
+      if (!nextSession?.accessToken) {
+        throw new Error("Backend chua tra access token. Vui long thu lai.");
+      }
+
+      await setSession(nextSession);
+      showToast({
+        type: "success",
+        title: "Dang nhap Google thanh cong",
+        message: "Dang mo khong gian phu hop voi tai khoan cua ban.",
+      });
+      router.replace(getInitialRouteForSession(nextSession));
     } catch (error) {
+      const errorCode = typeof error === "object" && error && "code" in error ? String(error.code) : "";
+      if (errorCode === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+      if (errorCode === statusCodes.IN_PROGRESS) {
+        setApiError("Google Sign-In dang duoc xu ly. Vui long cho trong giay lat.");
+        return;
+      }
+      if (errorCode === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setApiError("Thiet bi chua co Google Play Services hoac can cap nhat.");
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("RNGoogleSignin") || message.includes("native module")) {
+        setApiError("Google Sign-In native can development build. Hay chay npx expo run:android thay vi Expo Go.");
+        return;
+      }
+
+      setApiError(message || "Dang nhap Google that bai. Vui long thu lai.");
+    } finally {
       setGoogleSubmitting(false);
-      setApiError(error instanceof Error ? error.message : "Khong mo duoc Google Sign-In. Vui long thu lai.");
     }
   }
 

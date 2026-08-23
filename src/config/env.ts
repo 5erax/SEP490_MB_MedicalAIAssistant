@@ -37,6 +37,6 @@ export const env = {
 // always-on, so the UI degrades gracefully when native OAuth clients aren't
 // registered yet.
 export function isGoogleAuthConfigured() {
-  return Boolean(env.googleWebClientId || env.googleAndroidClientId || env.googleIosClientId);
+  return Boolean(env.googleWebClientId);
 }
 
