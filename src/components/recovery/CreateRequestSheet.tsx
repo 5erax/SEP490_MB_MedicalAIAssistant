@@ -3,7 +3,7 @@ import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-nat
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { ChevronDown, ClipboardCheck, FileImage, FlaskConical, Info, NotebookPen, ShieldCheck, X } from "lucide-react-native";
+import { CalendarCheck, ChevronDown, ClipboardCheck, FileImage, FlaskConical, Info, NotebookPen, ShieldCheck, X } from "lucide-react-native";
 
 import { AppText, Button, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -11,7 +11,7 @@ import { ROUTES } from "@/src/navigation/routes";
 import { CreateRequestForm } from "@/src/hooks/useRecoveryPlan";
 import { PickedImage, validateCloudinaryImage } from "@/src/services/cloudinaryUploadService";
 import { LabTestSession } from "@/src/types/labTest";
-import { DISEASE_GROUPS, getLabSessionLabel } from "@/src/utils/recoveryPlanPresentation";
+import { DISEASE_GROUPS, getLabSessionId, getLabSessionLabel } from "@/src/utils/recoveryPlanPresentation";
 
 const NOTE_MAX_LENGTH = 2000;
 
@@ -58,8 +58,11 @@ export function CreateRequestSheet({
 }: CreateRequestSheetProps) {
   const [pickError, setPickError] = useState("");
   const [diseasePickerOpen, setDiseasePickerOpen] = useState(false);
+  const [labPickerOpen, setLabPickerOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const selectedDiseaseLabel = DISEASE_GROUPS.find((group) => group.value === form.diseaseGroup)?.label;
+  const selectedLabSession = labSessions.find((session) => getLabSessionId(session) === form.primaryLabTestSessionId) ?? null;
+  const selectedLabLabel = selectedLabSession ? getLabSessionLabel(selectedLabSession) : "";
 
   async function pickPrescriptionImage() {
     setPickError("");
@@ -161,7 +164,10 @@ export function CreateRequestSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Chọn nhóm bệnh"
                 disabled={submitting}
-                onPress={() => setDiseasePickerOpen((current) => !current)}
+                onPress={() => {
+                  setLabPickerOpen(false);
+                  setDiseasePickerOpen((current) => !current);
+                }}
                 style={[styles.selectButton, diseasePickerOpen && styles.selectButtonOpen, errors.diseaseGroup && styles.selectButtonError]}
               >
                 <AppText variant="bodyStrong" color={selectedDiseaseLabel ? colors.ink : colors.muted} style={styles.selectLabel}>
@@ -222,33 +228,73 @@ export function CreateRequestSheet({
                   Xét nghiệm đính kèm
                 </AppText>
               </View>
-              <View style={styles.diseaseRow}>
+              <View style={styles.selectWrap}>
                 <Pressable
                   accessibilityRole="button"
-                  disabled={submitting}
-                  onPress={() => onChange("primaryLabTestSessionId", "")}
-                  style={[styles.diseaseChip, form.primaryLabTestSessionId === "" && styles.diseaseChipSelected]}
+                  accessibilityLabel="Chọn xét nghiệm đính kèm"
+                  disabled={submitting || labSessionsState === "loading"}
+                  onPress={() => {
+                    setDiseasePickerOpen(false);
+                    setLabPickerOpen((current) => !current);
+                  }}
+                  style={[styles.selectButton, labPickerOpen && styles.selectButtonOpen]}
                 >
-                  <AppText variant="bodyStrong" color={form.primaryLabTestSessionId === "" ? colors.white : colors.muted}>
-                    Không đính kèm
+                  <AppText variant="bodyStrong" color={selectedLabLabel ? colors.ink : colors.muted} style={styles.selectLabel}>
+                    {labSessionsState === "loading" ? "Đang tải xét nghiệm..." : selectedLabLabel || "Không đính kèm xét nghiệm"}
                   </AppText>
+                  <ChevronDown size={18} color={colors.teal} />
                 </Pressable>
-                {labSessions.map((session) => {
-                  const selected = form.primaryLabTestSessionId === session.sessionId;
-                  return (
+                {labPickerOpen ? (
+                  <ScrollView style={styles.selectMenu} nestedScrollEnabled persistentScrollbar>
                     <Pressable
-                      key={session.sessionId}
+                      key="none"
                       accessibilityRole="button"
                       disabled={submitting}
-                      onPress={() => onChange("primaryLabTestSessionId", session.sessionId)}
-                      style={[styles.diseaseChip, selected && styles.diseaseChipSelected]}
+                      onPress={() => {
+                        onChange("primaryLabTestSessionId", "");
+                        setLabPickerOpen(false);
+                      }}
+                      style={[styles.selectOption, form.primaryLabTestSessionId === "" && styles.selectOptionSelected]}
                     >
-                      <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
-                        {getLabSessionLabel(session)}
+                      <AppText variant="bodyStrong" color={form.primaryLabTestSessionId === "" ? colors.white : colors.ink}>
+                        Không đính kèm xét nghiệm
                       </AppText>
                     </Pressable>
-                  );
-                })}
+                    {labSessions.map((session) => {
+                      const sessionId = getLabSessionId(session);
+                      const selected = form.primaryLabTestSessionId === sessionId;
+                      return (
+                        <Pressable
+                          key={sessionId}
+                          accessibilityRole="button"
+                          disabled={submitting || !sessionId}
+                          onPress={() => {
+                            onChange("primaryLabTestSessionId", sessionId);
+                            setLabPickerOpen(false);
+                          }}
+                          style={[styles.selectOption, selected && styles.selectOptionSelected]}
+                        >
+                          <AppText variant="bodyStrong" color={selected ? colors.white : colors.ink}>
+                            {getLabSessionLabel(session)}
+                          </AppText>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                ) : null}
+              </View>
+              <View style={styles.labPreview}>
+                <View style={styles.labPreviewIcon}>
+                  <CalendarCheck size={17} color={colors.teal} />
+                </View>
+                <View style={styles.labPreviewText}>
+                  <AppText variant="caption" color={colors.subtle}>
+                    {selectedLabSession ? "Đã chọn xét nghiệm" : "Chưa chọn xét nghiệm"}
+                  </AppText>
+                  <AppText variant="bodyStrong" numberOfLines={2}>
+                    {selectedLabLabel || "Không đính kèm xét nghiệm"}
+                  </AppText>
+                </View>
               </View>
               <AppText variant="caption" color={colors.subtle}>
                 {labSessionsState === "loading"
@@ -533,6 +579,29 @@ const styles = StyleSheet.create({
   },
   selectOptionSelected: {
     backgroundColor: colors.teal,
+  },
+  labPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
+  labPreviewIcon: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+  },
+  labPreviewText: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   multiline: {
     minHeight: 124,

@@ -14,9 +14,11 @@ import { DiseaseGroup, RecoveryPlan, RecoveryPlanRequest } from "@/src/types/rec
 import { SubscriptionUsageQuota } from "@/src/types/subscription";
 import {
   getRecoveryErrorMessage,
+  getLabSessionId,
   isNoActiveSubscriptionError,
   makeIdempotencyKey,
   mapReadinessIssues,
+  normalizeCompletedLabSessions,
 } from "@/src/utils/recoveryPlanPresentation";
 
 type SectionState = "loading" | "ready" | "error";
@@ -139,11 +141,18 @@ export function useRecoveryPlan() {
       try {
         const response = await labTestsApi.mySessions(1, 20, "completed");
         if (cancelled) return;
-        setLabSessions(response.data?.items ?? []);
+        const items = normalizeCompletedLabSessions(response.data?.items ?? []) as LabTestSession[];
+        setLabSessions(items);
+        setCreateForm((current) =>
+          current.primaryLabTestSessionId && !items.some((session) => getLabSessionId(session) === current.primaryLabTestSessionId)
+            ? { ...current, primaryLabTestSessionId: "" }
+            : current,
+        );
         setLabSessionsState("ready");
       } catch {
         if (cancelled) return;
         setLabSessions([]);
+        setCreateForm((current) => ({ ...current, primaryLabTestSessionId: "" }));
         setLabSessionsState("error");
         setLabSessionsError("Không thể tải danh sách xét nghiệm. Bạn vẫn có thể gửi yêu cầu mà không đính kèm.");
       }

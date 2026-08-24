@@ -17,6 +17,16 @@ function toIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function hasMedicalProfileContent(form: MedicalProfileForm) {
+  return Boolean(
+    form.bloodType ||
+      form.height ||
+      form.weight ||
+      form.allergyNote.trim() ||
+      form.chronicDiseases.some((disease) => disease.diseaseName.trim() || disease.from || disease.to || disease.note.trim()),
+  );
+}
+
 function DiseaseRow({
   disease,
   index,
@@ -156,10 +166,42 @@ export function MedicalProfileSection({
   if (state === "error") {
     return (
       <Card variant="soft" style={styles.card}>
-        <EmptyState title="Không thể tải hồ sơ y tế" description="Dữ liệu hiện chưa khả dụng." />
+        <EmptyState title="Không thể tải hồ sơ y tế" description="Kiểm tra kết nối rồi thử tải lại dữ liệu." />
         <Button variant="secondary" onPress={onRetry}>
           Thử lại
         </Button>
+      </Card>
+    );
+  }
+
+  const hasContent = hasMedicalProfileContent(form);
+
+  if (!isEditing && !hasContent) {
+    return (
+      <Card variant="soft" style={styles.card}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerTitle}>
+            <View style={styles.headerIconMark}>
+              <HeartPulse size={18} color={colors.teal} />
+            </View>
+            <AppText variant="h3">Hồ sơ y tế</AppText>
+          </View>
+        </View>
+
+        <View style={styles.emptyMedicalPanel}>
+          <View style={styles.emptyBadge}>
+            <Plus size={18} color={colors.teal} />
+          </View>
+          <AppText variant="h3" center>
+            Chưa có hồ sơ y tế
+          </AppText>
+          <AppText color={colors.muted} center style={styles.emptyDescription}>
+            Bổ sung nhóm máu, chiều cao, cân nặng, dị ứng và bệnh nền để bác sĩ có thêm ngữ cảnh khi tư vấn.
+          </AppText>
+          <Button onPress={onStartEditing} fullWidth>
+            Tạo hồ sơ y tế
+          </Button>
+        </View>
       </Card>
     );
   }
@@ -327,6 +369,27 @@ const styles = StyleSheet.create({
   },
   privacyText: {
     flex: 1,
+  },
+  emptyMedicalPanel: {
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.lineStrong,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.xl,
+  },
+  emptyBadge: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+  },
+  emptyDescription: {
+    maxWidth: 280,
   },
   fieldGroup: {
     gap: spacing.sm,

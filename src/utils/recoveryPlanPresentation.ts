@@ -145,6 +145,27 @@ export function getLabSessionLabel(session: { testDate?: string; processedAt?: s
   return `${dateLabel}${facilityLabel}`;
 }
 
+export function getLabSessionId(session: { sessionId?: string; testSessionId?: string; id?: string } | null | undefined) {
+  return session?.sessionId ?? session?.testSessionId ?? session?.id ?? "";
+}
+
+function getTimeMs(value: unknown) {
+  if (!value) return 0;
+  const date = new Date(value as string);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+export function normalizeCompletedLabSessions<
+  T extends { sessionId?: string; testSessionId?: string; id?: string; status?: string; testDate?: string; processedAt?: string | null; createdAt?: string },
+>(sessions: T[] = []) {
+  return sessions
+    .filter((session) => {
+      const status = String(session?.status ?? "completed").toLowerCase();
+      return getLabSessionId(session) && status === "completed";
+    })
+    .sort((left, right) => getTimeMs(right.createdAt ?? right.processedAt ?? right.testDate) - getTimeMs(left.createdAt ?? left.processedAt ?? left.testDate));
+}
+
 export function formatDateOnly(value: unknown) {
   if (!value) return "-";
   const date = new Date(value as string);

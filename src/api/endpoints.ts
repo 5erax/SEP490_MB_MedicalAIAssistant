@@ -75,6 +75,7 @@ export const ENDPOINTS = {
   PATIENT_PROFILES: {
     BASE: PATIENT_PROFILES_BASE,
     BY_ID: (id: string | number) => byId(PATIENT_PROFILES_BASE, id),
+    BY_USER: (userId: string | number) => `${PATIENT_PROFILES_BASE}/by-user/${encodeURIComponent(String(userId))}`,
   },
   SUBSCRIPTION_PLANS: {
     BASE: SUBSCRIPTION_PLANS_BASE,

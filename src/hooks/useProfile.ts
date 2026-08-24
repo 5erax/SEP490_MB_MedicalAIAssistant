@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { authService } from "@/src/services/authService";
-import { patientProfilesApi } from "@/src/services/patientProfileService";
+import { findPatientProfileByUserId, patientProfilesApi } from "@/src/services/patientProfileService";
 import { userSubscriptionsApi } from "@/src/services/subscriptionService";
 import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
 import { ChronicDisease, PatientProfile } from "@/src/types/patientProfile";
@@ -86,9 +86,8 @@ export function useProfile() {
     setMedicalState("loading");
     setSubscriptionState("loading");
 
-    const [userResult, profilesResult, subscriptionResult, usageResult] = await Promise.allSettled([
+    const [userResult, subscriptionResult, usageResult] = await Promise.allSettled([
       authService.me(),
-      patientProfilesApi.list(1, 100),
       userSubscriptionsApi.me(),
       subscriptionUsageApi.getUsage(),
     ]);
@@ -110,14 +109,20 @@ export function useProfile() {
       setPersonalState("error");
     }
 
-    if (profilesResult.status === "fulfilled" && userResult.status === "fulfilled") {
-      const data = (profilesResult.value as { data?: { items?: PatientProfile[] } | PatientProfile[] }).data;
-      const items = Array.isArray(data) ? data : (data?.items ?? []);
-      const foundProfile = items.find((item) => String(item.userId).toLowerCase() === resolvedUserId.toLowerCase()) ?? null;
-      setExistingProfileId(foundProfile?.id ?? null);
-      setMedicalForm(toMedicalForm(foundProfile));
-      setMedicalState("ready");
+    if (userResult.status === "fulfilled" && resolvedUserId) {
+      try {
+        const foundProfile = await findPatientProfileByUserId(resolvedUserId);
+        setExistingProfileId(foundProfile?.id ?? null);
+        setMedicalForm(toMedicalForm(foundProfile));
+        setMedicalState("ready");
+      } catch {
+        setExistingProfileId(null);
+        setMedicalForm(EMPTY_MEDICAL_FORM);
+        setMedicalState("error");
+      }
     } else {
+      setExistingProfileId(null);
+      setMedicalForm(EMPTY_MEDICAL_FORM);
       setMedicalState("error");
     }
 
