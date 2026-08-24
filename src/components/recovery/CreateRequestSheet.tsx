@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { FileImage, FlaskConical, Info, X } from "lucide-react-native";
@@ -79,7 +80,7 @@ export function CreateRequestSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <AppText variant="h3">Yêu cầu kế hoạch phục hồi</AppText>
           <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
@@ -257,7 +258,7 @@ export function CreateRequestSheet({
             {prescriptionUploading ? "Đang tải ảnh..." : submitting ? "Đang gửi..." : "Gửi yêu cầu"}
           </Button>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
