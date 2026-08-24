@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck } from "lucide-react-native";
+import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck, XCircle } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, LoadingState, TextField } from "@/src/components/ui";
@@ -25,7 +25,7 @@ const STATUS_PILL_STYLES: Record<NonNullable<typeof REQUEST_STATUS[RecoveryPlanR
 };
 
 const STATUS_HELP: Record<RecoveryPlanRequest["status"], string> = {
-  waitingForDoctor: "Yêu cầu đã được gửi và đang chờ bác sĩ tiếp nhận.",
+  waitingForDoctor: "Đang chờ bác sĩ tiếp nhận.",
   assigned: "Bác sĩ đã nhận yêu cầu và sẽ bắt đầu rà soát thông tin.",
   inReview: "Bác sĩ đang xem xét hồ sơ, ghi chú và dữ liệu đính kèm.",
   needMoreInformation: "Bác sĩ cần bạn bổ sung thêm thông tin trước khi lập kế hoạch.",
@@ -190,7 +190,13 @@ export function RequestDetailSheet({
               ) : null}
 
               {cancellable ? (
-                <Button variant="danger" disabled={cancelling} onPress={handleCancel}>
+                <Button
+                  variant="danger"
+                  disabled={cancelling}
+                  onPress={handleCancel}
+                  leftIcon={<XCircle size={18} color={colors.white} />}
+                  style={styles.cancelButton}
+                >
                   {cancelling ? "Đang hủy..." : "Hủy yêu cầu"}
                 </Button>
               ) : null}
@@ -243,8 +249,8 @@ const styles = StyleSheet.create({
   dateSummary: {
     flexDirection: "row",
     alignItems: "center",
-    flexWrap: "wrap",
     gap: spacing.md,
+    position: "relative",
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.lg,
@@ -261,12 +267,13 @@ const styles = StyleSheet.create({
   },
   dateText: {
     flex: 1,
-    minWidth: 150,
+    paddingRight: 106,
     gap: spacing.xs / 2,
   },
   dateStatus: {
-    width: "100%",
-    paddingLeft: 58,
+    position: "absolute",
+    top: spacing.md,
+    right: spacing.md,
   },
   statusPill: {
     alignSelf: "flex-start",
@@ -277,6 +284,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
+  },
+  cancelButton: {
+    minHeight: 54,
+    borderRadius: radius.lg,
   },
   hero: {
     gap: spacing.sm,
