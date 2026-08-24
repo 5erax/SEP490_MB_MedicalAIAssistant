@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { X } from "lucide-react-native";
+import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Badge, Button, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -8,6 +9,17 @@ import { RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { CANCELLABLE_REQUEST_STATUSES, formatDateOnly, getDiseaseGroupLabel, REQUEST_STATUS } from "@/src/utils/recoveryPlanPresentation";
 
 const NOTE_MAX_LENGTH = 2000;
+
+const STATUS_HELP: Record<RecoveryPlanRequest["status"], string> = {
+  waitingForDoctor: "Yêu cầu đã được gửi và đang chờ bác sĩ tiếp nhận.",
+  assigned: "Bác sĩ đã nhận yêu cầu và sẽ bắt đầu rà soát thông tin.",
+  inReview: "Bác sĩ đang xem xét hồ sơ, ghi chú và dữ liệu đính kèm.",
+  needMoreInformation: "Bác sĩ cần bạn bổ sung thêm thông tin trước khi lập kế hoạch.",
+  published: "Kế hoạch đã sẵn sàng trong mục Kế hoạch đã nhận.",
+  rejected: "Yêu cầu chưa thể tiếp nhận. Xem lý do bên dưới.",
+  cancelled: "Yêu cầu này đã được hủy.",
+  expired: "Yêu cầu đã hết hạn xử lý.",
+};
 
 type RequestDetailSheetProps = {
   visible: boolean;
@@ -45,54 +57,77 @@ export function RequestDetailSheet({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
         <View style={styles.header}>
-          <View style={styles.headerText}>
-            <AppText variant="caption" color={colors.subtle}>
-              Chi tiết yêu cầu
+          <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={onClose} style={styles.backButton} hitSlop={8}>
+            <ChevronLeft size={20} color={colors.teal} />
+            <AppText variant="bodyStrong" color={colors.teal}>
+              Quay lại
             </AppText>
-            <AppText variant="h3">{request ? getDiseaseGroupLabel(request.diseaseGroup) : "—"}</AppText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
-            <X size={20} color={colors.ink} />
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {state === "loading" ? (
             <LoadingState title="Đang tải chi tiết yêu cầu..." />
           ) : request ? (
             <>
-              {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
-
-              <View style={styles.metaRow}>
-                <AppText variant="caption" color={colors.subtle}>
-                  Ngày gửi
+              <View style={styles.hero}>
+                <View style={styles.heroTop}>
+                  <View style={styles.heroIcon}>
+                    <ClipboardList size={22} color={colors.white} />
+                  </View>
+                  {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
+                </View>
+                <AppText variant="caption" color="rgba(255,255,255,0.72)">
+                  Chi tiết yêu cầu
                 </AppText>
-                <AppText variant="bodyStrong">{formatDateOnly(request.requestedAt)}</AppText>
+                <AppText variant="h2" color={colors.white}>
+                  {getDiseaseGroupLabel(request.diseaseGroup)}
+                </AppText>
+                <AppText color="rgba(255,255,255,0.86)">{STATUS_HELP[request.status]}</AppText>
               </View>
 
-              {request.requestNote ? (
-                <View style={styles.noteCard}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Ghi chú của bạn
-                  </AppText>
-                  <AppText color={colors.muted}>{request.requestNote}</AppText>
+              <View style={styles.timelineCard}>
+                <View style={styles.timelineIcon}>
+                  <CalendarDays size={18} color={colors.teal} />
                 </View>
-              ) : null}
+                <View style={styles.timelineText}>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Ngày gửi yêu cầu
+                  </AppText>
+                  <AppText variant="h3">{formatDateOnly(request.requestedAt)}</AppText>
+                </View>
+              </View>
+
+              <View style={styles.noteCard}>
+                <View style={styles.cardHeader}>
+                  <FileText size={16} color={colors.teal} />
+                  <AppText variant="bodyStrong">Ghi chú của bạn</AppText>
+                </View>
+                <AppText color={request.requestNote ? colors.muted : colors.subtle}>
+                  {request.requestNote || "Bạn chưa thêm ghi chú cho yêu cầu này."}
+                </AppText>
+              </View>
 
               {request.status === "rejected" && request.rejectionReason ? (
                 <View style={styles.dangerCard}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Lý do
-                  </AppText>
+                  <View style={styles.cardHeader}>
+                    <ShieldCheck size={16} color={colors.danger} />
+                    <AppText variant="bodyStrong" color={colors.danger}>
+                      Lý do
+                    </AppText>
+                  </View>
                   <AppText color={colors.danger}>{request.rejectionReason}</AppText>
                 </View>
               ) : null}
 
               {request.status === "needMoreInformation" ? (
                 <View style={styles.fieldGroup}>
-                  <AppText variant="bodyStrong">Bổ sung thông tin</AppText>
+                  <View style={styles.cardHeader}>
+                    <MessageSquare size={16} color={colors.teal} />
+                    <AppText variant="bodyStrong">Bổ sung thông tin</AppText>
+                  </View>
                   <AppText variant="caption" color={colors.subtle}>
                     Nội dung gửi đi sẽ thay thế phần ghi chú hiện tại, không tạo thành chuỗi trò chuyện.
                   </AppText>
@@ -119,7 +154,7 @@ export function RequestDetailSheet({
             </>
           ) : null}
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -131,49 +166,100 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
-  headerText: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
+  backButton: {
+    minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.pill,
+    flexDirection: "row",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
     backgroundColor: colors.paperSoft,
+    paddingHorizontal: spacing.md,
   },
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
+    paddingBottom: spacing["4xl"],
   },
-  metaRow: {
+  hero: {
+    gap: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.limeDark,
+    padding: spacing.xl,
+  },
+  heroTop: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  timelineCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
+  },
+  timelineIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+  },
+  timelineText: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   noteCard: {
-    gap: spacing.xs / 2,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    padding: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
   },
   dangerCard: {
-    gap: spacing.xs / 2,
-    borderRadius: radius.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(180,35,24,0.22)",
+    borderRadius: radius.lg,
     backgroundColor: colors.dangerBg,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   fieldGroup: {
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
   },
   multiline: {
     minHeight: 96,
