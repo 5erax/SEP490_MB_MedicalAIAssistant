@@ -15,7 +15,7 @@ const STATUS_HELP: Record<RecoveryPlanRequest["status"], string> = {
   assigned: "Bác sĩ đã nhận yêu cầu và sẽ bắt đầu rà soát thông tin.",
   inReview: "Bác sĩ đang xem xét hồ sơ, ghi chú và dữ liệu đính kèm.",
   needMoreInformation: "Bác sĩ cần bạn bổ sung thêm thông tin trước khi lập kế hoạch.",
-  published: "Kế hoạch đã sẵn sàng trong mục Kế hoạch đã nhận.",
+  published: "Kế hoạch đã sẵn sàng để bạn xem và bắt đầu.",
   rejected: "Yêu cầu chưa thể tiếp nhận. Xem lý do bên dưới.",
   cancelled: "Yêu cầu này đã được hủy.",
   expired: "Yêu cầu đã hết hạn xử lý.",
@@ -243,7 +243,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: radius.xl,
     backgroundColor: colors.limeDark,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
   },
   heroTop: {
     flexDirection: "row",
