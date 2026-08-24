@@ -10,7 +10,7 @@ import { createNavigationTheme } from '@/src/theme';
 // The app's real entry flow is "/" -> AuthGate -> role group (see app/index.tsx),
 // not the stock Expo template's (tabs) group.
 export const unstable_settings = {
-  anchor: '(public)',
+  initialRouteName: 'index',
 };
 
 export default function RootLayout() {
@@ -21,6 +21,7 @@ export default function RootLayout() {
     <AppProviders colorScheme={appColorScheme}>
       <NavigationThemeProvider value={createNavigationTheme(appColorScheme)}>
         <Stack>
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(public)" options={{ headerShown: false }} />
           <Stack.Screen name="(setup)" options={{ headerShown: false }} />
           <Stack.Screen name="(patient)" options={{ headerShown: false }} />
