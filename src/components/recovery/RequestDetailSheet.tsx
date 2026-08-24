@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck, XCircle } from "lucide-react-native";
+import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, LoadingState, TextField } from "@/src/components/ui";
@@ -194,7 +194,6 @@ export function RequestDetailSheet({
                   variant="danger"
                   disabled={cancelling}
                   onPress={handleCancel}
-                  leftIcon={<XCircle size={18} color={colors.white} />}
                   style={styles.cancelButton}
                 >
                   {cancelling ? "Đang hủy..." : "Hủy yêu cầu"}
@@ -288,6 +287,8 @@ const styles = StyleSheet.create({
   cancelButton: {
     minHeight: 54,
     borderRadius: radius.lg,
+    borderColor: colors.coral,
+    backgroundColor: colors.coral,
   },
   hero: {
     gap: spacing.sm,
