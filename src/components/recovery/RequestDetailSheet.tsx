@@ -3,12 +3,26 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-nat
 import { CalendarDays, ChevronLeft, ClipboardList, FileText, MessageSquare, ShieldCheck } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AppText, Badge, Button, LoadingState, TextField } from "@/src/components/ui";
+import { AppText, Button, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { CANCELLABLE_REQUEST_STATUSES, formatDateOnly, getDiseaseGroupLabel, REQUEST_STATUS } from "@/src/utils/recoveryPlanPresentation";
 
 const NOTE_MAX_LENGTH = 2000;
+
+const COMPACT_STATUS_LABEL: Partial<Record<RecoveryPlanRequest["status"], string>> = {
+  waitingForDoctor: "Chờ bác sĩ",
+  assigned: "Đã tiếp nhận",
+  inReview: "Đang xem xét",
+  needMoreInformation: "Cần bổ sung",
+};
+
+const STATUS_PILL_STYLES: Record<NonNullable<typeof REQUEST_STATUS[RecoveryPlanRequest["status"]]>["tone"], { bg: string; text: string }> = {
+  success: { bg: colors.successBg, text: colors.success },
+  warning: { bg: colors.warningBg, text: colors.warning },
+  danger: { bg: colors.dangerBg, text: colors.danger },
+  neutral: { bg: colors.paperSoft, text: colors.muted },
+};
 
 const STATUS_HELP: Record<RecoveryPlanRequest["status"], string> = {
   waitingForDoctor: "Yêu cầu đã được gửi và đang chờ bác sĩ tiếp nhận.",
@@ -53,6 +67,7 @@ export function RequestDetailSheet({
   }
 
   const status = request ? REQUEST_STATUS[request.status] : null;
+  const statusLabel = request && status ? (COMPACT_STATUS_LABEL[request.status] ?? status.label) : "";
   const cancellable = request ? CANCELLABLE_REQUEST_STATUSES.has(request.status) : false;
   const hasNote = Boolean(request?.requestNote);
 
@@ -87,7 +102,15 @@ export function RequestDetailSheet({
                   </AppText>
                   <AppText variant="h3">{formatDateOnly(request.requestedAt)}</AppText>
                 </View>
-                {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
+                {status ? (
+                  <View style={styles.dateStatus}>
+                    <View style={[styles.statusPill, { backgroundColor: STATUS_PILL_STYLES[status.tone].bg }]}>
+                      <AppText variant="caption" color={STATUS_PILL_STYLES[status.tone].text} numberOfLines={1}>
+                        {statusLabel}
+                      </AppText>
+                    </View>
+                  </View>
+                ) : null}
               </View>
 
               <View style={styles.hero}>
@@ -220,6 +243,7 @@ const styles = StyleSheet.create({
   dateSummary: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
@@ -237,7 +261,22 @@ const styles = StyleSheet.create({
   },
   dateText: {
     flex: 1,
+    minWidth: 150,
     gap: spacing.xs / 2,
+  },
+  dateStatus: {
+    width: "100%",
+    paddingLeft: 58,
+  },
+  statusPill: {
+    alignSelf: "flex-start",
+    minWidth: 108,
+    minHeight: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
   },
   hero: {
     gap: spacing.sm,
