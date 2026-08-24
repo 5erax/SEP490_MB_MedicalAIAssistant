@@ -292,10 +292,20 @@ export function useRecoveryPlan() {
   async function cancelRequest(requestId: string) {
     setCancellingId(requestId);
     try {
-      await recoveryPlanRequestsApi.cancel(requestId);
-      loadRequests(requestsPage);
-      loadQuota();
-      if (selectedRequest?.id === requestId) clearSelectedRequest();
+      const response = await recoveryPlanRequestsApi.cancel(requestId);
+      const cancelledRequest =
+        response.data ??
+        (selectedRequest?.id === requestId ? ({ ...selectedRequest, status: "cancelled" } as RecoveryPlanRequest) : null);
+
+      if (cancelledRequest) {
+        setSelectedRequest(cancelledRequest);
+        setRequests((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === requestId ? cancelledRequest : item)),
+        }));
+      }
+
+      await Promise.allSettled([loadRequests(requestsPage), loadQuota()]);
       return "success" as const;
     } catch (error) {
       return { status: "error" as const, message: getRecoveryErrorMessage(errorPayload(error), "Không thể hủy yêu cầu. Vui lòng thử lại.") };

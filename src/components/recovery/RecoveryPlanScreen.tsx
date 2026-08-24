@@ -130,6 +130,7 @@ export function RecoveryPlanScreen() {
     if (result === "success") {
       showToast({ type: "success", message: "Đã hủy yêu cầu." });
       setRequestDetailVisible(false);
+      recovery.clearSelectedRequest();
     } else {
       showToast({ type: "error", message: result.message });
     }
