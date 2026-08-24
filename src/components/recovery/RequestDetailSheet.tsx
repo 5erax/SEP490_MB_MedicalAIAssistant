@@ -72,6 +72,18 @@ export function RequestDetailSheet({
             <LoadingState title="Đang tải chi tiết yêu cầu..." />
           ) : request ? (
             <>
+              <View style={styles.timelineCard}>
+                <View style={styles.timelineIcon}>
+                  <CalendarDays size={18} color={colors.teal} />
+                </View>
+                <View style={styles.timelineText}>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Ngày gửi yêu cầu
+                  </AppText>
+                  <AppText variant="h3">{formatDateOnly(request.requestedAt)}</AppText>
+                </View>
+              </View>
+
               <View style={styles.hero}>
                 <View style={styles.heroTop}>
                   <View style={styles.heroIcon}>
@@ -86,18 +98,6 @@ export function RequestDetailSheet({
                   {getDiseaseGroupLabel(request.diseaseGroup)}
                 </AppText>
                 <AppText color="rgba(255,255,255,0.86)">{STATUS_HELP[request.status]}</AppText>
-              </View>
-
-              <View style={styles.timelineCard}>
-                <View style={styles.timelineIcon}>
-                  <CalendarDays size={18} color={colors.teal} />
-                </View>
-                <View style={styles.timelineText}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Ngày gửi yêu cầu
-                  </AppText>
-                  <AppText variant="h3">{formatDateOnly(request.requestedAt)}</AppText>
-                </View>
               </View>
 
               <View style={styles.noteCard}>
