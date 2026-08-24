@@ -22,6 +22,7 @@ const STATUS_PILL_STYLES: Record<NonNullable<typeof REQUEST_STATUS[RecoveryPlanR
   warning: { bg: colors.warningBg, text: colors.warning },
   danger: { bg: colors.dangerBg, text: colors.danger },
   neutral: { bg: colors.paperSoft, text: colors.muted },
+  cancelled: { bg: "#FFE4ED", text: "#BE123C" },
 };
 
 const STATUS_HELP: Record<RecoveryPlanRequest["status"], string> = {
@@ -104,7 +105,7 @@ export function RequestDetailSheet({
                 </View>
                 {status ? (
                   <View style={styles.dateStatus}>
-                    <View style={[styles.statusPill, { backgroundColor: STATUS_PILL_STYLES[status.tone].bg }]}>
+                    <View style={[styles.statusPill, { backgroundColor: STATUS_PILL_STYLES[status.tone].bg }, status.tone === "cancelled" && styles.cancelledStatusPill]}>
                       <AppText variant="caption" color={STATUS_PILL_STYLES[status.tone].text} numberOfLines={1}>
                         {statusLabel}
                       </AppText>
@@ -283,6 +284,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xs,
+  },
+  cancelledStatusPill: {
+    minWidth: 0,
+    minHeight: 26,
+    paddingHorizontal: spacing.sm,
   },
   cancelButton: {
     alignSelf: "flex-start",

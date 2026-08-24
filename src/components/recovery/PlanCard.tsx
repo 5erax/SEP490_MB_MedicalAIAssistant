@@ -11,6 +11,7 @@ const toneStyle: Record<StatusTone, { bg: string; fg: string }> = {
   success: { bg: colors.successBg, fg: colors.success },
   danger: { bg: colors.dangerBg, fg: colors.danger },
   neutral: { bg: colors.paperSoft, fg: colors.muted },
+  cancelled: { bg: "#FFE4ED", fg: "#BE123C" },
 };
 
 export function PlanCard({ plan, onPress }: { plan: RecoveryPlan; onPress: () => void }) {

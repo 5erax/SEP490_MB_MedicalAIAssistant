@@ -136,8 +136,8 @@ export function PlanDetailSheet({ visible, plan, state, starting, onClose, onSta
                     <Route size={24} color={colors.white} />
                   </View>
                   {status ? (
-                    <View style={[styles.statusPill, styles[`statusPill_${status.tone}`]]}>
-                      <AppText variant="caption" color={colors.ink} numberOfLines={1}>
+                    <View style={[styles.statusPill, styles[`statusPill_${status.tone}`], status.tone === "cancelled" && styles.cancelledStatusPill]}>
+                      <AppText variant="caption" color={status.tone === "cancelled" ? "#BE123C" : colors.ink} numberOfLines={1}>
                         {status.label}
                       </AppText>
                     </View>
@@ -292,6 +292,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     backgroundColor: colors.paper,
   },
+  cancelledStatusPill: {
+    minWidth: 0,
+    minHeight: 26,
+    paddingHorizontal: spacing.sm,
+  },
   statusPill_info: {
     backgroundColor: colors.mint,
   },
@@ -306,6 +311,9 @@ const styles = StyleSheet.create({
   },
   statusPill_neutral: {
     backgroundColor: colors.paper,
+  },
+  statusPill_cancelled: {
+    backgroundColor: "#FFE4ED",
   },
   statsGrid: {
     flexDirection: "row",

@@ -6,7 +6,7 @@ import {
   RecoveryPlanStatus,
 } from "@/src/types/recoveryPlan";
 
-export type StatusTone = "warning" | "success" | "danger" | "neutral";
+export type StatusTone = "warning" | "success" | "danger" | "neutral" | "cancelled";
 
 export const DISEASE_GROUPS: { value: DiseaseGroup; label: string }[] = [
   { value: "respiratory", label: "Hô hấp" },
@@ -25,7 +25,7 @@ export const REQUEST_STATUS: Record<RecoveryPlanRequestStatus, { label: string; 
   needMoreInformation: { label: "Cần bổ sung thông tin", tone: "warning" },
   published: { label: "Đã có kế hoạch", tone: "success" },
   rejected: { label: "Không thể tiếp nhận", tone: "danger" },
-  cancelled: { label: "Đã hủy", tone: "neutral" },
+  cancelled: { label: "Đã hủy", tone: "cancelled" },
   expired: { label: "Đã hết hạn", tone: "neutral" },
 };
 
@@ -40,7 +40,7 @@ export const PLAN_STATUS: Record<RecoveryPlanStatus, { label: string; tone: Stat
   readyToStart: { label: "Sẵn sàng bắt đầu", tone: "warning" },
   active: { label: "Đang thực hiện", tone: "warning" },
   completed: { label: "Đã hoàn thành", tone: "success" },
-  cancelled: { label: "Đã hủy", tone: "neutral" },
+  cancelled: { label: "Đã hủy", tone: "cancelled" },
   superseded: { label: "Đã thay thế", tone: "neutral" },
 };
 
