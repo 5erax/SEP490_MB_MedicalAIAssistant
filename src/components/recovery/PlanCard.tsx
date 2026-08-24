@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from "react-native";
-import { CalendarDays, ChevronRight, Route } from "lucide-react-native";
+import { CalendarDays, ChevronRight, ClipboardList, Route } from "lucide-react-native";
 
 import { AppText } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -19,16 +19,15 @@ export function PlanCard({ plan, onPress }: { plan: RecoveryPlan; onPress: () =>
   const phasesCount = plan.phases?.length ?? 0;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
-      <View style={styles.rail}>
-        <View style={styles.railDot}>
-          <Route size={17} color={colors.teal} />
-        </View>
-        <View style={styles.railLine} />
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+      <View style={styles.accent} />
+      <View style={styles.iconWrap}>
+        <Route size={18} color={colors.teal} />
       </View>
-      <View style={styles.main}>
-        <View style={styles.titleRow}>
-          <AppText variant="bodyStrong" style={styles.title} numberOfLines={2}>
+
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <AppText variant="h3" style={styles.title} numberOfLines={1}>
             {plan.planName}
           </AppText>
           <View style={[styles.statusPill, { backgroundColor: tone.bg }]}>
@@ -37,69 +36,77 @@ export function PlanCard({ plan, onPress }: { plan: RecoveryPlan; onPress: () =>
             </AppText>
           </View>
         </View>
+
+        {plan.summary ? (
+          <AppText variant="caption" color={colors.muted} numberOfLines={2} style={styles.summary}>
+            {plan.summary}
+          </AppText>
+        ) : null}
+
         <View style={styles.metaRow}>
           {plan.durationDays ? (
             <View style={styles.metaChip}>
-              <CalendarDays size={14} color={colors.teal} />
+              <CalendarDays size={13} color={colors.teal} />
               <AppText variant="caption" color={colors.muted}>
                 {plan.durationDays} ngày
               </AppText>
             </View>
           ) : null}
           <View style={styles.metaChip}>
+            <ClipboardList size={13} color={colors.ink} />
             <AppText variant="caption" color={colors.muted}>
               {phasesCount} giai đoạn
             </AppText>
           </View>
         </View>
-        {plan.summary ? (
-          <AppText variant="caption" color={colors.muted} numberOfLines={2}>
-            {plan.summary}
-          </AppText>
-        ) : null}
       </View>
-      <ChevronRight size={18} color={colors.subtle} />
+
+      <View style={styles.chevron}>
+        <ChevronRight size={18} color={colors.subtle} />
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    minHeight: 112,
+  card: {
+    minHeight: 118,
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "center",
     gap: spacing.md,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.lg,
     backgroundColor: colors.paper,
     padding: spacing.md,
   },
-  rail: {
-    width: 42,
-    alignItems: "center",
+  cardPressed: {
+    opacity: 0.86,
+    transform: [{ translateY: 1 }],
   },
-  railDot: {
-    width: 42,
-    height: 42,
+  accent: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: colors.teal,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
     backgroundColor: colors.mint,
   },
-  railLine: {
-    flex: 1,
-    width: 2,
-    marginTop: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.line,
-  },
-  main: {
+  body: {
     flex: 1,
     minWidth: 0,
     gap: spacing.sm,
   },
-  titleRow: {
+  topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.sm,
@@ -109,11 +116,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   statusPill: {
-    maxWidth: 134,
+    maxWidth: 132,
     minHeight: 28,
     justifyContent: "center",
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
+  },
+  summary: {
+    paddingRight: spacing.md,
   },
   metaRow: {
     flexDirection: "row",
@@ -128,5 +138,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.paperSoft,
     paddingHorizontal: spacing.sm,
+  },
+  chevron: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
   },
 });
