@@ -54,17 +54,22 @@ export function RequestDetailSheet({
 
   const status = request ? REQUEST_STATUS[request.status] : null;
   const cancellable = request ? CANCELLABLE_REQUEST_STATUSES.has(request.status) : false;
+  const hasNote = Boolean(request?.requestNote);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={onClose} style={styles.backButton} hitSlop={8}>
-            <ChevronLeft size={20} color={colors.teal} />
-            <AppText variant="bodyStrong" color={colors.teal}>
-              Quay lại
-            </AppText>
+          <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={onClose} style={styles.backIconButton} hitSlop={8}>
+            <ChevronLeft size={21} color={colors.teal} />
           </Pressable>
+          <View style={styles.headerTitleWrap}>
+            <AppText variant="caption" color={colors.subtle}>
+              Yêu cầu phục hồi
+            </AppText>
+            <AppText variant="bodyStrong">Chi tiết</AppText>
+          </View>
+          <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -72,16 +77,17 @@ export function RequestDetailSheet({
             <LoadingState title="Đang tải chi tiết yêu cầu..." />
           ) : request ? (
             <>
-              <View style={styles.timelineCard}>
-                <View style={styles.timelineIcon}>
+              <View style={styles.dateSummary}>
+                <View style={styles.dateIcon}>
                   <CalendarDays size={18} color={colors.teal} />
                 </View>
-                <View style={styles.timelineText}>
+                <View style={styles.dateText}>
                   <AppText variant="caption" color={colors.subtle}>
                     Ngày gửi yêu cầu
                   </AppText>
                   <AppText variant="h3">{formatDateOnly(request.requestedAt)}</AppText>
                 </View>
+                {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
               </View>
 
               <View style={styles.hero}>
@@ -89,15 +95,29 @@ export function RequestDetailSheet({
                   <View style={styles.heroIcon}>
                     <ClipboardList size={22} color={colors.white} />
                   </View>
-                  {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
+                  <View style={styles.heroLine} />
                 </View>
                 <AppText variant="caption" color="rgba(255,255,255,0.72)">
-                  Chi tiết yêu cầu
+                  Nhóm bệnh cần hỗ trợ
                 </AppText>
                 <AppText variant="h2" color={colors.white}>
                   {getDiseaseGroupLabel(request.diseaseGroup)}
                 </AppText>
                 <AppText color="rgba(255,255,255,0.86)">{STATUS_HELP[request.status]}</AppText>
+                <View style={styles.heroFooter}>
+                  <View style={styles.heroChip}>
+                    <ShieldCheck size={13} color={colors.white} />
+                    <AppText variant="caption" color={colors.white}>
+                      Theo dõi sau khám
+                    </AppText>
+                  </View>
+                  <View style={styles.heroChip}>
+                    <FileText size={13} color={colors.white} />
+                    <AppText variant="caption" color={colors.white}>
+                      {hasNote ? "Có ghi chú" : "Chưa ghi chú"}
+                    </AppText>
+                  </View>
+                </View>
               </View>
 
               <View style={styles.noteCard}>
@@ -105,7 +125,7 @@ export function RequestDetailSheet({
                   <FileText size={16} color={colors.teal} />
                   <AppText variant="bodyStrong">Ghi chú của bạn</AppText>
                 </View>
-                <AppText color={request.requestNote ? colors.muted : colors.subtle}>
+                <AppText color={hasNote ? colors.muted : colors.subtle}>
                   {request.requestNote || "Bạn chưa thêm ghi chú cho yêu cầu này."}
                 </AppText>
               </View>
@@ -167,28 +187,57 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
   },
-  backButton: {
-    minHeight: 40,
+  backIconButton: {
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    paddingHorizontal: spacing.md,
+    borderColor: "rgba(8,127,140,0.22)",
+    backgroundColor: colors.mint,
+  },
+  headerTitleWrap: {
+    alignItems: "center",
+    gap: spacing.xs / 2,
+  },
+  headerSpacer: {
+    width: 42,
+    height: 42,
   },
   content: {
     padding: spacing.lg,
     gap: spacing.lg,
     paddingBottom: spacing["4xl"],
+  },
+  dateSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  dateIcon: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+  },
+  dateText: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   hero: {
     gap: spacing.sm,
@@ -199,7 +248,6 @@ const styles = StyleSheet.create({
   heroTop: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: spacing.md,
   },
   heroIcon: {
@@ -210,27 +258,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: "rgba(255,255,255,0.16)",
   },
-  timelineCard: {
+  heroLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.22)",
+  },
+  heroFooter: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  heroChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    padding: spacing.lg,
-  },
-  timelineIcon: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.mint,
-  },
-  timelineText: {
-    flex: 1,
-    gap: spacing.xs / 2,
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   noteCard: {
     gap: spacing.sm,
