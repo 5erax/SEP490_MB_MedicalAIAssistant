@@ -3,7 +3,7 @@ import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from "react-nat
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { ClipboardCheck, FileImage, FlaskConical, Info, NotebookPen, ShieldCheck, X } from "lucide-react-native";
+import { ChevronDown, ClipboardCheck, FileImage, FlaskConical, Info, NotebookPen, ShieldCheck, X } from "lucide-react-native";
 
 import { AppText, Button, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -57,7 +57,9 @@ export function CreateRequestSheet({
   onSubmit,
 }: CreateRequestSheetProps) {
   const [pickError, setPickError] = useState("");
+  const [diseasePickerOpen, setDiseasePickerOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const selectedDiseaseLabel = DISEASE_GROUPS.find((group) => group.value === form.diseaseGroup)?.label;
 
   async function pickPrescriptionImage() {
     setPickError("");
@@ -154,23 +156,42 @@ export function CreateRequestSheet({
                 </AppText>
               </View>
             </View>
-            <View style={styles.diseaseRow}>
-              {DISEASE_GROUPS.map(({ value, label }) => {
-                const selected = form.diseaseGroup === value;
-                return (
-                  <Pressable
-                    key={value}
-                    accessibilityRole="button"
-                    disabled={submitting}
-                    onPress={() => onChange("diseaseGroup", value)}
-                    style={[styles.diseaseChip, selected && styles.diseaseChipSelected]}
-                  >
-                    <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
-                      {label}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.selectWrap}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Chọn nhóm bệnh"
+                disabled={submitting}
+                onPress={() => setDiseasePickerOpen((current) => !current)}
+                style={[styles.selectButton, diseasePickerOpen && styles.selectButtonOpen, errors.diseaseGroup && styles.selectButtonError]}
+              >
+                <AppText variant="bodyStrong" color={selectedDiseaseLabel ? colors.ink : colors.muted} style={styles.selectLabel}>
+                  {selectedDiseaseLabel || "Chọn nhóm bệnh"}
+                </AppText>
+                <ChevronDown size={18} color={colors.teal} />
+              </Pressable>
+              {diseasePickerOpen ? (
+                <ScrollView style={styles.selectMenu} nestedScrollEnabled persistentScrollbar>
+                  {DISEASE_GROUPS.map(({ value, label }) => {
+                    const selected = form.diseaseGroup === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="button"
+                        disabled={submitting}
+                        onPress={() => {
+                          onChange("diseaseGroup", value);
+                          setDiseasePickerOpen(false);
+                        }}
+                        style={[styles.selectOption, selected && styles.selectOptionSelected]}
+                      >
+                        <AppText variant="bodyStrong" color={selected ? colors.white : colors.ink}>
+                          {label}
+                        </AppText>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              ) : null}
             </View>
             {errors.diseaseGroup ? (
               <AppText variant="caption" color={colors.danger}>
@@ -465,6 +486,52 @@ const styles = StyleSheet.create({
   },
   diseaseChipSelected: {
     borderColor: colors.teal,
+    backgroundColor: colors.teal,
+  },
+  selectWrap: {
+    gap: 0,
+  },
+  selectButton: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.md,
+  },
+  selectButtonOpen: {
+    borderColor: colors.teal,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+  },
+  selectButtonError: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerBg,
+  },
+  selectLabel: {
+    flex: 1,
+  },
+  selectMenu: {
+    maxHeight: 154,
+    borderWidth: 1.5,
+    borderTopWidth: 0,
+    borderColor: colors.teal,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    backgroundColor: colors.paper,
+  },
+  selectOption: {
+    minHeight: 46,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  selectOptionSelected: {
     backgroundColor: colors.teal,
   },
   multiline: {
