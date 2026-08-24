@@ -168,8 +168,20 @@ export default function LoginScreen() {
         setApiError("Thiet bi chua co Google Play Services hoac can cap nhat.");
         return;
       }
+      if (errorCode === "10" || errorCode === "DEVELOPER_ERROR") {
+        setApiError(
+          "Google Sign-In bi DEVELOPER_ERROR. Kiem tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, va Web Client ID dung de lay idToken.",
+        );
+        return;
+      }
 
       const message = error instanceof Error ? error.message : "";
+      if (message.includes("DEVELOPER_ERROR")) {
+        setApiError(
+          "Google Sign-In bi DEVELOPER_ERROR. Kiem tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, va Web Client ID dung de lay idToken.",
+        );
+        return;
+      }
       if (message.includes("RNGoogleSignin") || message.includes("native module")) {
         setApiError("Google Sign-In native can development build. Hay chay npx expo run:android thay vi Expo Go.");
         return;
