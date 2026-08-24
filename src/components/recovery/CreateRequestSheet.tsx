@@ -29,6 +29,12 @@ type CreateRequestSheetProps = {
   prescriptionFile: PickedImage | null;
   prescriptionUploading: boolean;
   prescriptionUploadError: string;
+  blocker: {
+    title: string;
+    description: string;
+    primaryLabel: string;
+    stats: { label: string; value: number }[];
+  } | null;
   onPickPrescription: (file: PickedImage | null) => void;
   onRemovePrescription: () => void;
   onClose: () => void;
@@ -50,6 +56,7 @@ export function CreateRequestSheet({
   prescriptionFile,
   prescriptionUploading,
   prescriptionUploadError,
+  blocker,
   onPickPrescription,
   onRemovePrescription,
   onClose,
@@ -106,7 +113,53 @@ export function CreateRequestSheet({
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {blocker ? (
+          <View style={styles.blockerContent}>
+            <View style={styles.blockerHero}>
+              <View style={styles.blockerIconWrap}>
+                <ClipboardCheck size={30} color={colors.white} />
+              </View>
+              <View style={styles.blockerPulse} />
+              <AppText variant="h2" color={colors.white} style={styles.blockerTitle}>
+                {blocker.title}
+              </AppText>
+              <AppText color="rgba(255,255,255,0.86)" style={styles.blockerDescription}>
+                {blocker.description}
+              </AppText>
+            </View>
+
+            <View style={styles.blockerStats}>
+              {blocker.stats.map((item) => (
+                <View key={item.label} style={styles.blockerStatCard}>
+                  <AppText variant="h3" color={colors.teal}>
+                    {item.value}
+                  </AppText>
+                  <AppText variant="caption" color={colors.muted} style={styles.blockerStatLabel}>
+                    {item.label}
+                  </AppText>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.blockerNotice}>
+              <View style={styles.guideIcon}>
+                <ShieldCheck size={20} color={colors.teal} />
+              </View>
+              <View style={styles.guideBody}>
+                <AppText variant="bodyStrong">Không thể tạo yêu cầu mới lúc này</AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  Khi yêu cầu hiện tại hoàn tất hoặc kế hoạch kết thúc, bạn có thể tạo yêu cầu phục hồi tiếp theo.
+                </AppText>
+              </View>
+            </View>
+
+            <Button fullWidth onPress={onClose}>
+              {blocker.primaryLabel}
+            </Button>
+          </View>
+        ) : (
+          <>
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {profileReadinessIssues.length > 0 ? (
             <View style={styles.readinessBanner}>
               <View style={styles.readinessHeader}>
@@ -393,16 +446,18 @@ export function CreateRequestSheet({
               ) : null}
             </View>
           ) : null}
-        </ScrollView>
+            </ScrollView>
 
-        <View style={styles.footer}>
+            <View style={styles.footer}>
           <AppText variant="caption" color={colors.subtle} style={styles.footerHint}>
             Bác sĩ sẽ xem yêu cầu và phản hồi khi kế hoạch sẵn sàng.
           </AppText>
           <Button fullWidth disabled={submitting || prescriptionUploading} onPress={onSubmit}>
             {prescriptionUploading ? "Đang tải ảnh..." : submitting ? "Đang gửi..." : "Gửi yêu cầu"}
           </Button>
-        </View>
+            </View>
+          </>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -456,6 +511,70 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
     paddingBottom: spacing["4xl"],
+  },
+  blockerContent: {
+    flex: 1,
+    gap: spacing.lg,
+    padding: spacing.lg,
+  },
+  blockerHero: {
+    minHeight: 260,
+    overflow: "hidden",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+    borderRadius: radius.xl,
+    backgroundColor: colors.limeDark,
+    padding: spacing.xl,
+  },
+  blockerIconWrap: {
+    width: 62,
+    height: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  blockerPulse: {
+    position: "absolute",
+    top: -54,
+    right: -34,
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    borderWidth: 28,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  blockerTitle: {
+    maxWidth: 280,
+  },
+  blockerDescription: {
+    maxWidth: 330,
+  },
+  blockerStats: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  blockerStatCard: {
+    flex: 1,
+    minHeight: 92,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  blockerStatLabel: {
+    minHeight: 34,
+  },
+  blockerNotice: {
+    flexDirection: "row",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+    padding: spacing.md,
   },
   guidePanel: {
     flexDirection: "row",

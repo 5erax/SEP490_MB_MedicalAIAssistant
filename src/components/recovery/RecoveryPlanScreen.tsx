@@ -99,6 +99,8 @@ export function RecoveryPlanScreen() {
   const requestCreationDisabled =
     recovery.quotaState === "loading" ||
     recovery.quotaState === "error" ||
+    recovery.requestsState === "loading" ||
+    recovery.plansState === "loading" ||
     !recovery.quota ||
     Number(recovery.quota.remainingCount) <= 0;
   const activePlans = recovery.plans.filter((plan) => plan.status === "active" || plan.status === "readyToStart").length;
@@ -106,6 +108,28 @@ export function RecoveryPlanScreen() {
     ["waitingForDoctor", "assigned", "inReview", "needMoreInformation"].includes(request.status),
   ).length;
   const latestPlan = recovery.plans[0];
+  const createBlocker =
+    waitingRequests > 0
+      ? {
+          title: "Bạn đã có yêu cầu đang xử lý",
+          description: "Bác sĩ đang tiếp nhận thông tin hiện tại. Hãy theo dõi yêu cầu này trước khi tạo yêu cầu phục hồi mới.",
+          primaryLabel: "Xem yêu cầu hiện tại",
+          stats: [
+            { label: "Yêu cầu đang xử lý", value: waitingRequests },
+            { label: "Kế hoạch đang mở", value: activePlans },
+          ],
+        }
+      : activePlans > 0
+        ? {
+            title: "Bạn đang có kế hoạch phục hồi",
+            description: "Mỗi lần chỉ theo dõi một kế hoạch để bác sĩ và hệ thống không bị trùng lộ trình chăm sóc.",
+            primaryLabel: "Xem kế hoạch hiện tại",
+            stats: [
+              { label: "Kế hoạch đang mở", value: activePlans },
+              { label: "Yêu cầu đang xử lý", value: waitingRequests },
+            ],
+          }
+        : null;
 
   async function handleCreateSubmit() {
     const result = await recovery.submitCreateRequest();
@@ -291,6 +315,7 @@ export function RecoveryPlanScreen() {
         prescriptionFile={recovery.prescriptionFile}
         prescriptionUploading={recovery.prescriptionUploading}
         prescriptionUploadError={recovery.prescriptionUploadError}
+        blocker={createBlocker}
         onPickPrescription={recovery.setPrescriptionFile}
         onRemovePrescription={recovery.clearPrescription}
         onClose={() => {
