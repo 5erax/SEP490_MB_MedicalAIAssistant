@@ -283,6 +283,15 @@ export function RecoveryPlanScreen() {
         submitting={recovery.creating}
         submitError={recovery.createError}
         needsSubscription={recovery.createNeedsSubscription}
+        profileReadinessIssues={recovery.profileReadinessIssues}
+        labSessions={recovery.labSessions}
+        labSessionsState={recovery.labSessionsState}
+        labSessionsError={recovery.labSessionsError}
+        prescriptionFile={recovery.prescriptionFile}
+        prescriptionUploading={recovery.prescriptionUploading}
+        prescriptionUploadError={recovery.prescriptionUploadError}
+        onPickPrescription={recovery.setPrescriptionFile}
+        onRemovePrescription={recovery.clearPrescription}
         onClose={() => {
           setCreateVisible(false);
           recovery.resetCreateForm();

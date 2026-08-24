@@ -2,7 +2,13 @@
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
 import { PaginatedResult } from "@/src/types/api";
-import { CreateRecoveryPlanRequestPayload, RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
+import {
+  CreateRecoveryPlanRequestPayload,
+  RecoveryPlan,
+  RecoveryPlanReadiness,
+  RecoveryPlanReadinessPayload,
+  RecoveryPlanRequest,
+} from "@/src/types/recoveryPlan";
 
 function withQuery(path: string, params: Record<string, string | number | undefined> = {}) {
   const search = new URLSearchParams();
@@ -14,6 +20,14 @@ function withQuery(path: string, params: Record<string, string | number | undefi
 }
 
 export const recoveryPlanRequestsApi = {
+  readiness(payload: RecoveryPlanReadinessPayload) {
+    return apiRequest<RecoveryPlanReadiness>(ENDPOINTS.RECOVERY_PLAN_REQUESTS.READINESS, {
+      method: "POST",
+      data: payload,
+      requiresAuth: true,
+    });
+  },
+
   create(payload: CreateRecoveryPlanRequestPayload, idempotencyKey: string) {
     return apiRequest<RecoveryPlanRequest>(ENDPOINTS.RECOVERY_PLAN_REQUESTS.BASE, {
       method: "POST",

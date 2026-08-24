@@ -26,6 +26,22 @@ export type CreateRecoveryPlanRequestPayload = {
   treatmentJourneyId: string | null;
   primaryLabTestSessionId: string | null;
   requestNote: string | null;
+  prescriptionImageUrl: string | null;
+};
+
+export type RecoveryPlanReadinessPayload = {
+  diseaseGroup: DiseaseGroup | "";
+  requestNote: string;
+};
+
+export type RecoveryPlanReadinessIssue = {
+  code: string;
+  message?: string;
+};
+
+export type RecoveryPlanReadiness = {
+  isReady: boolean;
+  issues?: RecoveryPlanReadinessIssue[];
 };
 
 export type RecoveryPlanStatus = "readyToStart" | "active" | "completed" | "cancelled" | "superseded";

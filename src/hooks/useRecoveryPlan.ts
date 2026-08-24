@@ -4,18 +4,26 @@
 // and plans each load independently so one failing doesn't block the others.
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { labTestsApi } from "@/src/services/labTestService";
 import { recoveryPlanRequestsApi, recoveryPlansApi } from "@/src/services/recoveryPlanService";
 import { normalizeRecoveryQuota, subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
+import { PickedImage, uploadImageToCloudinary } from "@/src/services/cloudinaryUploadService";
 import { ApiErrorPayload, PaginatedResult } from "@/src/types/api";
+import { LabTestSession } from "@/src/types/labTest";
 import { DiseaseGroup, RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { SubscriptionUsageQuota } from "@/src/types/subscription";
-import { getRecoveryErrorMessage, isNoActiveSubscriptionError, makeIdempotencyKey } from "@/src/utils/recoveryPlanPresentation";
+import {
+  getRecoveryErrorMessage,
+  isNoActiveSubscriptionError,
+  makeIdempotencyKey,
+  mapReadinessIssues,
+} from "@/src/utils/recoveryPlanPresentation";
 
 type SectionState = "loading" | "ready" | "error";
 const PAGE_SIZE = 10;
 const EMPTY_PAGE = { items: [], pageNumber: 1, pageSize: PAGE_SIZE, totalCount: 0, totalPages: 0 };
 
-export type CreateRequestForm = { diseaseGroup: DiseaseGroup | ""; requestNote: string };
+export type CreateRequestForm = { diseaseGroup: DiseaseGroup | ""; requestNote: string; primaryLabTestSessionId: string };
 
 function errorPayload(error: unknown) {
   return (error as { payload?: ApiErrorPayload })?.payload;
@@ -43,12 +51,22 @@ export function useRecoveryPlan() {
   const [selectedPlan, setSelectedPlan] = useState<RecoveryPlan | null>(null);
   const [planDetailState, setPlanDetailState] = useState<"idle" | SectionState>("idle");
 
-  const [createForm, setCreateForm] = useState<CreateRequestForm>({ diseaseGroup: "", requestNote: "" });
+  const [createForm, setCreateForm] = useState<CreateRequestForm>({ diseaseGroup: "", requestNote: "", primaryLabTestSessionId: "" });
   const [createErrors, setCreateErrors] = useState<{ diseaseGroup?: string; requestNote?: string }>({});
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createNeedsSubscription, setCreateNeedsSubscription] = useState(false);
+  const [profileReadinessIssues, setProfileReadinessIssues] = useState<string[]>([]);
   const idempotencyKeyRef = useRef(makeIdempotencyKey());
+
+  const [labSessions, setLabSessions] = useState<LabTestSession[]>([]);
+  const [labSessionsState, setLabSessionsState] = useState<SectionState>("loading");
+  const [labSessionsError, setLabSessionsError] = useState("");
+
+  const [prescriptionFile, setPrescriptionFile] = useState<PickedImage | null>(null);
+  const [prescriptionImageUrl, setPrescriptionImageUrl] = useState("");
+  const [prescriptionUploading, setPrescriptionUploading] = useState(false);
+  const [prescriptionUploadError, setPrescriptionUploadError] = useState("");
 
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [providingInfo, setProvidingInfo] = useState(false);
@@ -113,6 +131,29 @@ export function useRecoveryPlan() {
     loadPlans(plansPage);
   }, [plansPage, loadPlans]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCompletedLabSessions() {
+      setLabSessionsState("loading");
+      setLabSessionsError("");
+      try {
+        const response = await labTestsApi.mySessions(1, 20, "completed");
+        if (cancelled) return;
+        setLabSessions(response.data?.items ?? []);
+        setLabSessionsState("ready");
+      } catch {
+        if (cancelled) return;
+        setLabSessions([]);
+        setLabSessionsState("error");
+        setLabSessionsError("Không thể tải danh sách xét nghiệm. Bạn vẫn có thể gửi yêu cầu mà không đính kèm.");
+      }
+    }
+    loadCompletedLabSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function selectRequest(request: RecoveryPlanRequest) {
     setSelectedRequest(request);
     setRequestDetailState("loading");
@@ -152,31 +193,75 @@ export function useRecoveryPlan() {
   }
 
   function resetCreateForm() {
-    setCreateForm({ diseaseGroup: "", requestNote: "" });
+    setCreateForm({ diseaseGroup: "", requestNote: "", primaryLabTestSessionId: "" });
     setCreateErrors({});
     setCreateError("");
     setCreateNeedsSubscription(false);
+    setProfileReadinessIssues([]);
+    setPrescriptionFile(null);
+    setPrescriptionImageUrl("");
+    setPrescriptionUploadError("");
     idempotencyKeyRef.current = makeIdempotencyKey();
+  }
+
+  function clearPrescription() {
+    setPrescriptionFile(null);
+    setPrescriptionImageUrl("");
+    setPrescriptionUploadError("");
   }
 
   async function submitCreateRequest() {
     const trimmedNote = createForm.requestNote.trim();
     const nextErrors: typeof createErrors = {};
     if (!createForm.diseaseGroup) nextErrors.diseaseGroup = "Chọn nhóm bệnh cần hỗ trợ.";
-    if (trimmedNote.length > 2000) nextErrors.requestNote = "Nội dung không được vượt quá 2.000 ký tự.";
+    if (!trimmedNote) nextErrors.requestNote = "Nhập thông tin bạn muốn bác sĩ lưu ý.";
+    else if (trimmedNote.length > 2000) nextErrors.requestNote = "Nội dung không được vượt quá 2.000 ký tự.";
     setCreateErrors(nextErrors);
+    setCreateError("");
+    setProfileReadinessIssues([]);
     if (Object.keys(nextErrors).length > 0) return "invalid" as const;
 
     setCreating(true);
-    setCreateError("");
     setCreateNeedsSubscription(false);
     try {
+      const readinessResponse = await recoveryPlanRequestsApi.readiness({
+        diseaseGroup: createForm.diseaseGroup,
+        requestNote: trimmedNote,
+      });
+      const readiness = readinessResponse.data;
+      if (readiness?.isReady !== true) {
+        const mapped = mapReadinessIssues(readiness?.issues ?? []);
+        setCreateErrors(mapped.errors);
+        setProfileReadinessIssues(mapped.profileIssues);
+        setCreateError("Hồ sơ y tế hoặc thông tin yêu cầu chưa đủ. Vui lòng kiểm tra lại.");
+        return "invalid" as const;
+      }
+
+      let uploadedPrescriptionUrl = prescriptionImageUrl || null;
+      if (prescriptionFile && !uploadedPrescriptionUrl) {
+        setPrescriptionUploading(true);
+        setPrescriptionUploadError("");
+        try {
+          const uploadResult = await uploadImageToCloudinary(prescriptionFile);
+          uploadedPrescriptionUrl = uploadResult.secureUrl;
+          setPrescriptionImageUrl(uploadedPrescriptionUrl);
+        } catch (uploadError) {
+          setPrescriptionUploadError(
+            uploadError instanceof Error ? uploadError.message : "Không thể tải ảnh đơn thuốc lên. Vui lòng thử lại hoặc xóa ảnh để tiếp tục mà không gửi đơn thuốc.",
+          );
+          return "error" as const;
+        } finally {
+          setPrescriptionUploading(false);
+        }
+      }
+
       await recoveryPlanRequestsApi.create(
         {
           diseaseGroup: createForm.diseaseGroup as DiseaseGroup,
           treatmentJourneyId: null,
-          primaryLabTestSessionId: null,
-          requestNote: trimmedNote || null,
+          primaryLabTestSessionId: createForm.primaryLabTestSessionId || null,
+          requestNote: trimmedNote,
+          prescriptionImageUrl: uploadedPrescriptionUrl,
         },
         idempotencyKeyRef.current,
       );
@@ -278,9 +363,21 @@ export function useRecoveryPlan() {
     creating,
     createError,
     createNeedsSubscription,
+    profileReadinessIssues,
     updateCreateField,
     resetCreateForm,
     submitCreateRequest,
+
+    labSessions,
+    labSessionsState,
+    labSessionsError,
+
+    prescriptionFile,
+    prescriptionImageUrl,
+    prescriptionUploading,
+    prescriptionUploadError,
+    setPrescriptionFile,
+    clearPrescription,
 
     cancellingId,
     cancelRequest,

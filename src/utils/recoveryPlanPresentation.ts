@@ -1,5 +1,10 @@
 import { ApiErrorPayload } from "@/src/types/api";
-import { DiseaseGroup, RecoveryPlanRequestStatus, RecoveryPlanStatus } from "@/src/types/recoveryPlan";
+import {
+  DiseaseGroup,
+  RecoveryPlanReadinessIssue,
+  RecoveryPlanRequestStatus,
+  RecoveryPlanStatus,
+} from "@/src/types/recoveryPlan";
 
 export type StatusTone = "warning" | "success" | "danger" | "neutral";
 
@@ -91,11 +96,53 @@ export function isNoActiveSubscriptionError(payload: ApiErrorPayload | undefined
   return code === "NO_ACTIVE_SUBSCRIPTION" || code === "NO_CREDIT_PACKAGE" || code === "SERVICE_CREDIT_EXHAUSTED";
 }
 
+const READINESS_MESSAGES: Record<string, string> = {
+  PATIENT_PROFILE_REQUIRED: "Bạn cần hoàn thành hồ sơ y tế trước khi gửi yêu cầu.",
+  HEIGHT_REQUIRED: "Vui lòng cập nhật chiều cao trong hồ sơ y tế.",
+  HEIGHT_INVALID: "Chiều cao trong hồ sơ y tế chưa hợp lệ.",
+  WEIGHT_REQUIRED: "Vui lòng cập nhật cân nặng trong hồ sơ y tế.",
+  WEIGHT_INVALID: "Cân nặng trong hồ sơ y tế chưa hợp lệ.",
+  DISEASE_GROUP_REQUIRED: "Chọn nhóm bệnh cần hỗ trợ.",
+  DISEASE_GROUP_INVALID: "Nhóm bệnh đã chọn không hợp lệ.",
+  REQUEST_NOTE_REQUIRED: "Nhập thông tin bạn muốn bác sĩ lưu ý.",
+  REQUEST_NOTE_TOO_LONG: "Nội dung không được vượt quá 2.000 ký tự.",
+};
+
+function getReadinessMessage(issue: RecoveryPlanReadinessIssue) {
+  return READINESS_MESSAGES[issue?.code] ?? issue?.message ?? "Thông tin yêu cầu chưa đủ. Vui lòng kiểm tra lại.";
+}
+
+export function mapReadinessIssues(issues: RecoveryPlanReadinessIssue[] = []) {
+  const errors: { diseaseGroup?: string; requestNote?: string } = {};
+  const profileIssues: string[] = [];
+
+  issues.forEach((issue) => {
+    const message = getReadinessMessage(issue);
+    if (issue?.code === "DISEASE_GROUP_REQUIRED" || issue?.code === "DISEASE_GROUP_INVALID") {
+      errors.diseaseGroup = message;
+      return;
+    }
+    if (issue?.code === "REQUEST_NOTE_REQUIRED" || issue?.code === "REQUEST_NOTE_TOO_LONG") {
+      errors.requestNote = message;
+      return;
+    }
+    profileIssues.push(message);
+  });
+
+  return { errors, profileIssues };
+}
+
 export function makeIdempotencyKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `recovery-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function getLabSessionLabel(session: { testDate?: string; processedAt?: string | null; createdAt?: string; facilityName?: string | null }) {
+  const dateLabel = formatDateOnly(session?.testDate ?? session?.processedAt ?? session?.createdAt);
+  const facilityLabel = session?.facilityName ? ` - ${session.facilityName}` : "";
+  return `${dateLabel}${facilityLabel}`;
 }
 
 export function formatDateOnly(value: unknown) {

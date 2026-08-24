@@ -124,6 +124,7 @@ export const ENDPOINTS = {
   RECOVERY_PLAN_REQUESTS: {
     BASE: RECOVERY_PLAN_REQUESTS_BASE,
     ME: `${RECOVERY_PLAN_REQUESTS_BASE}/me`,
+    READINESS: `${RECOVERY_PLAN_REQUESTS_BASE}/readiness`,
     BY_ID: (requestId: string) => byId(RECOVERY_PLAN_REQUESTS_BASE, requestId),
     CANCEL: (requestId: string) => `${byId(RECOVERY_PLAN_REQUESTS_BASE, requestId)}/cancel`,
     PROVIDE_INFORMATION: (requestId: string) => `${byId(RECOVERY_PLAN_REQUESTS_BASE, requestId)}/provide-more-information`,
