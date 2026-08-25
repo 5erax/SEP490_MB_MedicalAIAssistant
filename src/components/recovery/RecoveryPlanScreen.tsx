@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ChevronLeft, ChevronRight, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -88,6 +88,46 @@ function SnapshotTile({
   );
 }
 
+function CollapsibleSectionHeader({
+  title,
+  subtitle,
+  count,
+  expanded,
+  icon: Icon,
+  onToggle,
+}: {
+  title: string;
+  subtitle: string;
+  count: number;
+  expanded: boolean;
+  icon: typeof ClipboardList;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onToggle} style={({ pressed }) => [styles.dropdownHeader, pressed && styles.dropdownHeaderPressed]}>
+      <View style={styles.dropdownIcon}>
+        <Icon size={19} color={palette.primaryDark} />
+      </View>
+      <View style={styles.sectionTitleWrap}>
+        <View style={styles.dropdownTitleRow}>
+          <AppText variant="h3" color={palette.ink} style={styles.dropdownTitle} numberOfLines={1}>
+            {title}
+          </AppText>
+          <View style={styles.countPill}>
+            <AppText variant="caption" color={palette.primaryDark}>
+              {count}
+            </AppText>
+          </View>
+        </View>
+        <AppText variant="caption" color={palette.faint} numberOfLines={1}>
+          {subtitle}
+        </AppText>
+      </View>
+      <View style={styles.dropdownChevron}>{expanded ? <ChevronUp size={18} color={palette.primaryDark} /> : <ChevronDown size={18} color={palette.primaryDark} />}</View>
+    </Pressable>
+  );
+}
+
 export function RecoveryPlanScreen() {
   const { showToast } = useToast();
   const recovery = useRecoveryPlan();
@@ -95,6 +135,8 @@ export function RecoveryPlanScreen() {
   const [requestDetailVisible, setRequestDetailVisible] = useState(false);
   const [planDetailVisible, setPlanDetailVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [requestsExpanded, setRequestsExpanded] = useState(false);
+  const [plansExpanded, setPlansExpanded] = useState(false);
 
   const requestCreationDisabled =
     recovery.quotaState === "loading" ||
@@ -108,6 +150,8 @@ export function RecoveryPlanScreen() {
     ["waitingForDoctor", "assigned", "inReview", "needMoreInformation"].includes(request.status),
   ).length;
   const latestPlan = recovery.plans[0];
+  const requestsCount = recovery.requestsInfo.totalCount || recovery.requests.length;
+  const plansCount = recovery.plansInfo.totalCount || recovery.plans.length;
   const createBlocker =
     waitingRequests > 0
       ? {
@@ -259,59 +303,61 @@ export function RecoveryPlanScreen() {
         </Pressable>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ClipboardList size={20} color={palette.primaryDark} />
-            <View style={styles.sectionTitleWrap}>
-              <AppText variant="h3" color={palette.ink}>
-                Yêu cầu của bạn
-              </AppText>
-              <AppText variant="caption" color={palette.faint}>
-                Theo dõi tiến độ bác sĩ tiếp nhận
-              </AppText>
-            </View>
-          </View>
-          {recovery.requestsState === "loading" && recovery.requests.length === 0 ? (
-            <SkeletonGroup lines={3} />
-          ) : recovery.requestsState === "error" ? (
-            <EmptyState title="Không tải được danh sách yêu cầu" description={recovery.requestsError} />
-          ) : recovery.requests.length === 0 ? (
-            <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bác sĩ lập kế hoạch phục hồi cho bạn." />
-          ) : (
-            <View style={styles.list}>
-              {recovery.requests.map((request) => (
-                <RequestCard key={request.id} request={request} onPress={() => openRequest(request)} />
-              ))}
-            </View>
-          )}
-          <Pagination page={recovery.requestsPage} totalPages={recovery.requestsInfo.totalPages} onChange={recovery.setRequestsPage} />
+          <CollapsibleSectionHeader
+            title="Yêu cầu của bạn"
+            subtitle={requestsExpanded ? "Đang hiển thị danh sách yêu cầu" : "Chạm để xem tiến độ bác sĩ tiếp nhận"}
+            count={requestsCount}
+            expanded={requestsExpanded}
+            icon={ClipboardList}
+            onToggle={() => setRequestsExpanded((current) => !current)}
+          />
+          {requestsExpanded ? (
+            <>
+              {recovery.requestsState === "loading" && recovery.requests.length === 0 ? (
+                <SkeletonGroup lines={3} />
+              ) : recovery.requestsState === "error" ? (
+                <EmptyState title="Không tải được danh sách yêu cầu" description={recovery.requestsError} />
+              ) : recovery.requests.length === 0 ? (
+                <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bác sĩ lập kế hoạch phục hồi cho bạn." />
+              ) : (
+                <View style={styles.list}>
+                  {recovery.requests.map((request) => (
+                    <RequestCard key={request.id} request={request} onPress={() => openRequest(request)} />
+                  ))}
+                </View>
+              )}
+              <Pagination page={recovery.requestsPage} totalPages={recovery.requestsInfo.totalPages} onChange={recovery.setRequestsPage} />
+            </>
+          ) : null}
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Route size={20} color={palette.primaryDark} />
-            <View style={styles.sectionTitleWrap}>
-              <AppText variant="h3" color={palette.ink}>
-                Kế hoạch đã nhận
-              </AppText>
-              <AppText variant="caption" color={palette.faint}>
-                Xem lộ trình phục hồi và bắt đầu khi sẵn sàng
-              </AppText>
-            </View>
-          </View>
-          {recovery.plansState === "loading" && recovery.plans.length === 0 ? (
-            <SkeletonGroup lines={3} />
-          ) : recovery.plansState === "error" ? (
-            <EmptyState title="Không tải được danh sách kế hoạch" description={recovery.plansError} />
-          ) : recovery.plans.length === 0 ? (
-            <EmptyState title="Chưa có kế hoạch nào" description="Khi yêu cầu được hoàn tất, kế hoạch sẽ xuất hiện tại đây để bạn xem và bắt đầu." />
-          ) : (
-            <View style={styles.list}>
-              {recovery.plans.map((plan) => (
-                <PlanCard key={plan.id} plan={plan} onPress={() => openPlan(plan)} />
-              ))}
-            </View>
-          )}
-          <Pagination page={recovery.plansPage} totalPages={recovery.plansInfo.totalPages} onChange={recovery.setPlansPage} />
+          <CollapsibleSectionHeader
+            title="Kế hoạch đã nhận"
+            subtitle={plansExpanded ? "Đang hiển thị lộ trình phục hồi" : "Chạm để xem lộ trình phục hồi"}
+            count={plansCount}
+            expanded={plansExpanded}
+            icon={Route}
+            onToggle={() => setPlansExpanded((current) => !current)}
+          />
+          {plansExpanded ? (
+            <>
+              {recovery.plansState === "loading" && recovery.plans.length === 0 ? (
+                <SkeletonGroup lines={3} />
+              ) : recovery.plansState === "error" ? (
+                <EmptyState title="Không tải được danh sách kế hoạch" description={recovery.plansError} />
+              ) : recovery.plans.length === 0 ? (
+                <EmptyState title="Chưa có kế hoạch nào" description="Khi yêu cầu được hoàn tất, kế hoạch sẽ xuất hiện tại đây để bạn xem và bắt đầu." />
+              ) : (
+                <View style={styles.list}>
+                  {recovery.plans.map((plan) => (
+                    <PlanCard key={plan.id} plan={plan} onPress={() => openPlan(plan)} />
+                  ))}
+                </View>
+              )}
+              <Pagination page={recovery.plansPage} totalPages={recovery.plansInfo.totalPages} onChange={recovery.setPlansPage} />
+            </>
+          ) : null}
         </View>
 
         <AppText variant="caption" color={palette.faint} style={styles.disclaimer}>
@@ -491,15 +537,58 @@ const styles = StyleSheet.create({
   section: {
     gap: spacing.md,
   },
-  sectionHeader: {
+  dropdownHeader: {
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    backgroundColor: palette.surface,
+    padding: spacing.md,
+  },
+  dropdownHeaderPressed: {
+    opacity: 0.86,
+    transform: [{ translateY: 1 }],
+  },
+  dropdownIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: palette.mint,
   },
   sectionTitleWrap: {
     flex: 1,
     minWidth: 0,
     gap: 2,
+  },
+  dropdownTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  dropdownTitle: {
+    flexShrink: 1,
+  },
+  countPill: {
+    minWidth: 28,
+    minHeight: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(8,127,140,0.1)",
+    paddingHorizontal: spacing.sm,
+  },
+  dropdownChevron: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
   },
   list: {
     gap: spacing.sm,
