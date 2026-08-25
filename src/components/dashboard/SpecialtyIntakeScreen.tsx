@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Activity, CalendarClock, ChevronRight, History, MapPinned, ShieldCheck, Sparkles, Stethoscope } from "lucide-react-native";
+import { Activity, ChevronRight, History, MapPinned, ShieldCheck, Sparkles, Stethoscope } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -53,7 +53,7 @@ function ActionTile({
 }: {
   title: string;
   subtitle: string;
-  icon: typeof CalendarClock;
+  icon: typeof Stethoscope;
   tone: "teal" | "coral";
   onPress: () => void;
 }) {
@@ -168,13 +168,6 @@ export function SpecialtyIntakeScreen() {
       </View>
 
       <View style={styles.actionGrid}>
-        <ActionTile
-          title="Tư vấn trước khám"
-          subtitle="Checklist, câu hỏi và nhắc lịch trước buổi khám."
-          icon={CalendarClock}
-          tone="teal"
-          onPress={() => router.push("/(patient)/pre-consultation" as never)}
-        />
         <ActionTile
           title="Chẩn đoán chi tiết"
           subtitle="Xem khả năng bệnh, ICD-10 và mức rủi ro."
