@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react-native";
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { paymentsApi } from "@/src/services/subscriptionService";
+import { clearPendingPaymentCheckout, getPendingPaymentCheckout } from "@/src/services/paymentCheckoutStorage";
 import { useToast } from "@/src/hooks";
 import { Payment } from "@/src/types/subscription";
 import {
@@ -41,7 +42,7 @@ function PaymentRow({
       <View style={styles.rowMain}>
         <AppText variant="bodyStrong">{payment.planName || "Giao dịch MediMate+"}</AppText>
         <AppText variant="caption" color={colors.subtle}>
-          {payment.provider || "—"} · {payment.transactionReference || "Chưa có mã giao dịch"}
+          {payment.paymentProvider || payment.provider || "—"} · {payment.transactionReference || "Chưa có mã giao dịch"}
         </AppText>
         <AppText variant="caption" color={colors.subtle}>
           {formatDateTime(payment.createdAt)}
@@ -109,7 +110,19 @@ export function PaymentHistoryScreen() {
     if (!payment.transactionReference) return;
     setReconcilingId(payment.id);
     try {
-      await paymentsApi.reconcilePayOs(payment.transactionReference);
+      const response = await paymentsApi.reconcilePayOs(payment.transactionReference);
+      const result = response.data;
+      const terminalStatus = String(result?.paymentStatus ?? "").toLowerCase();
+      if (
+        result?.isPaid
+        || result?.isCancelled
+        || ["paid", "completed", "success", "succeeded", "failed", "cancelled", "canceled", "expired"].includes(terminalStatus)
+      ) {
+        const pendingCheckout = await getPendingPaymentCheckout();
+        if (pendingCheckout?.orderCode === payment.transactionReference) {
+          await clearPendingPaymentCheckout();
+        }
+      }
       await load(pageNumber);
       showToast({ type: "success", message: "Đã cập nhật trạng thái giao dịch." });
     } catch (requestError) {

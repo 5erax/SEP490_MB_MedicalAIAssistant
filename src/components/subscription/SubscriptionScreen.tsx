@@ -2,9 +2,9 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { CheckCircle2, CreditCard, ShieldCheck, XCircle } from "lucide-react-native";
+import { CheckCircle2, CreditCard, ExternalLink, History, RefreshCw, ShieldCheck, XCircle } from "lucide-react-native";
 
-import { AppText, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { AppText, Button, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useSubscription } from "@/src/hooks/useSubscription";
 import { useAuth } from "@/src/providers";
@@ -46,7 +46,10 @@ export function SubscriptionScreen() {
     subscriptionsError,
     reloadSubscriptions,
     checkoutState,
+    checkingPayment,
     startCheckout,
+    checkPendingPayment,
+    reopenCheckout,
     cancelSubscription,
   } = useSubscription();
 
@@ -101,7 +104,7 @@ export function SubscriptionScreen() {
     checkoutState.status === "creating"
       ? "Đang tạo thanh toán..."
       : checkoutState.status === "pending"
-        ? "Đang chờ hoàn tất thanh toán"
+        ? "Có giao dịch đang chờ"
         : !paidPlan && !isPremium && !activeSubscription
           ? "Tạm thời chưa thể đăng ký"
           : session
@@ -174,7 +177,7 @@ export function SubscriptionScreen() {
             unavailable={paidPlanUnavailable}
             actionLabel={upgradeLabel}
             actionDisabled={upgradeDisabled}
-            actionLoading={["creating", "pending"].includes(checkoutState.status)}
+            actionLoading={checkoutState.status === "creating"}
             onAction={handleUpgrade}
             autoRenewControl={
               session && paidPlan && !isPremium && !activeSubscription ? (
@@ -210,9 +213,51 @@ export function SubscriptionScreen() {
           {checkoutState.status === "error" ? <XCircle size={22} color={colors.danger} /> : null}
           <View style={styles.checkoutText}>
             <AppText variant="bodyStrong">
-              {checkoutState.status === "success" ? "Thanh toán thành công" : checkoutState.status === "error" ? "Chưa thể hoàn tất thanh toán" : "Đang chờ thanh toán"}
+              {checkoutState.status === "success"
+                ? "Thanh toán thành công"
+                : checkoutState.status === "error"
+                  ? "Chưa thể hoàn tất thanh toán"
+                  : checkingPayment
+                    ? "Đang xác minh với PayOS"
+                    : "Đang chờ thanh toán"}
             </AppText>
             <AppText color={colors.muted}>{checkoutState.message}</AppText>
+            {checkoutState.status === "pending" ? (
+              <View style={styles.checkoutActions}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={checkingPayment}
+                  leftIcon={
+                    checkingPayment
+                      ? <ActivityIndicator size="small" color={colors.teal} />
+                      : <RefreshCw size={16} color={colors.teal} />
+                  }
+                  onPress={checkPendingPayment}
+                >
+                  {checkingPayment ? "Đang kiểm tra" : "Tôi đã thanh toán"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={checkingPayment}
+                  leftIcon={<ExternalLink size={16} color={colors.teal} />}
+                  onPress={reopenCheckout}
+                >
+                  Mở lại PayOS
+                </Button>
+              </View>
+            ) : null}
+            {session && ["pending", "success", "error"].includes(checkoutState.status) ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.push(ROUTES.PATIENT.PAYMENT_HISTORY)}
+                style={styles.historyLink}
+              >
+                <History size={15} color={colors.teal} />
+                <AppText variant="caption" color={colors.teal}>Xem lịch sử thanh toán</AppText>
+              </Pressable>
+            ) : null}
           </View>
         </Card>
       ) : null}
@@ -319,6 +364,18 @@ const styles = StyleSheet.create({
   checkoutText: {
     flex: 1,
     gap: spacing.xs / 2,
+  },
+  checkoutActions: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  historyLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    alignSelf: "flex-start",
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   faqGroup: {
     gap: spacing.sm,

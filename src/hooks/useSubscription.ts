@@ -1,39 +1,57 @@
-// Ported from src/pages/PricingPage.jsx (Web) — plan loading, current
-// subscription loading, checkout + payment polling, cancel. Web opens the
-// PayOS URL in a new browser tab/popup and polls in the background while
-// it's open; mobile uses expo-web-browser's in-app browser (closest native
-// equivalent to a popup) and starts the same polling once it's launched,
-// since there is no postMessage-style signal back from the payment tab —
-// polling is the reliable mechanism on both platforms.
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 
-import { authService } from "@/src/services/authService";
+import { useToast } from "@/src/hooks/useToast";
+import { useAuth } from "@/src/providers";
+import { authService, normalizeAuthSession } from "@/src/services/authService";
+import {
+  clearPendingPaymentCheckout,
+  getPendingPaymentCheckout,
+  PendingPaymentCheckout,
+  setPendingPaymentCheckout,
+} from "@/src/services/paymentCheckoutStorage";
 import { paymentsApi, subscriptionPlansApi, userSubscriptionsApi } from "@/src/services/subscriptionService";
 import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
 import { CheckoutState, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
 import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscriptionPlanPresentation";
-import { useAuth } from "@/src/providers";
-import { useToast } from "@/src/hooks/useToast";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 100;
+const FATAL_PAYMENT_STATUSES = new Set([400, 401, 403, 404, 409]);
+
+function pendingCheckoutState(checkout: PendingPaymentCheckout, message?: string): CheckoutState {
+  return {
+    status: "pending",
+    paymentId: checkout.paymentId,
+    orderCode: checkout.orderCode,
+    message:
+      message
+      ?? "Đang chờ PayOS xác nhận. Sau khi thanh toán, hãy quay lại ứng dụng để hệ thống tự cập nhật.",
+  };
+}
 
 export function useSubscription() {
-  const { session } = useAuth();
+  const { session, setSession } = useAuth();
   const { showToast } = useToast();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState("");
-
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(Boolean(session));
   const [subscriptionsError, setSubscriptionsError] = useState("");
+  const [checkoutState, setCheckoutState] = useState<CheckoutState>({
+    status: "idle",
+    message: "",
+    paymentId: "",
+  });
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
-  const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle", message: "", paymentId: "" });
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAttempts = useRef(0);
+  const paymentCheckInFlight = useRef(false);
+  const pendingCheckoutRef = useRef<PendingPaymentCheckout | null>(null);
 
   const loadPlans = useCallback(async () => {
     setPlansLoading(true);
@@ -61,12 +79,303 @@ export function useSubscription() {
     } catch {
       setSubscriptions([]);
       setSubscriptionsError("Chưa thể kiểm tra gói hiện tại.");
-      showToast({ type: "error", title: "Không thể tải gói đăng ký", message: "Vui lòng thử lại sau ít phút." });
+      showToast({
+        type: "error",
+        title: "Không thể tải gói đăng ký",
+        message: "Vui lòng thử lại sau ít phút.",
+      });
       return [] as UserSubscription[];
     } finally {
       setSubscriptionsLoading(false);
     }
   }, [session, showToast]);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }, []);
+
+  const forgetPendingCheckout = useCallback(async () => {
+    pendingCheckoutRef.current = null;
+    try {
+      await clearPendingPaymentCheckout();
+    } catch {
+      // Storage cleanup must not turn a successful server result into an error.
+    }
+  }, []);
+
+  const refreshEntitlements = useCallback(async () => {
+    await loadSubscriptions();
+    try {
+      const response = await authService.refresh();
+      const refreshedSession = normalizeAuthSession(response);
+      if (refreshedSession) await setSession(refreshedSession);
+    } catch {
+      // The subscription endpoint is still refreshed if token refresh is unavailable.
+    }
+    try {
+      await subscriptionUsageApi.getUsage();
+    } catch {
+      // Quota information is supplementary to the checkout result.
+    }
+  }, [loadSubscriptions, setSession]);
+
+  const inspectPayment = useCallback(
+    async (checkout: PendingPaymentCheckout, { reconcile = false } = {}) => {
+      if (paymentCheckInFlight.current) return "busy" as const;
+      paymentCheckInFlight.current = true;
+      setCheckingPayment(true);
+
+      try {
+        if (reconcile && checkout.orderCode) {
+          try {
+            await paymentsApi.reconcilePayOs(checkout.orderCode);
+          } catch (error) {
+            const status = (error as { status?: number })?.status;
+            if (status && FATAL_PAYMENT_STATUSES.has(status)) {
+              stopPolling();
+              await forgetPendingCheckout();
+              setCheckoutState({
+                status: "error",
+                paymentId: checkout.paymentId,
+                orderCode: checkout.orderCode,
+                message:
+                  status === 401
+                    ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để kiểm tra giao dịch."
+                    : "Giao dịch không hợp lệ hoặc không thuộc tài khoản hiện tại.",
+              });
+              return "terminal" as const;
+            }
+          }
+        }
+
+        const response = await paymentsApi.getMyPayment(checkout.paymentId);
+        const payment = response.data;
+
+        if (isSuccessfulPayment(payment)) {
+          stopPolling();
+          await forgetPendingCheckout();
+          setCheckoutState({
+            status: "success",
+            paymentId: checkout.paymentId,
+            orderCode: checkout.orderCode,
+            message: "Thanh toán thành công. Quyền lợi MediMate Plus đã được cập nhật.",
+          });
+          await refreshEntitlements();
+          showToast({
+            type: "success",
+            title: "Thanh toán thành công",
+            message: "Quyền lợi MediMate Plus đã được kích hoạt.",
+          });
+          return "success" as const;
+        }
+
+        if (isTerminalPayment(payment)) {
+          stopPolling();
+          await forgetPendingCheckout();
+          setCheckoutState({
+            status: "error",
+            paymentId: checkout.paymentId,
+            orderCode: checkout.orderCode,
+            message: `Giao dịch ${payment?.statusName || "không thành công"}.`,
+          });
+          return "terminal" as const;
+        }
+
+        setCheckoutState(pendingCheckoutState(checkout));
+        return "pending" as const;
+      } catch (error) {
+        const status = (error as { status?: number })?.status;
+        if (status && [401, 403, 404].includes(status)) {
+          stopPolling();
+          await forgetPendingCheckout();
+          setCheckoutState({
+            status: "error",
+            paymentId: checkout.paymentId,
+            orderCode: checkout.orderCode,
+            message:
+              status === 401
+                ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+                : "Không tìm thấy giao dịch thuộc tài khoản hiện tại.",
+          });
+          return "terminal" as const;
+        }
+
+        setCheckoutState(
+          pendingCheckoutState(
+            checkout,
+            "Chưa kết nối được máy chủ để xác nhận. Giao dịch vẫn được lưu và sẽ được kiểm tra lại khi có mạng.",
+          ),
+        );
+        return "retry" as const;
+      } finally {
+        paymentCheckInFlight.current = false;
+        setCheckingPayment(false);
+      }
+    },
+    [forgetPendingCheckout, refreshEntitlements, showToast, stopPolling],
+  );
+
+  const pollPayment = useCallback(
+    async (checkout: PendingPaymentCheckout, resetAttempts = true) => {
+      stopPolling();
+      if (resetAttempts) pollAttempts.current = 0;
+
+      const check = async () => {
+        pollAttempts.current += 1;
+        const result = await inspectPayment(checkout, {
+          reconcile: pollAttempts.current === 1 || pollAttempts.current % 4 === 0,
+        });
+        if (result === "success" || result === "terminal") return true;
+
+        if (pollAttempts.current >= MAX_POLL_ATTEMPTS) {
+          setCheckoutState(
+            pendingCheckoutState(
+              checkout,
+              "Chưa nhận được xác nhận sau một thời gian. Giao dịch vẫn được lưu; bạn có thể kiểm tra ngay hoặc mở lại PayOS.",
+            ),
+          );
+          return true;
+        }
+        return false;
+      };
+
+      if (!(await check())) {
+        pollTimer.current = setInterval(() => {
+          void check().then((completed) => {
+            if (completed) stopPolling();
+          });
+        }, POLL_INTERVAL_MS);
+      }
+    },
+    [inspectPayment, stopPolling],
+  );
+
+  const resolvePendingCheckout = useCallback(async () => {
+    return pendingCheckoutRef.current ?? getPendingPaymentCheckout();
+  }, []);
+
+  const checkPendingPayment = useCallback(async () => {
+    const checkout = await resolvePendingCheckout();
+    if (!checkout) {
+      setCheckoutState({
+        status: "error",
+        paymentId: "",
+        message: "Không còn giao dịch đang chờ để kiểm tra.",
+      });
+      return;
+    }
+
+    pendingCheckoutRef.current = checkout;
+    const result = await inspectPayment(checkout, { reconcile: true });
+    if (["pending", "retry"].includes(result)) {
+      showToast({
+        type: "info",
+        title: "Giao dịch đang chờ",
+        message: "PayOS chưa xác nhận thanh toán. Bạn có thể thử lại sau ít phút.",
+      });
+    }
+  }, [inspectPayment, resolvePendingCheckout, showToast]);
+
+  const reopenCheckout = useCallback(async () => {
+    const checkout = await resolvePendingCheckout();
+    if (!checkout) {
+      setCheckoutState({
+        status: "error",
+        paymentId: "",
+        message: "Liên kết thanh toán đã hết hạn hoặc không còn trên thiết bị.",
+      });
+      return;
+    }
+
+    pendingCheckoutRef.current = checkout;
+    setCheckoutState(pendingCheckoutState(checkout, "PayOS đang được mở. Sau khi hoàn tất, hãy quay lại MediMate."));
+    try {
+      await WebBrowser.openBrowserAsync(checkout.paymentUrl);
+    } finally {
+      if (pendingCheckoutRef.current?.paymentId === checkout.paymentId) {
+        void pollPayment(checkout);
+      }
+    }
+  }, [pollPayment, resolvePendingCheckout]);
+
+  const startCheckout = useCallback(
+    async (planId: string, autoRenew: boolean) => {
+      if (!planId) return;
+      stopPolling();
+      setCheckoutState({
+        status: "creating",
+        message: "Đang tạo liên kết thanh toán PayOS...",
+        paymentId: "",
+      });
+
+      try {
+        const response = await userSubscriptionsApi.checkout(planId, autoRenew);
+        const checkoutResponse = response.data;
+        if (!checkoutResponse?.paymentUrl || !checkoutResponse?.paymentId) {
+          throw new Error("Checkout response is incomplete");
+        }
+
+        const checkout: PendingPaymentCheckout = {
+          paymentId: checkoutResponse.paymentId,
+          paymentUrl: checkoutResponse.paymentUrl,
+          orderCode: String(checkoutResponse.orderCode ?? "").trim() || undefined,
+          createdAt: Date.now(),
+        };
+        pendingCheckoutRef.current = checkout;
+        try {
+          await setPendingPaymentCheckout(checkout);
+        } catch {
+          // Continue checkout in memory; persistence is a recovery aid.
+        }
+
+        setCheckoutState(pendingCheckoutState(checkout, "PayOS đang được mở. Sau khi hoàn tất, hãy quay lại MediMate."));
+        void pollPayment(checkout);
+
+        try {
+          await WebBrowser.openBrowserAsync(checkout.paymentUrl);
+        } finally {
+          if (pendingCheckoutRef.current?.paymentId === checkout.paymentId) {
+            void pollPayment(checkout);
+          }
+        }
+      } catch {
+        if (!pendingCheckoutRef.current) {
+          setCheckoutState({
+            status: "error",
+            paymentId: "",
+            message: "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau.",
+          });
+        }
+      }
+    },
+    [pollPayment, stopPolling],
+  );
+
+  const cancelSubscription = useCallback(
+    async (subscriptionId: string) => {
+      try {
+        await userSubscriptionsApi.cancel(subscriptionId);
+        await loadSubscriptions();
+        showToast({
+          type: "success",
+          title: "Đã hủy gia hạn",
+          message: "Gói hiện tại vẫn có hiệu lực đến ngày kết thúc.",
+        });
+        return true;
+      } catch {
+        showToast({
+          type: "error",
+          title: "Không thể hủy gói",
+          message: "Vui lòng thử lại sau ít phút.",
+        });
+        return false;
+      }
+    },
+    [loadSubscriptions, showToast],
+  );
 
   useEffect(() => {
     loadPlans();
@@ -76,145 +385,41 @@ export function useSubscription() {
     loadSubscriptions();
   }, [loadSubscriptions]);
 
+  useEffect(() => {
+    let active = true;
+    if (!session) {
+      stopPolling();
+      pendingCheckoutRef.current = null;
+      return () => {
+        active = false;
+      };
+    }
+
+    void getPendingPaymentCheckout().then((checkout) => {
+      if (!active || !checkout) return;
+      pendingCheckoutRef.current = checkout;
+      setCheckoutState(pendingCheckoutState(checkout, "Đang khôi phục giao dịch thanh toán chưa hoàn tất..."));
+      void pollPayment(checkout);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [pollPayment, session, stopPolling]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !pendingCheckoutRef.current) return;
+      void pollPayment(pendingCheckoutRef.current);
+    });
+    return () => subscription.remove();
+  }, [pollPayment]);
+
   useEffect(
     () => () => {
-      if (pollTimer.current) clearInterval(pollTimer.current);
-    },
-    [],
-  );
-
-  const stopPolling = useCallback(() => {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
-    }
-  }, []);
-
-  const pollPayment = useCallback(
-    async (paymentId: string, orderCode?: string) => {
       stopPolling();
-      pollAttempts.current = 0;
-
-      const check = async () => {
-        pollAttempts.current += 1;
-        try {
-          // Local GET /payments/me/{id} is a cheap DB read so it can poll
-          // every 3s; reconcile asks PayOS directly, so it only runs on
-          // the first tick and roughly every ~12s after that to avoid
-          // hammering the provider (matches Web's PricingPage.jsx cadence).
-          if (orderCode && (pollAttempts.current === 1 || pollAttempts.current % 4 === 0)) {
-            try {
-              await paymentsApi.reconcilePayOs(orderCode);
-            } catch (reconcileError) {
-              const status = (reconcileError as { status?: number })?.status;
-              if (status && [400, 403, 404, 409].includes(status)) {
-                stopPolling();
-                setCheckoutState({
-                  status: "error",
-                  paymentId,
-                  message: "Giao dịch không hợp lệ hoặc không thuộc tài khoản này. Vui lòng kiểm tra lại lịch sử thanh toán.",
-                });
-                return true;
-              }
-              // 429/502: keep the current pending state and retry next
-              // tick instead of spamming PayOS.
-            }
-          }
-
-          const response = await paymentsApi.getMyPayment(paymentId);
-          const payment = response.data;
-
-          if (isSuccessfulPayment(payment)) {
-            stopPolling();
-            setCheckoutState({ status: "success", paymentId, message: "Thanh toán thành công. Gói MediMate Plus đang được kích hoạt." });
-            await loadSubscriptions();
-            try {
-              await authService.refresh();
-            } catch {
-              // subscription state is still refreshed from /user-subscriptions/me
-            }
-            try {
-              await subscriptionUsageApi.getUsage();
-            } catch {
-              // best-effort cache warm; quota is optional context here
-            }
-            showToast({ type: "success", title: "Thanh toán thành công", message: "Quyền lợi MediMate Plus đã được cập nhật." });
-            return true;
-          }
-
-          if (isTerminalPayment(payment) || pollAttempts.current >= MAX_POLL_ATTEMPTS) {
-            stopPolling();
-            setCheckoutState({
-              status: "error",
-              paymentId,
-              message: isTerminalPayment(payment)
-                ? `Giao dịch ${payment?.statusName || "không thành công"}.`
-                : "Chưa nhận được xác nhận thanh toán. Bạn có thể kiểm tra lại gói đăng ký sau.",
-            });
-            return true;
-          }
-        } catch {
-          if (pollAttempts.current >= 5) {
-            stopPolling();
-            setCheckoutState({
-              status: "error",
-              paymentId,
-              message: "Chưa thể xác minh giao dịch lúc này. Bạn có thể kiểm tra lại lịch sử thanh toán sau.",
-            });
-            return true;
-          }
-        }
-        return false;
-      };
-
-      const completed = await check();
-      if (!completed) {
-        pollTimer.current = setInterval(check, POLL_INTERVAL_MS);
-      }
     },
-    [loadSubscriptions, showToast, stopPolling],
-  );
-
-  const startCheckout = useCallback(
-    async (planId: string, autoRenew: boolean) => {
-      if (!planId) return;
-      setCheckoutState({ status: "creating", message: "Đang tạo liên kết thanh toán PayOS...", paymentId: "" });
-
-      try {
-        const response = await userSubscriptionsApi.checkout(planId, autoRenew);
-        const checkout = response.data;
-        if (!checkout?.paymentUrl || !checkout?.paymentId) {
-          throw new Error("Chưa tạo được liên kết thanh toán hợp lệ. Vui lòng thử lại.");
-        }
-
-        setCheckoutState({
-          status: "pending",
-          paymentId: checkout.paymentId,
-          message: "Đang chờ hoàn tất thanh toán trên PayOS. Quay lại ứng dụng sau khi hoàn tất; trạng thái sẽ tự cập nhật.",
-        });
-
-        await WebBrowser.openBrowserAsync(checkout.paymentUrl);
-        pollPayment(checkout.paymentId, checkout.orderCode);
-      } catch {
-        setCheckoutState({ status: "error", paymentId: "", message: "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau." });
-      }
-    },
-    [pollPayment],
-  );
-
-  const cancelSubscription = useCallback(
-    async (subscriptionId: string) => {
-      try {
-        await userSubscriptionsApi.cancel(subscriptionId);
-        await loadSubscriptions();
-        showToast({ type: "success", title: "Đã hủy gia hạn", message: "Gói hiện tại vẫn có hiệu lực đến ngày kết thúc." });
-        return true;
-      } catch {
-        showToast({ type: "error", title: "Không thể hủy gói", message: "Vui lòng thử lại sau ít phút." });
-        return false;
-      }
-    },
-    [loadSubscriptions, showToast],
+    [stopPolling],
   );
 
   return {
@@ -227,7 +432,10 @@ export function useSubscription() {
     subscriptionsError,
     reloadSubscriptions: loadSubscriptions,
     checkoutState,
+    checkingPayment,
     startCheckout,
+    checkPendingPayment,
+    reopenCheckout,
     cancelSubscription,
   };
 }
