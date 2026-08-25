@@ -28,7 +28,8 @@ import { QuestionFlow } from "./QuestionFlow";
 import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
-const SEGMENT_WIDTH = 112;
+const SEGMENT_WIDTH = 96;
+const SEGMENT_HEIGHT = 34;
 
 function IntroPanel({ activeStep }: { activeStep: number }) {
   return (
@@ -333,36 +334,38 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     alignSelf: "center",
-    minHeight: 48,
+    minHeight: 42,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: colors.line,
+    backgroundColor: colors.mint,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.16)",
     padding: spacing.xs,
     position: "relative",
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2,
+    shadowRadius: 12,
+    elevation: 1,
   },
   segmentIndicator: {
     position: "absolute",
     left: spacing.xs,
     top: spacing.xs,
     width: SEGMENT_WIDTH,
-    height: 38,
+    height: SEGMENT_HEIGHT,
     borderRadius: radius.pill,
     backgroundColor: colors.paper,
-    shadowColor: colors.ink,
+    shadowColor: colors.teal,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 1,
   },
   segmentItem: {
-    minHeight: 38,
+    minHeight: SEGMENT_HEIGHT,
     width: SEGMENT_WIDTH,
     flexDirection: "row",
     alignItems: "center",
