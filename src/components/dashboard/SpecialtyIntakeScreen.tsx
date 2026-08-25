@@ -28,8 +28,8 @@ import { QuestionFlow } from "./QuestionFlow";
 import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
-const SEGMENT_WIDTH = 96;
-const SEGMENT_HEIGHT = 34;
+const SEGMENT_WIDTH = 92;
+const SEGMENT_HEIGHT = 30;
 
 function IntroPanel({ activeStep }: { activeStep: number }) {
   return (
@@ -193,12 +193,12 @@ export function SpecialtyIntakeScreen() {
       <View style={styles.segmentedControl}>
         <Animated.View style={[styles.segmentIndicator, { transform: [{ translateX: segmentTranslate }] }]} />
         <Pressable accessibilityRole="button" onPress={() => setActiveTab("chat")} style={styles.segmentItem}>
-          <AppText variant="bodyStrong" color={colors.ink}>
+          <AppText variant="caption" color={colors.ink} numberOfLines={1}>
             Trò chuyện
           </AppText>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setActiveTab("history")} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
-          <AppText variant="bodyStrong" color={colors.ink}>
+          <AppText variant="caption" color={colors.ink} numberOfLines={1}>
             Lịch sử
           </AppText>
         </Pressable>
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     alignSelf: "center",
-    minHeight: 42,
+    minHeight: 38,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   introPanel: {
     gap: spacing.xl,
