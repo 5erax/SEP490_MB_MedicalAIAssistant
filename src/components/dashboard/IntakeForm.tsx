@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { AlertTriangle, Bot, SendHorizontal, Sparkles } from "lucide-react-native";
+import { AlertTriangle, Bot, SendHorizontal } from "lucide-react-native";
 
 import { AppText, Button, Card, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -22,15 +22,12 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
             <Bot size={20} color={colors.white} />
           </View>
           <View style={styles.aiBubble}>
-            <View style={styles.stepBadge}>
-              <Sparkles size={14} color={colors.teal} />
-              <AppText variant="caption" color={colors.teal}>
-                AI chuyên khoa
-              </AppText>
-            </View>
+            <AppText variant="caption" color={colors.teal}>
+              MediMate AI
+            </AppText>
             <AppText variant="h3">Bạn đang gặp triệu chứng gì?</AppText>
             <AppText variant="caption" color={colors.muted}>
-              Mình sẽ hỏi thêm vài câu ngắn rồi gợi ý chuyên khoa và nơi khám phù hợp.
+              Mình sẽ hỏi thêm khi cần và gợi ý chuyên khoa phù hợp.
             </AppText>
           </View>
         </View>
@@ -53,37 +50,27 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
 
         <View style={styles.composer}>
           <TextField
-            label="Tin nhắn của bạn"
-            hint="Nên có vị trí đau, thời điểm bắt đầu, mức độ và dấu hiệu đi kèm."
+            label="Mô tả triệu chứng"
             value={input}
             onChangeText={onChangeInput}
-            placeholder="Ví dụ: Tôi đau bụng âm ỉ sau bữa ăn, buồn nôn nhẹ..."
+            placeholder="Nhập triệu chứng của bạn..."
             multiline
             numberOfLines={4}
             style={styles.textarea}
             editable={!loading}
           />
-        </View>
-
-        <View style={styles.statusRow}>
-          <View style={styles.statusDot} />
-          <AppText variant="caption" color={colors.subtle} style={styles.statusText}>
-            {loading ? "AI đang chọn câu hỏi cần hỏi thêm..." : "Sẵn sàng. MediMate sẽ hỏi thêm một số câu ngắn."}
-          </AppText>
-        </View>
-
-        <Button fullWidth disabled={!input.trim() || loading} onPress={onSubmit} rightIcon={!loading ? <SendHorizontal size={17} color={colors.white} /> : undefined}>
-          {loading ? (
-            <View style={styles.loadingLabel}>
-              <ActivityIndicator color={colors.white} size="small" />
-              <AppText variant="bodyStrong" color={colors.white}>
-                Đang tạo câu hỏi...
+          <View style={styles.composerFooter}>
+            <View style={styles.statusRow}>
+              <View style={styles.statusDot} />
+              <AppText variant="caption" color={colors.subtle} style={styles.statusText}>
+                {loading ? "Đang phân tích..." : "Sẵn sàng tư vấn"}
               </AppText>
             </View>
-          ) : (
-            "Gửi triệu chứng"
-          )}
-        </Button>
+            <Button disabled={!input.trim() || loading} onPress={onSubmit} style={styles.sendButton}>
+              {loading ? <ActivityIndicator color={colors.white} size="small" /> : <SendHorizontal size={18} color={colors.white} />}
+            </Button>
+          </View>
+        </View>
       </Card>
 
       <View style={styles.emergencyNote}>
@@ -132,16 +119,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
-  stepBadge: {
-    alignSelf: "flex-start",
-    minHeight: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.mint,
-    paddingHorizontal: spacing.md,
-  },
   sampleRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -172,9 +149,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   textarea: {
-    minHeight: 120,
+    minHeight: 104,
     textAlignVertical: "top",
     paddingTop: spacing.md,
+  },
+  composerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    marginTop: spacing.sm,
   },
   statusRow: {
     flexDirection: "row",
@@ -190,10 +174,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.teal,
   },
-  loadingLabel: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
+  sendButton: {
+    width: 44,
+    minHeight: 44,
+    borderRadius: radius.pill,
+    paddingHorizontal: 0,
   },
   emergencyNote: {
     flexDirection: "row",

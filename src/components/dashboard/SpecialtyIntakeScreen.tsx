@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Activity, ChevronRight, History, MapPinned, ShieldCheck, Sparkles } from "lucide-react-native";
+import { Activity, History, MapPinned, ShieldCheck, Sparkles } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -42,41 +42,6 @@ function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string
       ...(sessionId ? { sessionId } : {}),
     },
   });
-}
-
-function ActionTile({
-  title,
-  subtitle,
-  icon: Icon,
-  tone,
-  onPress,
-}: {
-  title: string;
-  subtitle: string;
-  icon: typeof History;
-  tone: "teal" | "coral";
-  onPress: () => void;
-}) {
-  const toneStyle = tone === "teal" ? styles.actionIconTeal : styles.actionIconCoral;
-
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
-      <View style={[styles.actionIcon, toneStyle]}>
-        <Icon size={20} color={tone === "teal" ? colors.teal : colors.coral} />
-      </View>
-      <View style={styles.actionText}>
-        <AppText variant="bodyStrong" numberOfLines={1}>
-          {title}
-        </AppText>
-        <AppText variant="caption" color={colors.muted} numberOfLines={2}>
-          {subtitle}
-        </AppText>
-      </View>
-      <View style={styles.actionArrow}>
-        <ChevronRight size={17} color={colors.teal} />
-      </View>
-    </Pressable>
-  );
 }
 
 export function SpecialtyIntakeScreen() {
@@ -135,12 +100,6 @@ export function SpecialtyIntakeScreen() {
           <View style={styles.heroMark}>
             <Sparkles size={20} color={colors.white} />
           </View>
-          <Pressable accessibilityRole="button" onPress={() => setHistoryVisible(true)} style={({ pressed }) => [styles.historyButton, pressed && styles.pressed]}>
-            <History size={17} color={colors.teal} />
-            <AppText variant="bodyStrong" color={colors.teal}>
-              Lịch sử
-            </AppText>
-          </Pressable>
         </View>
         <AppText variant="eyebrow" color={colors.teal}>
           Tư vấn chuyên khoa
@@ -167,14 +126,18 @@ export function SpecialtyIntakeScreen() {
         </View>
       </View>
 
-      <View style={styles.actionGrid}>
-        <ActionTile
-          title="Lịch sử gợi ý"
-          subtitle="Xem lại các lần tư vấn chuyên khoa đã tạo."
-          icon={History}
-          tone="teal"
-          onPress={() => setHistoryVisible(true)}
-        />
+      <View style={styles.segmentedControl}>
+        <Pressable accessibilityRole="button" style={[styles.segmentItem, styles.segmentItemActive]}>
+          <AppText variant="bodyStrong" color={colors.ink}>
+            Trò chuyện
+          </AppText>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setHistoryVisible(true)} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
+          <History size={15} color={colors.ink} />
+          <AppText variant="bodyStrong" color={colors.ink}>
+            Lịch sử
+          </AppText>
+        </Pressable>
       </View>
 
       <View style={styles.flowCard}>
@@ -310,17 +273,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.teal,
   },
-  historyButton: {
-    minHeight: 38,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
-    paddingHorizontal: spacing.md,
-  },
   heroTitle: {
     maxWidth: 310,
   },
@@ -361,49 +313,38 @@ const styles = StyleSheet.create({
   scopeNoteText: {
     flex: 1,
   },
-  actionGrid: {
-    gap: spacing.sm,
-  },
-  actionTile: {
-    minHeight: 82,
+  segmentedControl: {
+    alignSelf: "center",
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    padding: spacing.md,
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.line,
+    padding: spacing.xs,
     shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
     elevation: 2,
   },
-  actionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
+  segmentItem: {
+    minHeight: 38,
+    minWidth: 112,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-  },
-  actionIconTeal: {
-    backgroundColor: colors.mint,
-  },
-  actionIconCoral: {
-    backgroundColor: colors.dangerBg,
-  },
-  actionText: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  actionArrow: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
+    gap: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
+  },
+  segmentItemActive: {
+    backgroundColor: colors.paper,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 1,
   },
   flowCard: {
     gap: spacing.md,
