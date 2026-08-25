@@ -14,14 +14,14 @@ const toneStyle: Record<StatusTone, { bg: string; fg: string }> = {
   cancelled: { bg: "#FFE4ED", fg: "#BE123C" },
 };
 
-export function RequestCard({ request, onPress }: { request: RecoveryPlanRequest; onPress: () => void }) {
+export function RequestCard({ request, onPress, highlighted = false }: { request: RecoveryPlanRequest; onPress: () => void; highlighted?: boolean }) {
   const status = REQUEST_STATUS[request.status];
   const tone = toneStyle[status.tone];
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
-      <View style={styles.iconWrap}>
-        <ClipboardList size={19} color={colors.teal} />
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.row, highlighted && styles.rowHighlighted]}>
+      <View style={[styles.iconWrap, highlighted && styles.iconWrapHighlighted]}>
+        <ClipboardList size={19} color={highlighted ? colors.white : colors.teal} />
       </View>
       <View style={styles.main}>
         <View style={styles.titleRow}>
@@ -58,6 +58,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     padding: spacing.md,
   },
+  rowHighlighted: {
+    borderColor: "rgba(8,127,140,0.32)",
+    backgroundColor: "rgba(232,246,244,0.9)",
+  },
   iconWrap: {
     width: 42,
     height: 42,
@@ -65,6 +69,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.md,
     backgroundColor: colors.mint,
+  },
+  iconWrapHighlighted: {
+    backgroundColor: colors.teal,
   },
   main: {
     flex: 1,

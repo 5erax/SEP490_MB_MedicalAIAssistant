@@ -311,12 +311,12 @@ export function RecoveryPlanScreen() {
           {primaryRequest ? (
             <View style={styles.pinnedBlock}>
               <View style={styles.pinnedHeader}>
-                <Sparkles size={13} color={palette.primaryDark} />
-                <AppText variant="caption" color={palette.primaryDark}>
+                <Sparkles size={14} color={palette.white} />
+                <AppText variant="caption" color={palette.white}>
                   Yêu cầu đang xử lý
                 </AppText>
               </View>
-              <RequestCard request={primaryRequest} onPress={() => openRequest(primaryRequest)} />
+              <RequestCard request={primaryRequest} highlighted onPress={() => openRequest(primaryRequest)} />
             </View>
           ) : null}
           <CollapsibleSectionHeader
@@ -354,12 +354,12 @@ export function RecoveryPlanScreen() {
           {primaryPlan ? (
             <View style={styles.pinnedBlock}>
               <View style={styles.pinnedHeader}>
-                <Sparkles size={13} color={palette.primaryDark} />
-                <AppText variant="caption" color={palette.primaryDark}>
+                <Sparkles size={14} color={palette.white} />
+                <AppText variant="caption" color={palette.white}>
                   Kế hoạch đang thực hiện
                 </AppText>
               </View>
-              <PlanCard plan={primaryPlan} onPress={() => openPlan(primaryPlan)} />
+              <PlanCard plan={primaryPlan} highlighted onPress={() => openPlan(primaryPlan)} />
             </View>
           ) : null}
           <CollapsibleSectionHeader
@@ -568,30 +568,35 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   section: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   pinnedBlock: {
-    gap: spacing.xs,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
+    borderRadius: radius.xl,
+    backgroundColor: "rgba(232,246,244,0.48)",
+    padding: spacing.sm,
   },
   pinnedHeader: {
     alignSelf: "flex-start",
-    minHeight: 28,
+    minHeight: 30,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(8,127,140,0.1)",
-    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.teal,
+    paddingHorizontal: spacing.md,
   },
   dropdownHeader: {
-    minHeight: 72,
+    minHeight: 70,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     borderWidth: 1,
     borderColor: palette.line,
     borderRadius: radius.lg,
-    backgroundColor: palette.surface,
+    backgroundColor: "rgba(255,255,255,0.88)",
     padding: spacing.md,
   },
   dropdownHeaderPressed: {
@@ -599,8 +604,8 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 1 }],
   },
   dropdownIcon: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
@@ -625,7 +630,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: "rgba(8,127,140,0.1)",
+    backgroundColor: colors.mint,
     paddingHorizontal: spacing.sm,
   },
   dropdownChevron: {
@@ -634,7 +639,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: colors.mint,
   },
   list: {
     gap: spacing.sm,

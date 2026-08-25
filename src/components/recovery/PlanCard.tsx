@@ -14,16 +14,16 @@ const toneStyle: Record<StatusTone, { bg: string; fg: string }> = {
   cancelled: { bg: "#FFE4ED", fg: "#BE123C" },
 };
 
-export function PlanCard({ plan, onPress }: { plan: RecoveryPlan; onPress: () => void }) {
+export function PlanCard({ plan, onPress, highlighted = false }: { plan: RecoveryPlan; onPress: () => void; highlighted?: boolean }) {
   const status = PLAN_STATUS[plan.status];
   const tone = toneStyle[status.tone];
   const phasesCount = plan.phases?.length ?? 0;
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-      <View style={styles.accent} />
-      <View style={styles.iconWrap}>
-        <Route size={18} color={colors.teal} />
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.card, highlighted && styles.cardHighlighted, pressed && styles.cardPressed]}>
+      <View style={[styles.accent, highlighted && styles.accentHighlighted]} />
+      <View style={[styles.iconWrap, highlighted && styles.iconWrapHighlighted]}>
+        <Route size={18} color={highlighted ? colors.white : colors.teal} />
       </View>
 
       <View style={styles.body}>
@@ -62,8 +62,8 @@ export function PlanCard({ plan, onPress }: { plan: RecoveryPlan; onPress: () =>
         </View>
       </View>
 
-      <View style={styles.chevron}>
-        <ChevronRight size={18} color={colors.subtle} />
+      <View style={[styles.chevron, highlighted && styles.chevronHighlighted]}>
+        <ChevronRight size={18} color={highlighted ? colors.teal : colors.subtle} />
       </View>
     </Pressable>
   );
@@ -86,6 +86,10 @@ const styles = StyleSheet.create({
     opacity: 0.86,
     transform: [{ translateY: 1 }],
   },
+  cardHighlighted: {
+    borderColor: "rgba(8,127,140,0.32)",
+    backgroundColor: "rgba(232,246,244,0.9)",
+  },
   accent: {
     position: "absolute",
     left: 0,
@@ -94,6 +98,9 @@ const styles = StyleSheet.create({
     width: 4,
     backgroundColor: colors.teal,
   },
+  accentHighlighted: {
+    width: 6,
+  },
   iconWrap: {
     width: 48,
     height: 48,
@@ -101,6 +108,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.md,
     backgroundColor: colors.mint,
+  },
+  iconWrapHighlighted: {
+    backgroundColor: colors.teal,
   },
   body: {
     flex: 1,
@@ -147,5 +157,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.paperSoft,
+  },
+  chevronHighlighted: {
+    backgroundColor: colors.paper,
   },
 });
