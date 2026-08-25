@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Check, ChevronRight, X } from "lucide-react-native";
+import { BellRing, Check, ChevronRight, ClipboardCheck, FileQuestionMark, ShieldCheck, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, Card, EmptyState, Screen } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -16,7 +16,13 @@ import { SuggestedConsultationFacility } from "@/src/types/consultation";
 import { SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
 import { ConsultationHistorySheet } from "./ConsultationHistorySheet";
 
-const STEP_LABELS = ["Thông tin", "Chuẩn bị", "Câu hỏi", "Nhắc lịch", "Tổng kết"];
+const STEPS = [
+  { label: "Thông tin", hint: "Buổi khám", icon: Stethoscope },
+  { label: "Chuẩn bị", hint: "Checklist", icon: ClipboardCheck },
+  { label: "Câu hỏi", hint: "Trao đổi", icon: FileQuestionMark },
+  { label: "Nhắc lịch", hint: "Tùy chọn", icon: BellRing },
+  { label: "Tổng kết", hint: "Xác nhận", icon: ShieldCheck },
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   diagnosis: "Chẩn đoán",
@@ -39,6 +45,15 @@ function toIsoAtLeastFiveMinutesAhead() {
 
 function getSessionTitle(session: SymptomAnalysisSession, fallback: string) {
   return session.inputText || session.userInput || session.symptoms || fallback;
+}
+
+function formatHistoryStatus(value?: string) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["completed", "complete"].includes(normalized)) return "Hoàn tất";
+  if (["pending", "processing", "in_progress"].includes(normalized)) return "Đang xử lý";
+  if (["cancelled", "canceled"].includes(normalized)) return "Đã hủy";
+  if (normalized === "failed") return "Không thành công";
+  return "Đang cập nhật";
 }
 
 export function PreConsultationScreen() {
@@ -82,15 +97,6 @@ export function PreConsultationScreen() {
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <View style={styles.headerTextGroup}>
-          <AppText variant="eyebrow" color={colors.teal}>
-            Chuẩn bị trước buổi khám
-          </AppText>
-          <AppText variant="h1">Tư vấn trước khám</AppText>
-        </View>
-      </View>
-
       <View style={styles.tabs}>
         <Pressable
           accessibilityRole="button"
@@ -122,30 +128,42 @@ export function PreConsultationScreen() {
         />
       ) : (
         <>
-          <View style={styles.stepper}>
-            {STEP_LABELS.map((label, index) => (
-              <View key={label} style={styles.stepItem}>
-                <View
-                  style={[
-                    styles.stepDot,
-                    index === wizard.step && styles.stepDotActive,
-                    index < wizard.step && styles.stepDotComplete,
-                  ]}
-                >
-                  {index < wizard.step ? (
-                    <Check size={12} color={colors.white} />
-                  ) : (
-                    <AppText variant="caption" color={index <= wizard.step ? colors.white : colors.subtle}>
-                      {index + 1}
-                    </AppText>
-                  )}
-                </View>
-                <AppText variant="caption" color={index === wizard.step ? colors.ink : colors.subtle}>
-                  {label}
+          <View style={styles.heroPanel}>
+            <View style={styles.heroTop}>
+              <View style={styles.heroIcon}>
+                <ClipboardCheck size={22} color={colors.white} />
+              </View>
+              <View style={styles.heroPill}>
+                <AppText variant="caption" color={colors.white}>
+                  Chuẩn bị trước buổi khám
                 </AppText>
               </View>
-            ))}
+            </View>
+            <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
+              Tư vấn trước khám
+            </AppText>
+            <AppText color="rgba(255,255,255,0.86)" style={styles.heroCopy}>
+              Ghi lại thông tin cần thiết, xem danh sách chuẩn bị và tổng hợp câu hỏi dành cho bác sĩ.
+            </AppText>
           </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stepperCard} contentContainerStyle={styles.stepperCardContent}>
+            {STEPS.map((item, index) => {
+              const Icon = item.icon;
+              const active = index === wizard.step;
+              const done = index < wizard.step;
+              return (
+                <View key={item.label} style={[styles.stepColumn, index > 0 && styles.stepDivider, active && styles.stepColumnActive]}>
+                  <View style={[styles.stepIcon, active && styles.stepIconActive, done && styles.stepIconDone]}>
+                    {done ? <Check size={17} color="#15803d" /> : <Icon size={17} color={active ? colors.white : colors.subtle} />}
+                  </View>
+                  <AppText variant="bodyStrong" color={active ? colors.teal : colors.ink}>
+                    {item.label}
+                  </AppText>
+                </View>
+              );
+            })}
+          </ScrollView>
 
           {wizard.error ? (
             <View style={styles.errorBanner}>
@@ -513,10 +531,17 @@ export function PreConsultationScreen() {
                     style={styles.sessionRow}
                   >
                     <View style={styles.pickerRowText}>
-                      <AppText variant="bodyStrong">{getSessionTitle(item, "Phiên gợi ý chuyên khoa")}</AppText>
+                      <AppText variant="bodyStrong" numberOfLines={2}>
+                        {getSessionTitle(item, "Phiên gợi ý chuyên khoa")}
+                      </AppText>
                       <AppText variant="caption" color={colors.subtle}>
                         {formatDateTime(item.createdAt || item.createdDate, "Chưa có ngày tạo")}
                       </AppText>
+                      <View style={styles.pickerStatusBadge}>
+                        <AppText variant="caption" color={colors.teal}>
+                          Gợi ý chuyên khoa · {formatHistoryStatus(item.status)}
+                        </AppText>
+                      </View>
                     </View>
                     {wizard.applyingSessionId === sessionId ? <ActivityIndicator color={colors.teal} size="small" /> : null}
                   </Pressable>
@@ -567,11 +592,45 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
-  header: {
-    gap: spacing.xs,
+  heroPanel: {
+    gap: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: colors.limeDark,
+    padding: spacing.xl,
+    shadowColor: colors.limeDark,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.28,
+    shadowRadius: 30,
+    elevation: 4,
   },
-  headerTextGroup: {
+  heroTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.16)",
+  },
+  heroPill: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    paddingHorizontal: spacing.md,
+  },
+  heroTitle: {
+    maxWidth: 300,
+  },
+  heroCopy: {
+    maxWidth: 330,
   },
   tabs: {
     flexDirection: "row",
@@ -590,29 +649,46 @@ const styles = StyleSheet.create({
   tabItemActive: {
     backgroundColor: colors.teal,
   },
-  stepper: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
+  stepperCard: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
   },
-  stepItem: {
+  stepperCardContent: {
     flexDirection: "row",
+  },
+  stepColumn: {
     alignItems: "center",
     gap: spacing.xs,
+    minWidth: 92,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  stepDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  stepColumnActive: {
+    backgroundColor: colors.mint,
+  },
+  stepDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: colors.line,
+  },
+  stepIcon: {
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.line,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
   },
-  stepDotActive: {
+  stepIconActive: {
+    borderColor: colors.teal,
     backgroundColor: colors.teal,
   },
-  stepDotComplete: {
-    backgroundColor: colors.teal,
+  stepIconDone: {
+    borderColor: "#8dd9b2",
+    backgroundColor: colors.mint,
   },
   errorBanner: {
     borderRadius: radius.md,
@@ -752,8 +828,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     padding: spacing.lg,
+  },
+  pickerStatusBadge: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
   },
 });

@@ -42,43 +42,40 @@ export function QuestionFlow({
   const progressPercent = questions.length ? Math.round((answeredCount / questions.length) * 100) : 0;
 
   return (
-    <Card variant="hard" style={styles.card}>
-      <View style={styles.topLine}>
-        <View style={styles.questionBadge}>
-          <AppText variant="caption" color={colors.teal}>
-            Câu {currentQuestionIndex + 1}/{questions.length}
+    <>
+      <Card variant="hard" style={styles.card}>
+        <View style={styles.topLine}>
+          <View style={styles.questionBadge}>
+            <AppText variant="caption" color={colors.teal}>
+              Câu {currentQuestionIndex + 1}/{questions.length}
+            </AppText>
+          </View>
+          <AppText variant="bodyStrong" color={colors.teal}>
+            {progressPercent}%
           </AppText>
         </View>
-        <AppText variant="bodyStrong" color={colors.teal}>
-          {progressPercent}%
-        </AppText>
-      </View>
 
-      <View
-        style={styles.progressTrack}
-        accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: 100, now: progressPercent }}
-      >
-        <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
-      </View>
+        <View
+          style={styles.progressTrack}
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 0, max: 100, now: progressPercent }}
+        >
+          <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
+        </View>
 
-      <View style={styles.questionBox}>
-        <AppText variant="caption" color={colors.subtle}>
-          MediMate cần làm rõ
-        </AppText>
-        <AppText variant="h3">{currentQuestion.questionText}</AppText>
-      </View>
+        <View style={styles.questionBox}>
+          <AppText variant="caption" color={colors.subtle}>
+            MediMate cần làm rõ
+          </AppText>
+          <AppText variant="h3">{currentQuestion.questionText}</AppText>
+        </View>
 
-      <AnswerButtons
-        question={currentQuestion}
-        answer={answers[currentQuestion.questionId]}
-        onChange={(answer) => onAnswerChange(currentQuestion.questionId, answer)}
-      />
+        <AnswerButtons
+          question={currentQuestion}
+          answer={answers[currentQuestion.questionId]}
+          onChange={(answer) => onAnswerChange(currentQuestion.questionId, answer)}
+        />
 
-      <View style={styles.actions}>
-        <Button variant="ghost" size="sm" disabled={submitting} onPress={onReset} leftIcon={<RotateCcw size={15} color={colors.ink} />}>
-          Quay lại biểu mẫu
-        </Button>
         <View style={styles.navGroup}>
           <Button
             variant="secondary"
@@ -108,8 +105,19 @@ export function QuestionFlow({
             </Button>
           )}
         </View>
-      </View>
-    </Card>
+      </Card>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        fullWidth
+        disabled={submitting}
+        onPress={onReset}
+        leftIcon={<RotateCcw size={15} color={colors.ink} />}
+      >
+        Quay lại biểu mẫu
+      </Button>
+    </>
   );
 }
 
@@ -148,9 +156,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
-  },
-  actions: {
-    gap: spacing.md,
   },
   navGroup: {
     flexDirection: "row",

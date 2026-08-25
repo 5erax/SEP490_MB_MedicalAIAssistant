@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
   group: {
     alignItems: "center",
     gap: spacing.md,
+    marginTop: spacing.xl,
   },
   pressed: {
     opacity: 0.86,
