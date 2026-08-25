@@ -3,6 +3,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppThemeProvider } from "@/src/theme/ThemeProvider";
+import { PendingPaymentRedirect } from "@/src/components/payment/PendingPaymentRedirect";
 import { AuthProvider } from "./AuthProvider";
 import { ToastProvider } from "./ToastProvider";
 
@@ -17,7 +18,10 @@ export function AppProviders({ children, colorScheme }: AppProvidersProps) {
       <SafeAreaProvider>
         <AppThemeProvider colorScheme={colorScheme}>
           <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              {children}
+              <PendingPaymentRedirect />
+            </ToastProvider>
           </AuthProvider>
         </AppThemeProvider>
       </SafeAreaProvider>

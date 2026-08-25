@@ -26,6 +26,7 @@ export type Payment = {
   amount?: number;
   currency?: string;
   provider?: string;
+  paymentProvider?: string;
   transactionReference?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -73,4 +74,5 @@ export type CheckoutState = {
   status: CheckoutStatus;
   message: string;
   paymentId: string;
+  orderCode?: string;
 };

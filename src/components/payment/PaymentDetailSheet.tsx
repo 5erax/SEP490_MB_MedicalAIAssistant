@@ -95,7 +95,7 @@ export function PaymentDetailSheet({ paymentId, summary, visible, onClose }: Pay
                 <PaymentStatusBadge payment={payment} />
               </View>
               <DetailRow label="Số tiền" value={formatMoney(payment.amount, payment.currency)} />
-              <DetailRow label="Cổng thanh toán" value={payment.provider || "—"} />
+              <DetailRow label="Cổng thanh toán" value={payment.paymentProvider || payment.provider || "—"} />
               <DetailRow label="Mã giao dịch" value={payment.transactionReference || "—"} />
               <DetailRow label="Ngày tạo" value={formatDateTime(payment.createdAt)} />
               <DetailRow label="Ngày thanh toán" value={formatDateTime(payment.paidAt)} />

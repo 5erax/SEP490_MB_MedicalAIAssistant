@@ -47,7 +47,7 @@ export function formatDateTime(value: unknown) {
 // a known order code can be reconciled.
 export function canReconcilePayment(payment: Payment | null | undefined) {
   const statusValue = String(payment?.statusName ?? (payment as { status?: string })?.status ?? "").toLowerCase();
-  const provider = String(payment?.provider ?? "").toLowerCase();
+  const provider = String(payment?.paymentProvider ?? payment?.provider ?? "").toLowerCase();
   const orderCode = String(payment?.transactionReference ?? "").trim();
   return statusValue === "pending" && provider === "payos" && Boolean(orderCode);
 }
