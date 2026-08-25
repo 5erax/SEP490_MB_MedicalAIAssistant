@@ -8,9 +8,8 @@
 // the current flow). The destination (Nearby Clinics/Map, same query
 // params: source/facilityId/departmentId/sessionId) is unchanged.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { History } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -21,6 +20,7 @@ import { shouldSetupPatientProfile } from "@/src/utils/roles";
 import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
 import { ClinicalAnalysisResult, SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
 import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
+import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
 import { IntakeForm } from "./IntakeForm";
 import { dismissProfileNudgeForSession, isProfileNudgeDismissed, ProfileNudgeCard } from "./ProfileNudgeCard";
 import { QuestionFlow } from "./QuestionFlow";
@@ -37,7 +37,16 @@ function formatHistoryDate(value?: string) {
   if (!value) return "Chưa có ngày";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Chưa có ngày";
-  return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  return date.toLocaleString("vi-VN");
+}
+
+function formatHistoryStatus(value?: string) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["completed", "complete"].includes(normalized)) return "Hoàn tất";
+  if (["pending", "processing", "in_progress"].includes(normalized)) return "Đang xử lý";
+  if (["cancelled", "canceled"].includes(normalized)) return "Đã hủy";
+  if (normalized === "failed") return "Không thành công";
+  return "Đang cập nhật";
 }
 
 function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string) {
@@ -80,6 +89,7 @@ export function SpecialtyIntakeScreen() {
 
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
   const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
+  const [historyVisible, setHistoryVisible] = useState(false);
   const [historySessions, setHistorySessions] = useState<SymptomAnalysisSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -145,7 +155,6 @@ export function SpecialtyIntakeScreen() {
           </AppText>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setActiveTab("history")} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
-          <History size={15} color={colors.ink} />
           <AppText variant="bodyStrong" color={colors.ink}>
             Lịch sử
           </AppText>
@@ -174,18 +183,29 @@ export function SpecialtyIntakeScreen() {
               </AppText>
             </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyList}>
+            <View style={styles.historyList}>
               {historySessions.map((item, index) => (
                 <View key={item.sessionId || item.id || String(index)} style={styles.historyCard}>
-                  <AppText variant="bodyStrong" numberOfLines={2}>
-                    {getSessionTitle(item, "Phiên gợi ý chuyên khoa")}
-                  </AppText>
-                  <AppText variant="caption" color={colors.subtle}>
-                    {formatHistoryDate(item.createdAt || item.createdDate)}
-                  </AppText>
+                  <View style={styles.historyText}>
+                    <AppText variant="bodyStrong" numberOfLines={2}>
+                      {getSessionTitle(item, "Phiên gợi ý chuyên khoa")}
+                    </AppText>
+                    <AppText color={colors.muted}>{formatHistoryDate(item.createdAt || item.createdDate)}</AppText>
+                    <View style={styles.historyBadge}>
+                      <AppText variant="caption" color={colors.teal}>
+                        Gợi ý chuyên khoa · {formatHistoryStatus(item.status)}
+                      </AppText>
+                    </View>
+                  </View>
+                  <Button variant="secondary" size="sm" onPress={() => setHistoryVisible(true)} style={styles.detailButton}>
+                    Chi tiết
+                  </Button>
                 </View>
               ))}
-            </ScrollView>
+              <Button fullWidth onPress={() => setActiveTab("chat")} style={styles.continueButton}>
+                Tiếp tục tư vấn
+              </Button>
+            </View>
           )}
         </View>
       ) : null}
@@ -278,6 +298,7 @@ export function SpecialtyIntakeScreen() {
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}
+      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="department" />
     </Screen>
   );
 }
@@ -332,8 +353,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   historyStrip: {
-    minHeight: 96,
-    justifyContent: "center",
+    gap: spacing.md,
   },
   historyLoading: {
     minHeight: 72,
@@ -353,18 +373,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   historyList: {
-    gap: spacing.sm,
+    gap: spacing.md,
     paddingHorizontal: spacing.xs,
   },
   historyCard: {
-    width: 188,
-    minHeight: 82,
-    justifyContent: "space-between",
+    minHeight: 112,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.lg,
     backgroundColor: colors.paper,
-    padding: spacing.md,
+    padding: spacing.lg,
+  },
+  historyText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  historyBadge: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
+  },
+  detailButton: {
+    minWidth: 78,
+  },
+  continueButton: {
+    borderRadius: radius.lg,
   },
   flowCard: {
     gap: spacing.md,
