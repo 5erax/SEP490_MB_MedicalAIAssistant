@@ -42,6 +42,16 @@ To learn more about developing your project with Expo, look at the following res
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
+## Mobile deployment
+
+The repository uses GitHub Actions and EAS Build for automated mobile delivery:
+
+- A push to `main` runs lint and TypeScript checks, then creates an internal Android APK.
+- Publishing a GitHub Release builds Android and iOS production binaries and submits them to the default internal store destinations.
+- A manual run can select the platform, build profile, and whether to submit the result.
+
+See [docs/mobile-auto-deploy.md](./docs/mobile-auto-deploy.md) for the one-time Expo and GitHub setup.
+
 ## Join the community
 
 Join our community of developers creating universal apps.
