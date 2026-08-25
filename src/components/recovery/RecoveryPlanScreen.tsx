@@ -36,19 +36,27 @@ const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["wa
 const CURRENT_PLAN_STATUSES = new Set<RecoveryPlan["status"]>(["active", "readyToStart"]);
 const PHASE_COLORS = ["#0f8b8d", "#2e7d32", "#7c3aed", "#d97706", "#be123c"];
 
-function addDays(value: string, days: number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setDate(date.getDate() + days);
-  return date;
+function sameDate(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
 }
 
-function formatShortDate(date: Date) {
-  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(date);
+function diffCalendarDays(start: Date, current: Date) {
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const currentUtc = Date.UTC(current.getFullYear(), current.getMonth(), current.getDate());
+  return Math.floor((currentUtc - startUtc) / 86400000) + 1;
 }
 
-function formatWeekday(date: Date) {
-  return new Intl.DateTimeFormat("vi-VN", { weekday: "short" }).format(date);
+function buildMonthDays(anchor: Date) {
+  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  const startOffset = (first.getDay() + 6) % 7;
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - startOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
 }
 
 function getPhaseIndexForDay(plan: RecoveryPlan, dayNumber: number) {
@@ -156,85 +164,119 @@ function CollapsibleSectionHeader({
   );
 }
 
-function RecoveryTimelineCard({ plan, onOpenPlan }: { plan: RecoveryPlan | null; onOpenPlan: (plan: RecoveryPlan) => void }) {
+function RecoveryTimelineCard({
+  plan,
+  expanded,
+  onToggle,
+  onOpenPlan,
+}: {
+  plan: RecoveryPlan | null;
+  expanded: boolean;
+  onToggle: () => void;
+  onOpenPlan: (plan: RecoveryPlan) => void;
+}) {
   if (!plan) return null;
 
   const duration = Math.max(1, Number(plan.durationDays || 1));
-  const visibleDays = Array.from({ length: Math.min(duration, 14) }, (_, index) => index + 1);
   const hasCalendar = Boolean(plan.startDate);
+  const startDate = hasCalendar ? new Date(plan.startDate as string) : null;
+  const monthDays = startDate ? buildMonthDays(startDate) : [];
+  const monthLabel = startDate ? new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(startDate) : "";
+  const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   return (
     <View style={styles.timelineCard}>
-      <View style={styles.timelineHeader}>
+      <Pressable accessibilityRole="button" onPress={onToggle} style={({ pressed }) => [styles.timelineHeader, pressed && styles.dropdownHeaderPressed]}>
         <View style={styles.timelineIcon}>
           <Route size={19} color={palette.white} />
         </View>
         <View style={styles.timelineTitleWrap}>
-          <AppText variant="caption" color={palette.primaryDark}>
-            Lộ trình của bạn
-          </AppText>
           <AppText variant="h3" color={palette.ink} numberOfLines={1}>
-            {plan.planName}
+            Lộ trình hồi phục
           </AppText>
         </View>
-        <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineOpenButton}>
-          <ChevronRight size={18} color={palette.primaryDark} />
-        </Pressable>
-      </View>
+        <View style={styles.timelineOpenButton}>{expanded ? <ChevronUp size={18} color={palette.primaryDark} /> : <ChevronDown size={18} color={palette.primaryDark} />}</View>
+      </Pressable>
 
-      <AppText variant="caption" color={palette.muted}>
-        {hasCalendar ? "Mỗi màu tương ứng với một giai đoạn trong kế hoạch." : "Bắt đầu kế hoạch để mở lịch theo từng ngày."}
-      </AppText>
+      {expanded ? (
+        <>
+          <View style={styles.timelineSummary}>
+            <AppText variant="caption" color={palette.primaryDark}>
+              Lộ trình
+            </AppText>
+            <AppText variant="h3" color={palette.ink} numberOfLines={2}>
+              {plan.planName}
+            </AppText>
+            <AppText variant="caption" color={palette.muted}>
+              {hasCalendar ? "Kế hoạch ở ngày nào thì ô ngày đó được tô màu." : "Bắt đầu kế hoạch để mở lịch theo từng ngày."}
+            </AppText>
+          </View>
 
-      {hasCalendar ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timelineDays}>
-          {visibleDays.map((dayNumber) => {
-            const phaseIndex = getPhaseIndexForDay(plan, dayNumber);
-            const date = addDays(plan.startDate as string, dayNumber - 1);
-            const phase = plan.phases?.[phaseIndex];
-            const color = PHASE_COLORS[phaseIndex % PHASE_COLORS.length];
-
-            return (
-              <Pressable key={dayNumber} accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={[styles.timelineDay, { borderColor: color }]}>
-                <View style={[styles.timelineDayDot, { backgroundColor: color }]} />
-                <AppText variant="caption" color={palette.faint}>
-                  Ngày {dayNumber}
+          {hasCalendar && startDate ? (
+            <View style={styles.calendarPanel}>
+              <View style={styles.calendarBar}>
+                <CalendarDays size={17} color={palette.white} />
+                <AppText variant="bodyStrong" color={palette.white} style={styles.calendarMonth}>
+                  {monthLabel}
                 </AppText>
-                <AppText variant="bodyStrong" color={palette.ink}>
-                  {date ? formatShortDate(date) : "--/--"}
-                </AppText>
-                <AppText variant="caption" color={palette.muted} numberOfLines={1}>
-                  {date ? formatWeekday(date) : ""}
-                </AppText>
-                {phase ? (
-                  <AppText variant="caption" color={color} numberOfLines={1}>
-                    {phase.phaseName}
+              </View>
+              <View style={styles.weekdayRow}>
+                {weekdays.map((weekday) => (
+                  <AppText key={weekday} variant="caption" color={palette.muted} style={styles.weekdayCell}>
+                    {weekday}
                   </AppText>
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      ) : (
-        <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineStartHint}>
-          <CalendarDays size={18} color={palette.primaryDark} />
-          <AppText variant="bodyStrong" color={palette.primaryDark}>
-            Xem chi tiết để bắt đầu kế hoạch
-          </AppText>
-        </Pressable>
-      )}
+                ))}
+              </View>
+              <View style={styles.calendarGrid}>
+                {monthDays.map((date) => {
+                  const dayNumber = diffCalendarDays(startDate, date);
+                  const inPlan = dayNumber >= 1 && dayNumber <= duration;
+                  const phaseIndex = inPlan ? getPhaseIndexForDay(plan, dayNumber) : -1;
+                  const color = inPlan ? PHASE_COLORS[phaseIndex % PHASE_COLORS.length] : "transparent";
+                  const inMonth = date.getMonth() === startDate.getMonth();
+                  const today = sameDate(date, new Date());
 
-      {(plan.phases ?? []).length > 0 ? (
-        <View style={styles.timelineLegend}>
-          {(plan.phases ?? []).map((phase, index) => (
-            <View key={phase.id} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: PHASE_COLORS[index % PHASE_COLORS.length] }]} />
-              <AppText variant="caption" color={palette.muted} numberOfLines={1} style={styles.legendText}>
-                Ngày {phase.startDay ?? 1}-{phase.endDay ?? phase.startDay ?? 1}: {phase.phaseName}
-              </AppText>
+                  return (
+                    <Pressable
+                      key={date.toISOString()}
+                      accessibilityRole="button"
+                      onPress={() => onOpenPlan(plan)}
+                      style={[
+                        styles.calendarDay,
+                        inPlan && { backgroundColor: color, borderColor: color },
+                        today && styles.calendarToday,
+                      ]}
+                    >
+                      <AppText variant="caption" color={inPlan ? palette.white : inMonth ? palette.ink : palette.faint}>
+                        {date.getDate()}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          ))}
-        </View>
+          ) : (
+            <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineStartHint}>
+              <CalendarDays size={18} color={palette.primaryDark} />
+              <AppText variant="bodyStrong" color={palette.primaryDark}>
+                Xem chi tiết để bắt đầu kế hoạch
+              </AppText>
+            </Pressable>
+          )}
+
+          {(plan.phases ?? []).length > 0 ? (
+            <View style={styles.timelineLegend}>
+              {(plan.phases ?? []).map((phase, index) => (
+                <View key={phase.id} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: PHASE_COLORS[index % PHASE_COLORS.length] }]} />
+                  <AppText variant="caption" color={palette.muted} numberOfLines={1} style={styles.legendText}>
+                    Ngày {phase.startDay ?? 1}-{phase.endDay ?? phase.startDay ?? 1}: {phase.phaseName}
+                  </AppText>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </>
       ) : null}
     </View>
   );
@@ -249,6 +291,7 @@ export function RecoveryPlanScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [requestsExpanded, setRequestsExpanded] = useState(false);
   const [plansExpanded, setPlansExpanded] = useState(false);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
 
   const requestCreationDisabled =
     recovery.quotaState === "loading" ||
@@ -502,7 +545,7 @@ export function RecoveryPlanScreen() {
           ) : null}
         </View>
 
-        <RecoveryTimelineCard plan={primaryPlan} onOpenPlan={openPlan} />
+        <RecoveryTimelineCard plan={primaryPlan} expanded={timelineExpanded} onToggle={() => setTimelineExpanded((current) => !current)} onOpenPlan={openPlan} />
 
         <AppText variant="caption" color={palette.faint} style={styles.disclaimer}>
           Thông tin hỗ trợ, không thay thế chăm sóc y tế. Trong tình huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
@@ -793,24 +836,55 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.mint,
   },
-  timelineDays: {
-    gap: spacing.sm,
-    paddingRight: spacing.lg,
-  },
-  timelineDay: {
-    width: 116,
-    minHeight: 132,
+  timelineSummary: {
     gap: spacing.xs,
-    borderWidth: 1.5,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(248,251,247,0.96)",
-    padding: spacing.md,
   },
-  timelineDayDot: {
-    width: 28,
-    height: 5,
-    borderRadius: radius.pill,
-    marginBottom: spacing.xs,
+  calendarPanel: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.24)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(232,246,244,0.58)",
+  },
+  calendarBar: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: palette.primary,
+    paddingHorizontal: spacing.md,
+  },
+  calendarMonth: {
+    textTransform: "capitalize",
+  },
+  weekdayRow: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+  weekdayCell: {
+    flex: 1,
+    textAlign: "center",
+  },
+  calendarGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: spacing.xs,
+  },
+  calendarDay: {
+    width: "14.2857%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(255,255,255,0.78)",
+  },
+  calendarToday: {
+    borderColor: palette.primaryDark,
+    borderWidth: 1.5,
   },
   timelineStartHint: {
     minHeight: 52,
