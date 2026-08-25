@@ -243,6 +243,7 @@ function RecoveryTimelineCard({
                       onPress={() => onOpenPlan(plan)}
                       style={[
                         styles.calendarDay,
+                        inPlan && styles.calendarPlanDay,
                         inPlan && { backgroundColor: color, borderColor: color },
                         today && styles.calendarToday,
                       ]}
@@ -870,7 +871,9 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
   },
   calendarDay: {
     width: "14.2857%",
@@ -879,8 +882,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "transparent",
+    borderRadius: 0,
+    backgroundColor: "transparent",
+  },
+  calendarPlanDay: {
     borderRadius: radius.sm,
-    backgroundColor: "rgba(255,255,255,0.78)",
   },
   calendarToday: {
     borderColor: palette.primaryDark,
