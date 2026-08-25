@@ -82,6 +82,13 @@ export const recoveryPlansApi = {
   },
 
   cancel(planId: string) {
-    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.CANCEL(planId), { method: "POST", requiresAuth: true });
+    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.CANCEL(planId), {
+      method: "POST",
+      data: {
+        cancellationReasonCode: "NO_LONGER_NEEDED",
+        cancellationReason: null,
+      },
+      requiresAuth: true,
+    });
   },
 };
