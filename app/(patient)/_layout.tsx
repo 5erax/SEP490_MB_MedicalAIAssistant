@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { CalendarClock, LayoutGrid, MapPin, MessageCircle, Route, Settings, UserRound } from "lucide-react-native";
+import { CalendarClock, LayoutGrid, MapPin, Route, UserRound } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -35,13 +35,6 @@ export default function PatientLayout() {
         }}
       />
       <Tabs.Screen
-        name="chat"
-        options={{
-          title: "Chat AI",
-          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
         name="recovery-plan"
         options={{
           title: "Phục hồi",
@@ -55,13 +48,8 @@ export default function PatientLayout() {
           tabBarIcon: ({ color, size }) => <UserRound color={color} size={size} />,
         }}
       />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Cài đặt",
-          tabBarIcon: ({ color, size }) => <Settings color={color} size={size} />,
-        }}
-      />
+      <Tabs.Screen name="chat" options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="symptom" options={{ href: null }} />
       <Tabs.Screen name="medication" options={{ href: null }} />
       <Tabs.Screen name="my-medications" options={{ href: null }} />
