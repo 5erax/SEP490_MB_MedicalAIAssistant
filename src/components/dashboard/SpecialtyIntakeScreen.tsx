@@ -34,19 +34,19 @@ const SEGMENT_HEIGHT = 30;
 function IntroPanel({ activeStep }: { activeStep: number }) {
   return (
     <View style={styles.introPanel}>
-      <View style={styles.introHeader}>
-        <View style={styles.introIcon}>
-          <ClipboardPlus size={20} color={colors.teal} />
-        </View>
-        <View style={styles.introCopy}>
-          <AppText variant="eyebrow" color={colors.teal}>
-            Tư vấn chuyên khoa
-          </AppText>
-          <AppText variant="h1">Gợi ý chuyên khoa qua triệu chứng</AppText>
-          <AppText color={colors.muted}>
-            Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
-          </AppText>
-        </View>
+      <View style={styles.introIcon}>
+        <ClipboardPlus size={22} color={colors.white} />
+      </View>
+      <View style={styles.introCopy}>
+        <AppText variant="eyebrow" color={colors.teal}>
+          Tư vấn chuyên khoa
+        </AppText>
+        <AppText variant="h2" style={styles.introTitle}>
+          Gợi ý chuyên khoa qua triệu chứng
+        </AppText>
+        <AppText color={colors.muted}>
+          Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
+        </AppText>
       </View>
       <View style={styles.introStepper}>
         {STEP_LABELS.map((label, index) => {
@@ -375,44 +375,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   introPanel: {
-    gap: spacing.lg,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderTopWidth: 3,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderTopColor: colors.teal,
     borderRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    padding: spacing.md,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
     shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.07,
-    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.09,
+    shadowRadius: 22,
     elevation: 2,
   },
-  introHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.md,
-  },
   introIcon: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.teal,
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 2,
   },
   introCopy: {
-    flex: 1,
     gap: spacing.xs,
   },
+  introTitle: {
+    lineHeight: 32,
+  },
   introStepper: {
-    minHeight: 82,
+    minHeight: 80,
     flexDirection: "row",
     alignItems: "flex-start",
     borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.18)",
+    borderColor: "rgba(8,127,140,0.22)",
     borderRadius: radius.lg,
-    backgroundColor: colors.paper,
+    backgroundColor: "rgba(231,243,245,0.58)",
     paddingVertical: spacing.md,
+    overflow: "hidden",
   },
   introStep: {
     flex: 1,

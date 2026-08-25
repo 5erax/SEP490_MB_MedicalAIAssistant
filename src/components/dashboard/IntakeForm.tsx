@@ -46,6 +46,7 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
 
 const styles = StyleSheet.create({
   group: {
+    alignItems: "center",
     gap: spacing.md,
   },
   pressed: {
@@ -56,9 +57,11 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   composer: {
+    width: "100%",
+    maxWidth: 360,
     minHeight: 60,
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     gap: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: colors.paper,
@@ -70,12 +73,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: "rgba(231,243,245,0.68)",
   },
   input: {
     flex: 1,
@@ -87,8 +90,10 @@ const styles = StyleSheet.create({
     textAlignVertical: "center",
   },
   statusRow: {
+    width: "100%",
+    maxWidth: 348,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: spacing.sm,
   },
   statusText: {
@@ -101,8 +106,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
   },
   sendButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
