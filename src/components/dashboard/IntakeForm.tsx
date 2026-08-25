@@ -1,7 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { AlertTriangle, Bot, SendHorizontal } from "lucide-react-native";
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Bot, Plus, SendHorizontal } from "lucide-react-native";
 
-import { AppText, Button, Card, TextField } from "@/src/components/ui";
+import { AppText } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 
 type IntakeFormProps = {
@@ -14,24 +14,23 @@ type IntakeFormProps = {
 const SAMPLE_SYMPTOMS = ["Đau họng và sốt nhẹ", "Đau bụng sau khi ăn", "Ho kéo dài về đêm"];
 
 export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFormProps) {
+  const disabled = !input.trim() || loading;
+
   return (
     <View style={styles.group}>
-      <Card variant="hard" style={styles.card}>
-        <View style={styles.chatIntro}>
-          <View style={styles.botAvatar}>
-            <Bot size={20} color={colors.white} />
-          </View>
-          <View style={styles.aiBubble}>
-            <AppText variant="caption" color={colors.teal}>
-              MediMate AI
-            </AppText>
-            <AppText variant="h3">Bạn đang gặp triệu chứng gì?</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Mình sẽ hỏi thêm khi cần và gợi ý chuyên khoa phù hợp.
-            </AppText>
-          </View>
+      <View style={styles.promptArea}>
+        <View style={styles.aiBadge}>
+          <Bot size={15} color={colors.teal} />
+          <AppText variant="caption" color={colors.muted}>
+            MediMate AI
+          </AppText>
         </View>
-
+        <AppText variant="h2" style={styles.promptTitle}>
+          Bạn đang gặp triệu chứng gì?
+        </AppText>
+        <AppText color={colors.muted} style={styles.promptCopy}>
+          Mô tả ngắn gọn triệu chứng. MediMate sẽ hỏi thêm khi cần và gợi ý chuyên khoa phù hợp.
+        </AppText>
         <View style={styles.sampleRow}>
           {SAMPLE_SYMPTOMS.map((sample) => (
             <Pressable
@@ -47,42 +46,31 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
             </Pressable>
           ))}
         </View>
+      </View>
 
-        <View style={styles.composer}>
-          <TextField
-            label="Mô tả triệu chứng"
-            value={input}
-            onChangeText={onChangeInput}
-            placeholder="Nhập triệu chứng của bạn..."
-            multiline
-            numberOfLines={4}
-            style={styles.textarea}
-            editable={!loading}
-          />
-          <View style={styles.composerFooter}>
-            <View style={styles.statusRow}>
-              <View style={styles.statusDot} />
-              <AppText variant="caption" color={colors.subtle} style={styles.statusText}>
-                {loading ? "Đang phân tích..." : "Sẵn sàng tư vấn"}
-              </AppText>
-            </View>
-            <Button disabled={!input.trim() || loading} onPress={onSubmit} style={styles.sendButton}>
-              {loading ? <ActivityIndicator color={colors.white} size="small" /> : <SendHorizontal size={18} color={colors.white} />}
-            </Button>
-          </View>
-        </View>
-      </Card>
+      <View style={styles.composer}>
+        <Pressable accessibilityRole="button" disabled={loading} style={({ pressed }) => [styles.addButton, pressed && styles.pressed, loading && styles.disabled]}>
+          <Plus size={22} color={colors.ink} />
+        </Pressable>
+        <TextInput
+          value={input}
+          onChangeText={onChangeInput}
+          placeholder="Hỏi MediMate..."
+          placeholderTextColor={colors.subtle}
+          multiline
+          editable={!loading}
+          style={styles.input}
+        />
+        <Pressable accessibilityRole="button" disabled={disabled} onPress={onSubmit} style={({ pressed }) => [styles.sendButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}>
+          {loading ? <ActivityIndicator color={colors.white} size="small" /> : <SendHorizontal size={18} color={colors.white} />}
+        </Pressable>
+      </View>
 
-      <View style={styles.emergencyNote}>
-        <AlertTriangle size={18} color={colors.warning} />
-        <View style={styles.emergencyText}>
-          <AppText variant="bodyStrong" color={colors.warning}>
-            Khi nào cần cấp cứu?
-          </AppText>
-          <AppText variant="caption" color={colors.muted}>
-            Nếu tình trạng chuyển nặng nhanh, hãy liên hệ cấp cứu hoặc đến cơ sở y tế gần nhất.
-          </AppText>
-        </View>
+      <View style={styles.statusRow}>
+        <View style={styles.statusDot} />
+        <AppText variant="caption" color={colors.subtle} style={styles.statusText}>
+          {loading ? "Đang phân tích..." : "Kết quả chỉ dùng để định hướng, không thay thế chẩn đoán của bác sĩ."}
+        </AppText>
       </View>
     </View>
   );
@@ -90,40 +78,35 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
 
 const styles = StyleSheet.create({
   group: {
-    gap: spacing.lg,
-  },
-  card: {
+    minHeight: 520,
+    justifyContent: "flex-end",
     gap: spacing.md,
-    borderColor: "rgba(8,127,140,0.18)",
   },
-  chatIntro: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+  promptArea: {
     gap: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
-  botAvatar: {
-    width: 42,
-    height: 42,
+  aiBadge: {
+    alignSelf: "flex-start",
+    minHeight: 30,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.teal,
-  },
-  aiBubble: {
-    flex: 1,
     gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    borderTopLeftRadius: radius.sm,
-    backgroundColor: colors.paperSoft,
-    padding: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
+  },
+  promptTitle: {
+    maxWidth: 320,
+  },
+  promptCopy: {
+    maxWidth: 330,
   },
   sampleRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
-    paddingLeft: 50,
+    paddingTop: spacing.sm,
   },
   sampleChip: {
     minHeight: 34,
@@ -142,23 +125,35 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   composer: {
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.2)",
-    borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    padding: spacing.md,
-  },
-  textarea: {
-    minHeight: 104,
-    textAlignVertical: "top",
-    paddingTop: spacing.md,
-  },
-  composerFooter: {
+    minHeight: 60,
     flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.sm,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paper,
+    padding: spacing.sm,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
+  },
+  addButton: {
+    width: 44,
+    height: 44,
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 108,
+    minHeight: 44,
+    color: colors.ink,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
+    textAlignVertical: "center",
   },
   statusRow: {
     flexDirection: "row",
@@ -176,22 +171,10 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     width: 44,
-    minHeight: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radius.pill,
-    paddingHorizontal: 0,
-  },
-  emergencyNote: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.warningBg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.warningBg,
-    padding: spacing.md,
-  },
-  emergencyText: {
-    flex: 1,
-    gap: spacing.xs / 2,
+    backgroundColor: colors.teal,
   },
 });

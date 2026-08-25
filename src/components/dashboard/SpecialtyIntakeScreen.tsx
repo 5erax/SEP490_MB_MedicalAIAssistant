@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Activity, History, MapPinned, ShieldCheck, Sparkles } from "lucide-react-native";
+import { History } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -75,7 +75,6 @@ export function SpecialtyIntakeScreen() {
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
   const activeStep = status === "result" ? 2 : ["questions", "submitting"].includes(status) ? 1 : 0;
-  const progressLabel = activeStep === 0 ? "Bắt đầu mô tả" : activeStep === 1 ? `${answeredCount}/${questions.length} câu đã trả lời` : "Đã có gợi ý";
 
   useEffect(() => {
     if (status !== "result") return;
@@ -95,37 +94,6 @@ export function SpecialtyIntakeScreen() {
         />
       ) : null}
 
-      <View style={styles.hero}>
-        <View style={styles.heroTopRow}>
-          <View style={styles.heroMark}>
-            <Sparkles size={20} color={colors.white} />
-          </View>
-        </View>
-        <AppText variant="eyebrow" color={colors.teal}>
-          Tư vấn chuyên khoa
-        </AppText>
-        <AppText variant="h1" style={styles.heroTitle}>
-          Tìm đúng nơi khám từ triệu chứng của bạn
-        </AppText>
-        <AppText color={colors.muted} style={styles.heroCopy}>
-          Mô tả điều đang gặp, trả lời vài câu ngắn và nhận gợi ý chuyên khoa cùng cơ sở y tế phù hợp.
-        </AppText>
-        <View style={styles.heroMetaRow}>
-          <View style={styles.heroMetaPill}>
-            <Activity size={14} color={colors.teal} />
-            <AppText variant="caption" color={colors.teal}>
-              {progressLabel}
-            </AppText>
-          </View>
-          <View style={styles.heroMetaPillMuted}>
-            <MapPinned size={14} color={colors.amber} />
-            <AppText variant="caption" color={colors.amber}>
-              Có gợi ý cơ sở
-            </AppText>
-          </View>
-        </View>
-      </View>
-
       <View style={styles.segmentedControl}>
         <Pressable accessibilityRole="button" style={[styles.segmentItem, styles.segmentItemActive]}>
           <AppText variant="bodyStrong" color={colors.ink}>
@@ -140,34 +108,30 @@ export function SpecialtyIntakeScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.flowCard}>
-        <View style={styles.scopeNote}>
-          <ShieldCheck size={17} color={colors.teal} />
-          <AppText variant="caption" color={colors.muted} style={styles.scopeNoteText}>
-            Kết quả chỉ dùng để định hướng, không thay thế chẩn đoán hoặc điều trị của bác sĩ.
-          </AppText>
-        </View>
-        <View style={styles.stepper}>
-          {STEP_LABELS.map((label, index) => (
-            <View key={label} style={styles.stepItem}>
-              <View
-                style={[
-                  styles.stepDot,
-                  index === activeStep && styles.stepDotActive,
-                  index < activeStep && styles.stepDotComplete,
-                ]}
-              >
-                <AppText variant="caption" color={index <= activeStep ? colors.white : colors.subtle}>
-                  {index + 1}
+      {!showIntakeForm ? (
+        <View style={styles.flowCard}>
+          <View style={styles.stepper}>
+            {STEP_LABELS.map((label, index) => (
+              <View key={label} style={styles.stepItem}>
+                <View
+                  style={[
+                    styles.stepDot,
+                    index === activeStep && styles.stepDotActive,
+                    index < activeStep && styles.stepDotComplete,
+                  ]}
+                >
+                  <AppText variant="caption" color={index <= activeStep ? colors.white : colors.subtle}>
+                    {index + 1}
+                  </AppText>
+                </View>
+                <AppText variant="caption" color={index === activeStep ? colors.ink : colors.subtle}>
+                  {label}
                 </AppText>
               </View>
-              <AppText variant="caption" color={index === activeStep ? colors.ink : colors.subtle}>
-                {label}
-              </AppText>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {showIntakeForm ? (
         <IntakeForm input={input} onChangeInput={setInput} loading={loading} onSubmit={() => startDiagnosis()} />
@@ -240,78 +204,12 @@ export function SpecialtyIntakeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.md,
+    gap: spacing.lg,
     paddingBottom: spacing["4xl"],
   },
   pressed: {
     opacity: 0.86,
     transform: [{ translateY: 1 }],
-  },
-  hero: {
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.22)",
-    borderRadius: radius.xl,
-    backgroundColor: colors.paper,
-    padding: spacing.xl,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.1,
-    shadowRadius: 26,
-    elevation: 3,
-  },
-  heroTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  heroMark: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.teal,
-  },
-  heroTitle: {
-    maxWidth: 310,
-  },
-  heroCopy: {
-    maxWidth: 310,
-  },
-  heroMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  heroMetaPill: {
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.mint,
-    paddingHorizontal: spacing.md,
-  },
-  heroMetaPillMuted: {
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.warningBg,
-    paddingHorizontal: spacing.md,
-  },
-  scopeNote: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.mint,
-    padding: spacing.md,
-  },
-  scopeNoteText: {
-    flex: 1,
   },
   segmentedControl: {
     alignSelf: "center",
