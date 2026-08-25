@@ -36,6 +36,8 @@ export const CANCELLABLE_REQUEST_STATUSES = new Set<RecoveryPlanRequestStatus>([
   "needMoreInformation",
 ]);
 
+export const CANCELLABLE_PLAN_STATUSES = new Set<RecoveryPlanStatus>(["readyToStart", "active"]);
+
 export const PLAN_STATUS: Record<RecoveryPlanStatus, { label: string; tone: StatusTone }> = {
   readyToStart: { label: "Sẵn sàng bắt đầu", tone: "warning" },
   active: { label: "Đang thực hiện", tone: "warning" },

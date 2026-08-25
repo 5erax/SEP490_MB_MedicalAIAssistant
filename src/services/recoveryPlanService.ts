@@ -80,4 +80,8 @@ export const recoveryPlansApi = {
   start(planId: string) {
     return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.START(planId), { method: "POST", requiresAuth: true });
   },
+
+  cancel(planId: string) {
+    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.CANCEL(planId), { method: "POST", requiresAuth: true });
+  },
 };

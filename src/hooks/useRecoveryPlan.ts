@@ -73,6 +73,7 @@ export function useRecoveryPlan() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [providingInfo, setProvidingInfo] = useState(false);
   const [startingId, setStartingId] = useState<string | null>(null);
+  const [cancellingPlanId, setCancellingPlanId] = useState<string | null>(null);
 
   const loadQuota = useCallback(async () => {
     setQuotaState("loading");
@@ -346,6 +347,31 @@ export function useRecoveryPlan() {
     }
   }
 
+  async function cancelPlan(planId: string) {
+    setCancellingPlanId(planId);
+    try {
+      const response = await recoveryPlansApi.cancel(planId);
+      const cancelledPlan =
+        response.data ??
+        (selectedPlan?.id === planId ? ({ ...selectedPlan, status: "cancelled" } as RecoveryPlan) : null);
+
+      if (cancelledPlan) {
+        setSelectedPlan(cancelledPlan);
+        setPlans((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === planId ? cancelledPlan : item)),
+        }));
+      }
+
+      await Promise.allSettled([loadPlans(plansPage), loadQuota()]);
+      return "success" as const;
+    } catch (error) {
+      return { status: "error" as const, message: getRecoveryErrorMessage(errorPayload(error), "Không thể hủy kế hoạch. Vui lòng thử lại.") };
+    } finally {
+      setCancellingPlanId(null);
+    }
+  }
+
   return {
     quota,
     quotaState,
@@ -404,6 +430,8 @@ export function useRecoveryPlan() {
     submitMoreInformation,
     startingId,
     startPlan,
+    cancellingPlanId,
+    cancelPlan,
 
     reloadAll,
   };

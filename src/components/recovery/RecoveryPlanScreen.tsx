@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { ChevronLeft, ChevronRight, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
@@ -178,6 +178,24 @@ export function RecoveryPlanScreen() {
     }
   }
 
+  function handleCancelPlan(planId: string) {
+    Alert.alert("Hủy kế hoạch phục hồi?", "Kế hoạch hiện tại sẽ ngừng theo dõi sau khi hủy.", [
+      { text: "Đóng", style: "cancel" },
+      {
+        text: "Hủy kế hoạch",
+        style: "destructive",
+        onPress: async () => {
+          const result = await recovery.cancelPlan(planId);
+          if (result === "success") {
+            showToast({ type: "success", message: "Đã hủy kế hoạch phục hồi." });
+          } else {
+            showToast({ type: "error", message: result.message });
+          }
+        },
+      },
+    ]);
+  }
+
   async function handleRefresh() {
     setRefreshing(true);
     recovery.reloadAll();
@@ -345,11 +363,13 @@ export function RecoveryPlanScreen() {
         plan={recovery.selectedPlan}
         state={recovery.planDetailState}
         starting={Boolean(recovery.startingId)}
+        cancelling={Boolean(recovery.cancellingPlanId)}
         onClose={() => {
           setPlanDetailVisible(false);
           recovery.clearSelectedPlan();
         }}
         onStart={handleStartPlan}
+        onCancel={handleCancelPlan}
       />
     </Screen>
   );

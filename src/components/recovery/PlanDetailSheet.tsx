@@ -6,17 +6,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppText, Button, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { RecoveryPlan, RecoveryPlanPhase } from "@/src/types/recoveryPlan";
-import { formatDateOnly, PLAN_STATUS } from "@/src/utils/recoveryPlanPresentation";
+import { CANCELLABLE_PLAN_STATUSES, formatDateOnly, PLAN_STATUS } from "@/src/utils/recoveryPlanPresentation";
 
 function PhaseCard({ phase, index }: { phase: RecoveryPlanPhase; index: number }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const nutrientCount = phase.nutrientTargets?.length ?? 0;
 
   return (
     <View style={styles.phaseCard}>
       <View style={styles.phaseHeader}>
         <View style={styles.phaseNumber}>
-          <AppText variant="caption" color={colors.teal}>
+          <AppText variant="caption" color={colors.white}>
             {index + 1}
           </AppText>
         </View>
@@ -25,9 +25,9 @@ function PhaseCard({ phase, index }: { phase: RecoveryPlanPhase; index: number }
             {phase.phaseName}
           </AppText>
           {phase.startDay !== undefined && phase.endDay !== undefined ? (
-            <AppText variant="caption" color={colors.subtle}>
-              Ngày {phase.startDay}-{phase.endDay}
-            </AppText>
+              <AppText variant="caption" color={colors.teal}>
+                Ngày {phase.startDay}-{phase.endDay}
+              </AppText>
           ) : null}
         </View>
         {nutrientCount > 0 ? (
@@ -44,26 +44,24 @@ function PhaseCard({ phase, index }: { phase: RecoveryPlanPhase; index: number }
           {phase.sleepHoursPerDay || phase.restHoursPerDay ? (
             <View style={styles.phaseChip}>
               <Moon size={13} color={colors.teal} />
-              <AppText variant="caption" color={colors.muted}>
-                {phase.sleepHoursPerDay ? `Ngủ ${phase.sleepHoursPerDay}h` : ""}
-                {phase.sleepHoursPerDay && phase.restHoursPerDay ? " · " : ""}
-                {phase.restHoursPerDay ? `Nghỉ ${phase.restHoursPerDay}h` : ""}
-              </AppText>
-            </View>
-          ) : null}
-          {nutrientCount > 0 ? (
-            <View style={styles.phaseChip}>
-              <ClipboardList size={13} color={colors.teal} />
-              <AppText variant="caption" color={colors.muted}>
-                {nutrientCount} mục dinh dưỡng
+              <AppText color={colors.muted}>
+                Ngủ nghỉ{" "}
+                <AppText variant="bodyStrong">
+                  {phase.sleepHoursPerDay ?? phase.restHoursPerDay} giờ/ngày
+                </AppText>
               </AppText>
             </View>
           ) : null}
         </View>
       ) : null}
 
-      {expanded
-        ? (phase.nutrientTargets ?? []).map((nutrient) => (
+      {expanded && nutrientCount > 0
+        ? (
+            <View style={styles.nutritionSection}>
+              <AppText variant="caption" color={colors.teal} style={styles.nutritionTitle}>
+                DINH DƯỠNG GỢI Ý
+              </AppText>
+              {(phase.nutrientTargets ?? []).map((nutrient) => (
             <View key={nutrient.id} style={styles.nutrientCard}>
               <View style={styles.nutrientHeader}>
                 <AppText variant="bodyStrong" style={styles.nutrientName}>
@@ -90,7 +88,9 @@ function PhaseCard({ phase, index }: { phase: RecoveryPlanPhase; index: number }
                 </View>
               ))}
             </View>
-          ))
+              ))}
+            </View>
+          )
         : null}
     </View>
   );
@@ -101,13 +101,16 @@ type PlanDetailSheetProps = {
   plan: RecoveryPlan | null;
   state: "idle" | "loading" | "ready" | "error";
   starting: boolean;
+  cancelling: boolean;
   onClose: () => void;
   onStart: (planId: string) => void;
+  onCancel: (planId: string) => void;
 };
 
-export function PlanDetailSheet({ visible, plan, state, starting, onClose, onStart }: PlanDetailSheetProps) {
+export function PlanDetailSheet({ visible, plan, state, starting, cancelling, onClose, onStart, onCancel }: PlanDetailSheetProps) {
   const status = plan ? PLAN_STATUS[plan.status] : null;
   const phaseCount = plan?.phases?.length ?? 0;
+  const cancellable = plan ? CANCELLABLE_PLAN_STATUSES.has(plan.status) : false;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -215,6 +218,11 @@ export function PlanDetailSheet({ visible, plan, state, starting, onClose, onSta
               {plan.status === "readyToStart" ? (
                 <Button fullWidth disabled={starting} onPress={() => onStart(plan.id)}>
                   {starting ? "Đang bắt đầu..." : "Bắt đầu kế hoạch"}
+                </Button>
+              ) : null}
+              {cancellable ? (
+                <Button variant="danger" disabled={cancelling} onPress={() => onCancel(plan.id)} style={styles.cancelPlanButton}>
+                  {cancelling ? "Đang hủy..." : "Hủy kế hoạch"}
                 </Button>
               ) : null}
             </>
@@ -341,10 +349,10 @@ const styles = StyleSheet.create({
   phaseCard: {
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: "rgba(8,127,140,0.36)",
     borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    padding: spacing.md,
+    backgroundColor: "rgba(232,246,244,0.92)",
+    padding: spacing.lg,
   },
   phaseHeader: {
     flexDirection: "row",
@@ -352,12 +360,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   phaseNumber: {
-    width: 28,
-    height: 28,
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.mint,
+    borderWidth: 2,
+    borderColor: "rgba(8,127,140,0.25)",
+    backgroundColor: colors.teal,
   },
   phaseHeaderText: {
     flex: 1,
@@ -369,7 +379,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: "rgba(255,255,255,0.64)",
   },
   phaseMetaRow: {
     flexDirection: "row",
@@ -377,19 +387,31 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   phaseChip: {
-    minHeight: 28,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
-    paddingHorizontal: spacing.sm,
+    alignSelf: "flex-start",
+    borderRadius: radius.sm,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.md,
+  },
+  nutritionSection: {
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(8,127,140,0.24)",
+    paddingTop: spacing.md,
+  },
+  nutritionTitle: {
+    fontWeight: "700",
   },
   nutrientCard: {
-    gap: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-    paddingTop: spacing.md,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.16)",
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    padding: spacing.md,
   },
   nutrientHeader: {
     flexDirection: "row",
@@ -403,6 +425,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.sm,
+    backgroundColor: colors.paper,
+    padding: spacing.sm,
   },
   foodDot: {
     width: 5,
@@ -424,5 +451,18 @@ const styles = StyleSheet.create({
   },
   recheckText: {
     flex: 1,
+  },
+  cancelPlanButton: {
+    alignSelf: "flex-start",
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
+    paddingHorizontal: spacing.lg,
+    shadowColor: colors.danger,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    elevation: 2,
   },
 });
