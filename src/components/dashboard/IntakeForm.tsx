@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from "react-native";
-import { Bot, Plus, SendHorizontal } from "lucide-react-native";
+import { Plus, SendHorizontal } from "lucide-react-native";
 
 import { AppText } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -16,21 +16,6 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
 
   return (
     <View style={styles.group}>
-      <View style={styles.promptArea}>
-        <View style={styles.aiBadge}>
-          <Bot size={15} color={colors.teal} />
-          <AppText variant="caption" color={colors.muted}>
-            MediMate AI
-          </AppText>
-        </View>
-        <AppText variant="h2" style={styles.promptTitle}>
-          Bạn đang gặp triệu chứng gì?
-        </AppText>
-        <AppText color={colors.muted} style={styles.promptCopy}>
-          Mô tả ngắn gọn triệu chứng. MediMate sẽ hỏi thêm khi cần và gợi ý chuyên khoa phù hợp.
-        </AppText>
-      </View>
-
       <View style={styles.composer}>
         <Pressable accessibilityRole="button" disabled={loading} style={({ pressed }) => [styles.addButton, pressed && styles.pressed, loading && styles.disabled]}>
           <Plus size={22} color={colors.ink} />
@@ -61,29 +46,7 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
 
 const styles = StyleSheet.create({
   group: {
-    minHeight: 520,
-    justifyContent: "flex-end",
     gap: spacing.md,
-  },
-  promptArea: {
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xs,
-  },
-  aiBadge: {
-    alignSelf: "flex-start",
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.mint,
-    paddingHorizontal: spacing.md,
-  },
-  promptTitle: {
-    maxWidth: 320,
-  },
-  promptCopy: {
-    maxWidth: 330,
   },
   pressed: {
     opacity: 0.86,

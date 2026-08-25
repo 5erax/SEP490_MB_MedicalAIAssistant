@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
+import { ClipboardPlus } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -28,6 +29,47 @@ import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
 const SEGMENT_WIDTH = 112;
+
+function IntroPanel({ activeStep }: { activeStep: number }) {
+  return (
+    <View style={styles.introPanel}>
+      <View style={styles.introHeader}>
+        <View style={styles.introIcon}>
+          <ClipboardPlus size={20} color={colors.teal} />
+        </View>
+        <View style={styles.introCopy}>
+          <AppText variant="eyebrow" color={colors.teal}>
+            Tư vấn chuyên khoa
+          </AppText>
+          <AppText variant="h1">Gợi ý chuyên khoa qua triệu chứng</AppText>
+          <AppText color={colors.muted}>
+            Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
+          </AppText>
+        </View>
+      </View>
+      <View style={styles.introStepper}>
+        {STEP_LABELS.map((label, index) => {
+          const active = index === activeStep;
+          const complete = index < activeStep;
+          return (
+            <View key={label} style={styles.introStep}>
+              <View style={[styles.introStepLine, styles.introStepLineLeft, index === 0 && styles.introStepLineHidden]} />
+              <View style={[styles.introStepDot, (active || complete) && styles.introStepDotActive]}>
+                <AppText variant="caption" color={active || complete ? colors.white : colors.teal}>
+                  {index + 1}
+                </AppText>
+              </View>
+              <View style={[styles.introStepLine, styles.introStepLineRight, index === STEP_LABELS.length - 1 && styles.introStepLineHidden]} />
+              <AppText variant="caption" color={active ? colors.ink : colors.muted} style={styles.introStepLabel}>
+                {label}
+              </AppText>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 function getSessionTitle(session: SymptomAnalysisSession, fallback: string) {
   return session.inputText || session.userInput || session.symptoms || fallback;
@@ -161,6 +203,8 @@ export function SpecialtyIntakeScreen() {
         </Pressable>
       </View>
 
+      {activeTab === "chat" ? <IntroPanel activeStep={activeStep} /> : null}
+
       {activeTab === "history" ? (
         <View style={styles.historyStrip}>
           {historyLoading ? (
@@ -207,31 +251,6 @@ export function SpecialtyIntakeScreen() {
               </Button>
             </View>
           )}
-        </View>
-      ) : null}
-
-      {activeTab === "chat" && !showIntakeForm ? (
-        <View style={styles.flowCard}>
-          <View style={styles.stepper}>
-            {STEP_LABELS.map((label, index) => (
-              <View key={label} style={styles.stepItem}>
-                <View
-                  style={[
-                    styles.stepDot,
-                    index === activeStep && styles.stepDotActive,
-                    index < activeStep && styles.stepDotComplete,
-                  ]}
-                >
-                  <AppText variant="caption" color={index <= activeStep ? colors.white : colors.subtle}>
-                    {index + 1}
-                  </AppText>
-                </View>
-                <AppText variant="caption" color={index === activeStep ? colors.ink : colors.subtle}>
-                  {label}
-                </AppText>
-              </View>
-            ))}
-          </View>
         </View>
       ) : null}
 
@@ -352,6 +371,80 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
   },
+  introPanel: {
+    gap: spacing.xl,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: "rgba(231,243,245,0.34)",
+    paddingVertical: spacing.xl,
+  },
+  introHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.lg,
+  },
+  introIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.24)",
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+  },
+  introCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  introStepper: {
+    minHeight: 82,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    paddingVertical: spacing.md,
+  },
+  introStep: {
+    flex: 1,
+    alignItems: "center",
+  },
+  introStepDot: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.teal,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paper,
+    zIndex: 2,
+  },
+  introStepDotActive: {
+    backgroundColor: colors.teal,
+  },
+  introStepLine: {
+    position: "absolute",
+    top: 15,
+    width: "50%",
+    height: 1,
+    backgroundColor: "rgba(8,127,140,0.3)",
+  },
+  introStepLineLeft: {
+    left: 0,
+  },
+  introStepLineRight: {
+    right: 0,
+  },
+  introStepLineHidden: {
+    opacity: 0,
+  },
+  introStepLabel: {
+    marginTop: spacing.sm,
+  },
   historyStrip: {
     gap: spacing.md,
   },
@@ -404,39 +497,6 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     borderRadius: radius.lg,
-  },
-  flowCard: {
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.84)",
-    padding: spacing.md,
-  },
-  stepper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  stepItem: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  stepDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.line,
-  },
-  stepDotActive: {
-    backgroundColor: colors.teal,
-  },
-  stepDotComplete: {
-    backgroundColor: colors.teal,
   },
   skeletonCard: {
     borderWidth: 1,
