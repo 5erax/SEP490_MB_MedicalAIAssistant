@@ -32,6 +32,9 @@ const palette = {
   warningBg: colors.warningBg,
 };
 
+const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["waitingForDoctor", "assigned", "inReview", "needMoreInformation"]);
+const CURRENT_PLAN_STATUSES = new Set<RecoveryPlan["status"]>(["active", "readyToStart"]);
+
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   if (totalPages <= 1) return null;
   return (
@@ -145,13 +148,15 @@ export function RecoveryPlanScreen() {
     recovery.plansState === "loading" ||
     !recovery.quota ||
     Number(recovery.quota.remainingCount) <= 0;
-  const activePlans = recovery.plans.filter((plan) => plan.status === "active" || plan.status === "readyToStart").length;
-  const waitingRequests = recovery.requests.filter((request) =>
-    ["waitingForDoctor", "assigned", "inReview", "needMoreInformation"].includes(request.status),
-  ).length;
+  const activePlans = recovery.plans.filter((plan) => CURRENT_PLAN_STATUSES.has(plan.status)).length;
+  const waitingRequests = recovery.requests.filter((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)).length;
   const latestPlan = recovery.plans[0];
-  const requestsCount = recovery.requestsInfo.totalCount || recovery.requests.length;
-  const plansCount = recovery.plansInfo.totalCount || recovery.plans.length;
+  const primaryRequest = recovery.requests.find((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)) ?? null;
+  const primaryPlan = recovery.plans.find((plan) => CURRENT_PLAN_STATUSES.has(plan.status)) ?? null;
+  const archivedRequests = primaryRequest ? recovery.requests.filter((request) => request.id !== primaryRequest.id) : recovery.requests;
+  const archivedPlans = primaryPlan ? recovery.plans.filter((plan) => plan.id !== primaryPlan.id) : recovery.plans;
+  const requestsCount = Math.max(0, (recovery.requestsInfo.totalCount || recovery.requests.length) - (primaryRequest ? 1 : 0));
+  const plansCount = Math.max(0, (recovery.plansInfo.totalCount || recovery.plans.length) - (primaryPlan ? 1 : 0));
   const createBlocker =
     waitingRequests > 0
       ? {
@@ -303,9 +308,20 @@ export function RecoveryPlanScreen() {
         </Pressable>
 
         <View style={styles.section}>
+          {primaryRequest ? (
+            <View style={styles.pinnedBlock}>
+              <View style={styles.pinnedHeader}>
+                <Sparkles size={13} color={palette.primaryDark} />
+                <AppText variant="caption" color={palette.primaryDark}>
+                  Yêu cầu đang xử lý
+                </AppText>
+              </View>
+              <RequestCard request={primaryRequest} onPress={() => openRequest(primaryRequest)} />
+            </View>
+          ) : null}
           <CollapsibleSectionHeader
             title="Yêu cầu của bạn"
-            subtitle={requestsExpanded ? "Đang hiển thị danh sách yêu cầu" : "Chạm để xem tiến độ bác sĩ tiếp nhận"}
+            subtitle={requestsExpanded ? "Đang hiển thị các yêu cầu cũ" : primaryRequest ? "Chạm để xem các yêu cầu cũ" : "Chạm để xem tiến độ bác sĩ tiếp nhận"}
             count={requestsCount}
             expanded={requestsExpanded}
             icon={ClipboardList}
@@ -317,11 +333,14 @@ export function RecoveryPlanScreen() {
                 <SkeletonGroup lines={3} />
               ) : recovery.requestsState === "error" ? (
                 <EmptyState title="Không tải được danh sách yêu cầu" description={recovery.requestsError} />
-              ) : recovery.requests.length === 0 ? (
-                <EmptyState title="Chưa có yêu cầu nào" description="Gửi yêu cầu đầu tiên để bác sĩ lập kế hoạch phục hồi cho bạn." />
+              ) : archivedRequests.length === 0 ? (
+                <EmptyState
+                  title={primaryRequest ? "Chưa có yêu cầu cũ" : "Chưa có yêu cầu nào"}
+                  description={primaryRequest ? "Yêu cầu đang xử lý đã được ghim phía trên." : "Gửi yêu cầu đầu tiên để bác sĩ lập kế hoạch phục hồi cho bạn."}
+                />
               ) : (
                 <View style={styles.list}>
-                  {recovery.requests.map((request) => (
+                  {archivedRequests.map((request) => (
                     <RequestCard key={request.id} request={request} onPress={() => openRequest(request)} />
                   ))}
                 </View>
@@ -332,9 +351,20 @@ export function RecoveryPlanScreen() {
         </View>
 
         <View style={styles.section}>
+          {primaryPlan ? (
+            <View style={styles.pinnedBlock}>
+              <View style={styles.pinnedHeader}>
+                <Sparkles size={13} color={palette.primaryDark} />
+                <AppText variant="caption" color={palette.primaryDark}>
+                  Kế hoạch đang thực hiện
+                </AppText>
+              </View>
+              <PlanCard plan={primaryPlan} onPress={() => openPlan(primaryPlan)} />
+            </View>
+          ) : null}
           <CollapsibleSectionHeader
             title="Kế hoạch đã nhận"
-            subtitle={plansExpanded ? "Đang hiển thị lộ trình phục hồi" : "Chạm để xem lộ trình phục hồi"}
+            subtitle={plansExpanded ? "Đang hiển thị kế hoạch cũ" : primaryPlan ? "Chạm để xem các kế hoạch cũ" : "Chạm để xem lộ trình phục hồi"}
             count={plansCount}
             expanded={plansExpanded}
             icon={Route}
@@ -346,11 +376,14 @@ export function RecoveryPlanScreen() {
                 <SkeletonGroup lines={3} />
               ) : recovery.plansState === "error" ? (
                 <EmptyState title="Không tải được danh sách kế hoạch" description={recovery.plansError} />
-              ) : recovery.plans.length === 0 ? (
-                <EmptyState title="Chưa có kế hoạch nào" description="Khi yêu cầu được hoàn tất, kế hoạch sẽ xuất hiện tại đây để bạn xem và bắt đầu." />
+              ) : archivedPlans.length === 0 ? (
+                <EmptyState
+                  title={primaryPlan ? "Chưa có kế hoạch cũ" : "Chưa có kế hoạch nào"}
+                  description={primaryPlan ? "Kế hoạch đang thực hiện đã được ghim phía trên." : "Khi yêu cầu được hoàn tất, kế hoạch sẽ xuất hiện tại đây để bạn xem và bắt đầu."}
+                />
               ) : (
                 <View style={styles.list}>
-                  {recovery.plans.map((plan) => (
+                  {archivedPlans.map((plan) => (
                     <PlanCard key={plan.id} plan={plan} onPress={() => openPlan(plan)} />
                   ))}
                 </View>
@@ -536,6 +569,19 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: spacing.md,
+  },
+  pinnedBlock: {
+    gap: spacing.xs,
+  },
+  pinnedHeader: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(8,127,140,0.1)",
+    paddingHorizontal: spacing.sm,
   },
   dropdownHeader: {
     minHeight: 72,
