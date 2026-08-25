@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { LayoutGrid, MapPin, MessageCircle, Route, Settings, UserRound } from "lucide-react-native";
+import { CalendarClock, LayoutGrid, MapPin, MessageCircle, Route, Settings, UserRound } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -18,6 +18,13 @@ export default function PatientLayout() {
         options={{
           title: "Tư vấn",
           tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="pre-consultation"
+        options={{
+          title: "Trước khám",
+          tabBarIcon: ({ color, size }) => <CalendarClock color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -56,7 +63,6 @@ export default function PatientLayout() {
         }}
       />
       <Tabs.Screen name="symptom" options={{ href: null }} />
-      <Tabs.Screen name="pre-consultation" options={{ href: null }} />
       <Tabs.Screen name="medication" options={{ href: null }} />
       <Tabs.Screen name="my-medications" options={{ href: null }} />
       <Tabs.Screen name="payment-history" options={{ href: null }} />
