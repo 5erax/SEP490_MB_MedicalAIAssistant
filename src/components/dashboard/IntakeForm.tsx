@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { AlertTriangle, SendHorizontal, Sparkles } from "lucide-react-native";
+import { AlertTriangle, Bot, SendHorizontal, Sparkles } from "lucide-react-native";
 
 import { AppText, Button, Card, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -17,17 +17,22 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
   return (
     <View style={styles.group}>
       <Card variant="hard" style={styles.card}>
-        <View style={styles.stepHeader}>
-          <View style={styles.stepBadge}>
-            <Sparkles size={14} color={colors.teal} />
-            <AppText variant="caption" color={colors.teal}>
-              Bước 1
+        <View style={styles.chatIntro}>
+          <View style={styles.botAvatar}>
+            <Bot size={20} color={colors.white} />
+          </View>
+          <View style={styles.aiBubble}>
+            <View style={styles.stepBadge}>
+              <Sparkles size={14} color={colors.teal} />
+              <AppText variant="caption" color={colors.teal}>
+                AI chuyên khoa
+              </AppText>
+            </View>
+            <AppText variant="h3">Bạn đang gặp triệu chứng gì?</AppText>
+            <AppText variant="caption" color={colors.muted}>
+              Mình sẽ hỏi thêm vài câu ngắn rồi gợi ý chuyên khoa và nơi khám phù hợp.
             </AppText>
           </View>
-          <AppText variant="h3">Mô tả nhanh triệu chứng</AppText>
-          <AppText variant="caption" color={colors.muted}>
-            Chọn mẫu hoặc tự nhập dấu hiệu, thời điểm bắt đầu và mức độ khó chịu.
-          </AppText>
         </View>
 
         <View style={styles.sampleRow}>
@@ -46,17 +51,19 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
           ))}
         </View>
 
-        <TextField
-          label="Triệu chứng bạn đang gặp"
-          hint="Mô tả thời điểm bắt đầu, mức độ và dấu hiệu đi kèm để gợi ý phù hợp hơn."
-          value={input}
-          onChangeText={onChangeInput}
-          placeholder="Ví dụ: Tôi đau bụng âm ỉ sau bữa ăn, buồn nôn nhẹ..."
-          multiline
-          numberOfLines={4}
-          style={styles.textarea}
-          editable={!loading}
-        />
+        <View style={styles.composer}>
+          <TextField
+            label="Tin nhắn của bạn"
+            hint="Nên có vị trí đau, thời điểm bắt đầu, mức độ và dấu hiệu đi kèm."
+            value={input}
+            onChangeText={onChangeInput}
+            placeholder="Ví dụ: Tôi đau bụng âm ỉ sau bữa ăn, buồn nôn nhẹ..."
+            multiline
+            numberOfLines={4}
+            style={styles.textarea}
+            editable={!loading}
+          />
+        </View>
 
         <View style={styles.statusRow}>
           <View style={styles.statusDot} />
@@ -99,11 +106,31 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   card: {
-    gap: spacing.lg,
+    gap: spacing.md,
     borderColor: "rgba(8,127,140,0.18)",
   },
-  stepHeader: {
+  chatIntro: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  botAvatar: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
+  },
+  aiBubble: {
+    flex: 1,
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    borderTopLeftRadius: radius.sm,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
   },
   stepBadge: {
     alignSelf: "flex-start",
@@ -119,6 +146,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+    paddingLeft: 50,
   },
   sampleChip: {
     minHeight: 34,
@@ -135,6 +163,13 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.5,
+  },
+  composer: {
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
   },
   textarea: {
     minHeight: 120,

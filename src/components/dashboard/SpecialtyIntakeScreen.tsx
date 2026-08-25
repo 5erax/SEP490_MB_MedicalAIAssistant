@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { Activity, ChevronRight, History, MapPinned, ShieldCheck, Sparkles, Stethoscope } from "lucide-react-native";
+import { Activity, ChevronRight, History, MapPinned, ShieldCheck, Sparkles } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -53,7 +53,7 @@ function ActionTile({
 }: {
   title: string;
   subtitle: string;
-  icon: typeof Stethoscope;
+  icon: typeof History;
   tone: "teal" | "coral";
   onPress: () => void;
 }) {
@@ -169,11 +169,11 @@ export function SpecialtyIntakeScreen() {
 
       <View style={styles.actionGrid}>
         <ActionTile
-          title="Chẩn đoán chi tiết"
-          subtitle="Xem khả năng bệnh, ICD-10 và mức rủi ro."
-          icon={Stethoscope}
-          tone="coral"
-          onPress={() => router.push("/(patient)/symptom" as never)}
+          title="Lịch sử gợi ý"
+          subtitle="Xem lại các lần tư vấn chuyên khoa đã tạo."
+          icon={History}
+          tone="teal"
+          onPress={() => setHistoryVisible(true)}
         />
       </View>
 
