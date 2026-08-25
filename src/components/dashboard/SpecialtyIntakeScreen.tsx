@@ -7,8 +7,8 @@
 // auto-navigation and matches standard mobile UX (confirm before leaving
 // the current flow). The destination (Nearby Clinics/Map, same query
 // params: source/facilityId/departmentId/sessionId) is unchanged.
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { History } from "lucide-react-native";
 
@@ -19,14 +19,26 @@ import { useUserLocation } from "@/src/hooks/useUserLocation";
 import { useAuth } from "@/src/providers";
 import { shouldSetupPatientProfile } from "@/src/utils/roles";
 import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
-import { ClinicalAnalysisResult } from "@/src/types/symptomAnalysis";
-import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
+import { ClinicalAnalysisResult, SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
+import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
 import { IntakeForm } from "./IntakeForm";
 import { dismissProfileNudgeForSession, isProfileNudgeDismissed, ProfileNudgeCard } from "./ProfileNudgeCard";
 import { QuestionFlow } from "./QuestionFlow";
 import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
+const SEGMENT_WIDTH = 112;
+
+function getSessionTitle(session: SymptomAnalysisSession, fallback: string) {
+  return session.inputText || session.userInput || session.symptoms || fallback;
+}
+
+function formatHistoryDate(value?: string) {
+  if (!value) return "Chưa có ngày";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Chưa có ngày";
+  return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
 
 function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string) {
   const department = getRecommendedDepartment(result);
@@ -67,10 +79,15 @@ export function SpecialtyIntakeScreen() {
   } = useSymptomIntake();
 
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
-  const [historyVisible, setHistoryVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
+  const [historySessions, setHistorySessions] = useState<SymptomAnalysisSession[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [profileNudgeVisible, setProfileNudgeVisible] = useState(
     shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
   );
+  const segmentTranslate = useRef(new Animated.Value(0)).current;
+  const historyLoadedRef = useRef(false);
 
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
@@ -82,6 +99,32 @@ export function SpecialtyIntakeScreen() {
     // Web behavior of jumping straight to the map is offered as an explicit
     // action instead — nothing to auto-run here.
   }, [status]);
+
+  const loadHistory = useCallback(async () => {
+    historyLoadedRef.current = true;
+    setHistoryError("");
+    setHistoryLoading(true);
+    try {
+      const sessions = await symptomAnalysisApi.listAllMySessions("department");
+      setHistorySessions(sessions);
+    } catch (requestError) {
+      setHistoryError((requestError as Error)?.message || "Chưa thể tải lịch sử gợi ý.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(segmentTranslate, {
+      toValue: activeTab === "chat" ? 0 : SEGMENT_WIDTH,
+      useNativeDriver: true,
+      tension: 110,
+      friction: 12,
+    }).start();
+    if (activeTab === "history" && !historyLoadedRef.current && !historyLoading) {
+      loadHistory();
+    }
+  }, [activeTab, historyLoading, loadHistory, segmentTranslate]);
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -95,12 +138,13 @@ export function SpecialtyIntakeScreen() {
       ) : null}
 
       <View style={styles.segmentedControl}>
-        <Pressable accessibilityRole="button" style={[styles.segmentItem, styles.segmentItemActive]}>
+        <Animated.View style={[styles.segmentIndicator, { transform: [{ translateX: segmentTranslate }] }]} />
+        <Pressable accessibilityRole="button" onPress={() => setActiveTab("chat")} style={styles.segmentItem}>
           <AppText variant="bodyStrong" color={colors.ink}>
             Trò chuyện
           </AppText>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setHistoryVisible(true)} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
+        <Pressable accessibilityRole="button" onPress={() => setActiveTab("history")} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
           <History size={15} color={colors.ink} />
           <AppText variant="bodyStrong" color={colors.ink}>
             Lịch sử
@@ -108,7 +152,45 @@ export function SpecialtyIntakeScreen() {
         </Pressable>
       </View>
 
-      {!showIntakeForm ? (
+      {activeTab === "history" ? (
+        <View style={styles.historyStrip}>
+          {historyLoading ? (
+            <View style={styles.historyLoading}>
+              <ActivityIndicator color={colors.teal} size="small" />
+              <AppText variant="caption" color={colors.muted}>
+                Đang tải lịch sử...
+              </AppText>
+            </View>
+          ) : historyError ? (
+            <Pressable accessibilityRole="button" onPress={loadHistory} style={styles.historyMessage}>
+              <AppText variant="caption" color={colors.danger}>
+                {historyError}
+              </AppText>
+            </Pressable>
+          ) : historySessions.length === 0 ? (
+            <View style={styles.historyMessage}>
+              <AppText variant="caption" color={colors.muted}>
+                Chưa có phiên gợi ý chuyên khoa.
+              </AppText>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyList}>
+              {historySessions.map((item, index) => (
+                <View key={item.sessionId || item.id || String(index)} style={styles.historyCard}>
+                  <AppText variant="bodyStrong" numberOfLines={2}>
+                    {getSessionTitle(item, "Phiên gợi ý chuyên khoa")}
+                  </AppText>
+                  <AppText variant="caption" color={colors.subtle}>
+                    {formatHistoryDate(item.createdAt || item.createdDate)}
+                  </AppText>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      ) : null}
+
+      {activeTab === "chat" && !showIntakeForm ? (
         <View style={styles.flowCard}>
           <View style={styles.stepper}>
             {STEP_LABELS.map((label, index) => (
@@ -133,17 +215,17 @@ export function SpecialtyIntakeScreen() {
         </View>
       ) : null}
 
-      {showIntakeForm ? (
+      {activeTab === "chat" && showIntakeForm ? (
         <IntakeForm input={input} onChangeInput={setInput} loading={loading} onSubmit={() => startDiagnosis()} />
       ) : null}
 
-      {status === "loading-questions" ? (
+      {activeTab === "chat" && status === "loading-questions" ? (
         <View style={styles.skeletonCard}>
           <SkeletonGroup lines={4} />
         </View>
       ) : null}
 
-      {error ? (
+      {activeTab === "chat" && error ? (
         <View style={styles.errorGroup}>
           <EmptyState title="Không thể kết nối dịch vụ gợi ý chuyên khoa" description={error} />
           <View style={styles.recoveryActions}>
@@ -155,7 +237,7 @@ export function SpecialtyIntakeScreen() {
         </View>
       ) : null}
 
-      {status === "no-questions" ? (
+      {activeTab === "chat" && status === "no-questions" ? (
         <View style={styles.errorGroup}>
           <EmptyState
             title="AI chưa có câu hỏi phù hợp"
@@ -170,7 +252,7 @@ export function SpecialtyIntakeScreen() {
         </View>
       ) : null}
 
-      {showQuestionFlow ? (
+      {activeTab === "chat" && showQuestionFlow ? (
         <QuestionFlow
           questions={questions}
           currentQuestionIndex={currentQuestionIndex}
@@ -186,7 +268,7 @@ export function SpecialtyIntakeScreen() {
         />
       ) : null}
 
-      {status === "result" ? (
+      {activeTab === "chat" && status === "result" ? (
         <ResultPanel
           result={result}
           userLocation={userLocation}
@@ -196,8 +278,6 @@ export function SpecialtyIntakeScreen() {
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}
-
-      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="department" />
     </Screen>
   );
 }
@@ -220,15 +300,30 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.line,
     padding: spacing.xs,
+    position: "relative",
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 14,
     elevation: 2,
   },
+  segmentIndicator: {
+    position: "absolute",
+    left: spacing.xs,
+    top: spacing.xs,
+    width: SEGMENT_WIDTH,
+    height: 38,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paper,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 1,
+  },
   segmentItem: {
     minHeight: 38,
-    minWidth: 112,
+    width: SEGMENT_WIDTH,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -236,13 +331,40 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
   },
-  segmentItemActive: {
+  historyStrip: {
+    minHeight: 96,
+    justifyContent: "center",
+  },
+  historyLoading: {
+    minHeight: 72,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  historyMessage: {
+    minHeight: 72,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  historyList: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  historyCard: {
+    width: 188,
+    minHeight: 82,
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
   },
   flowCard: {
     gap: spacing.md,

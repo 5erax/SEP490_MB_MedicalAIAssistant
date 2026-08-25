@@ -11,8 +11,6 @@ type IntakeFormProps = {
   onSubmit: () => void;
 };
 
-const SAMPLE_SYMPTOMS = ["Đau họng và sốt nhẹ", "Đau bụng sau khi ăn", "Ho kéo dài về đêm"];
-
 export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFormProps) {
   const disabled = !input.trim() || loading;
 
@@ -31,21 +29,6 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
         <AppText color={colors.muted} style={styles.promptCopy}>
           Mô tả ngắn gọn triệu chứng. MediMate sẽ hỏi thêm khi cần và gợi ý chuyên khoa phù hợp.
         </AppText>
-        <View style={styles.sampleRow}>
-          {SAMPLE_SYMPTOMS.map((sample) => (
-            <Pressable
-              key={sample}
-              accessibilityRole="button"
-              disabled={loading}
-              onPress={() => onChangeInput(sample)}
-              style={({ pressed }) => [styles.sampleChip, pressed && styles.pressed, loading && styles.disabled]}
-            >
-              <AppText variant="caption" color={colors.teal}>
-                {sample}
-              </AppText>
-            </Pressable>
-          ))}
-        </View>
       </View>
 
       <View style={styles.composer}>
@@ -101,21 +84,6 @@ const styles = StyleSheet.create({
   },
   promptCopy: {
     maxWidth: 330,
-  },
-  sampleRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    paddingTop: spacing.sm,
-  },
-  sampleChip: {
-    minHeight: 34,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.24)",
-    borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
-    paddingHorizontal: spacing.md,
   },
   pressed: {
     opacity: 0.86,
