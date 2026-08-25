@@ -188,7 +188,7 @@ function RecoveryTimelineCard({
     <View style={styles.timelineCard}>
       <Pressable accessibilityRole="button" onPress={onToggle} style={({ pressed }) => [styles.timelineHeader, pressed && styles.dropdownHeaderPressed]}>
         <View style={styles.timelineIcon}>
-          <Route size={19} color={palette.white} />
+          <Route size={19} color={palette.primaryDark} />
         </View>
         <View style={styles.timelineTitleWrap}>
           <AppText variant="h3" color={palette.ink} numberOfLines={1}>
@@ -799,19 +799,18 @@ const styles = StyleSheet.create({
   timelineCard: {
     gap: spacing.md,
     borderWidth: 1,
-    borderTopWidth: 3,
-    borderColor: "rgba(8,127,140,0.28)",
-    borderTopColor: palette.primary,
+    borderColor: palette.line,
     borderRadius: radius.xl,
-    backgroundColor: palette.surface,
-    padding: spacing.lg,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: spacing.md,
     shadowColor: palette.primaryDark,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
-    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.07,
+    shadowRadius: 18,
     elevation: 2,
   },
   timelineHeader: {
+    minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -822,7 +821,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: palette.primary,
+    backgroundColor: palette.mint,
   },
   timelineTitleWrap: {
     flex: 1,
