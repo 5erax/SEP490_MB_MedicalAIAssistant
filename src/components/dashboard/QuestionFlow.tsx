@@ -1,4 +1,5 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react-native";
 
 import { AppText, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -43,10 +44,14 @@ export function QuestionFlow({
   return (
     <Card variant="hard" style={styles.card}>
       <View style={styles.topLine}>
-        <AppText variant="caption" color={colors.subtle}>
-          Câu {currentQuestionIndex + 1}/{questions.length}
+        <View style={styles.questionBadge}>
+          <AppText variant="caption" color={colors.teal}>
+            Câu {currentQuestionIndex + 1}/{questions.length}
+          </AppText>
+        </View>
+        <AppText variant="bodyStrong" color={colors.teal}>
+          {progressPercent}%
         </AppText>
-        <AppText variant="bodyStrong">{progressPercent}%</AppText>
       </View>
 
       <View
@@ -57,7 +62,12 @@ export function QuestionFlow({
         <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
       </View>
 
-      <AppText variant="h3">{currentQuestion.questionText}</AppText>
+      <View style={styles.questionBox}>
+        <AppText variant="caption" color={colors.subtle}>
+          MediMate cần làm rõ
+        </AppText>
+        <AppText variant="h3">{currentQuestion.questionText}</AppText>
+      </View>
 
       <AnswerButtons
         question={currentQuestion}
@@ -66,7 +76,7 @@ export function QuestionFlow({
       />
 
       <View style={styles.actions}>
-        <Button variant="ghost" size="sm" disabled={submitting} onPress={onReset}>
+        <Button variant="ghost" size="sm" disabled={submitting} onPress={onReset} leftIcon={<RotateCcw size={15} color={colors.ink} />}>
           Quay lại biểu mẫu
         </Button>
         <View style={styles.navGroup}>
@@ -75,23 +85,26 @@ export function QuestionFlow({
             size="sm"
             disabled={currentQuestionIndex === 0 || submitting}
             onPress={onPrevious}
+            leftIcon={<ArrowLeft size={15} color={colors.ink} />}
           >
-            Câu trước
+            Trước
           </Button>
           {isLastQuestion ? (
-            <Button size="sm" disabled={!canSubmitAnswers} onPress={onSubmit}>
+            <Button size="sm" disabled={!canSubmitAnswers} onPress={onSubmit} rightIcon={!submitting ? <ArrowRight size={15} color={colors.white} /> : undefined}>
               {submitting ? (
                 <View style={styles.loadingLabel}>
-                  <ActivityIndicator color={colors.ink} size="small" />
-                  <AppText variant="bodyStrong">Đang tạo gợi ý...</AppText>
+                  <ActivityIndicator color={colors.white} size="small" />
+                  <AppText variant="bodyStrong" color={colors.white}>
+                    Đang tạo...
+                  </AppText>
                 </View>
               ) : (
                 "Xem gợi ý"
               )}
             </Button>
           ) : (
-            <Button size="sm" disabled={!currentAnswered || submitting} onPress={onNext}>
-              Câu tiếp theo
+            <Button size="sm" disabled={!currentAnswered || submitting} onPress={onNext} rightIcon={<ArrowRight size={15} color={colors.white} />}>
+              Tiếp theo
             </Button>
           )}
         </View>
@@ -103,14 +116,22 @@ export function QuestionFlow({
 const styles = StyleSheet.create({
   card: {
     gap: spacing.lg,
+    borderColor: "rgba(8,127,140,0.18)",
   },
   topLine: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
+  questionBadge: {
+    minHeight: 30,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
+  },
   progressTrack: {
-    height: 8,
+    height: 10,
     borderRadius: radius.pill,
     backgroundColor: colors.line,
     overflow: "hidden",
@@ -120,13 +141,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.teal,
   },
+  questionBox: {
+    gap: spacing.xs,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.teal,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
   actions: {
     gap: spacing.md,
   },
   navGroup: {
     flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
   },
   loadingLabel: {
     flexDirection: "row",

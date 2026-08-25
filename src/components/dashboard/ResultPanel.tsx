@@ -1,8 +1,8 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { MapPin } from "lucide-react-native";
+import { Building2, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
-import { colors, spacing } from "@/src/theme/tokens";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { ClinicalAnalysisResult, ClinicalFacility } from "@/src/types/symptomAnalysis";
 import { GeoPoint, getFacilityRankingReason, getRecommendedDepartment, sortRecommendedFacilities } from "@/src/utils/facilityRanking";
 import { LocationStatus } from "@/src/hooks/useUserLocation";
@@ -25,9 +25,11 @@ function confidencePercent(value: number | undefined) {
 function FacilityRow({ facility, index, department, userLocation }: { facility: ClinicalFacility; index: number; department: ReturnType<typeof getRecommendedDepartment>; userLocation: GeoPoint | null }) {
   return (
     <View style={styles.facilityRow}>
-      <AppText variant="bodyStrong" color={colors.teal}>
-        #{index + 1}
-      </AppText>
+      <View style={styles.facilityRank}>
+        <AppText variant="caption" color={colors.teal}>
+          #{index + 1}
+        </AppText>
+      </View>
       <View style={styles.facilityText}>
         <AppText variant="bodyStrong">{facility.facilityName || "Cơ sở y tế"}</AppText>
         <AppText color={colors.muted}>{facility.address || "Chưa có địa chỉ"}</AppText>
@@ -46,16 +48,26 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
 
   return (
     <View style={styles.group}>
-      <Card variant="hard" style={styles.card}>
+      <Card variant="hard" style={styles.resultHero}>
         <View style={styles.departmentHead}>
+          <View style={styles.departmentIcon}>
+            <Stethoscope size={22} color={colors.white} />
+          </View>
           <View style={styles.departmentTextGroup}>
             <AppText variant="caption" color={colors.subtle}>
               Chuyên khoa được gợi ý
             </AppText>
             <AppText variant="h2">{department?.departmentName || "Chưa xác định chuyên khoa"}</AppText>
           </View>
-          {confidence > 0 ? <Badge tone="success">{confidence}% phù hợp</Badge> : null}
         </View>
+        {confidence > 0 ? (
+          <View style={styles.confidenceRow}>
+            <View style={styles.confidenceTrack}>
+              <View style={[styles.confidenceFill, { width: `${confidence}%` }]} />
+            </View>
+            <Badge tone="success">{confidence}% phù hợp</Badge>
+          </View>
+        ) : null}
         <AppText color={colors.muted}>
           {department?.departmentName
             ? "Đây là chuyên khoa được hệ thống đề xuất để bạn tham khảo khi chọn nơi thăm khám."
@@ -63,6 +75,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
         </AppText>
         {department?.isEmergencySuggested ? (
           <View style={styles.emergencyBadge}>
+            <ShieldAlert size={16} color={colors.warning} />
             <AppText variant="caption" color={colors.warning}>
               Kết quả ghi nhận dấu hiệu cần được ưu tiên đánh giá tại cơ sở y tế.
             </AppText>
@@ -75,6 +88,9 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
 
       <Card variant="hard" style={styles.card}>
         <View style={styles.facilityHead}>
+          <View style={styles.facilityIcon}>
+            <Building2 size={18} color={colors.teal} />
+          </View>
           <View style={styles.departmentTextGroup}>
             <AppText variant="caption" color={colors.subtle}>
               Cơ sở y tế được gợi ý
@@ -108,8 +124,10 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           </Button>
           <Button size="sm" onPress={onOpenMap}>
             <View style={styles.buttonInline}>
-              <MapPin size={16} color={colors.ink} />
-              <AppText variant="bodyStrong">Mở bản đồ</AppText>
+              <MapPin size={16} color={colors.white} />
+              <AppText variant="bodyStrong" color={colors.white}>
+                Mở bản đồ
+              </AppText>
             </View>
           </Button>
         </View>
@@ -142,7 +160,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
         )}
       </Card>
 
-      <Button variant="secondary" fullWidth onPress={onNewSymptom}>
+      <Button variant="secondary" fullWidth onPress={onNewSymptom} leftIcon={<RefreshCcw size={16} color={colors.ink} />}>
         Nhập triệu chứng mới
       </Button>
     </View>
@@ -155,24 +173,67 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: spacing.md,
+    borderColor: "rgba(8,127,140,0.16)",
+  },
+  resultHero: {
+    gap: spacing.md,
+    borderColor: "rgba(8,127,140,0.2)",
+    backgroundColor: colors.paper,
   },
   departmentHead: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: spacing.sm,
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  departmentIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
   },
   departmentTextGroup: {
     flex: 1,
     gap: spacing.xs,
   },
+  confidenceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  confidenceTrack: {
+    flex: 1,
+    height: 10,
+    overflow: "hidden",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+  },
+  confidenceFill: {
+    height: "100%",
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
+  },
   emergencyBadge: {
-    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    borderRadius: radius.md,
     backgroundColor: colors.warningBg,
     padding: spacing.md,
   },
   facilityHead: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  facilityIcon: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
   },
   locationActions: {
     flexDirection: "row",
@@ -189,11 +250,24 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   facilityList: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   facilityRow: {
     flexDirection: "row",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
+  facilityRank: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
   },
   facilityText: {
     flex: 1,

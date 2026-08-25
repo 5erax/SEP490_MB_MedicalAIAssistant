@@ -10,9 +10,9 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { CalendarClock, ChevronRight, History, Stethoscope, ShieldCheck } from "lucide-react-native";
+import { Activity, CalendarClock, ChevronRight, History, MapPinned, ShieldCheck, Sparkles, Stethoscope } from "lucide-react-native";
 
-import { AppText, Button, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useSymptomIntake } from "@/src/hooks/useSymptomIntake";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
@@ -42,6 +42,41 @@ function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string
       ...(sessionId ? { sessionId } : {}),
     },
   });
+}
+
+function ActionTile({
+  title,
+  subtitle,
+  icon: Icon,
+  tone,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: typeof CalendarClock;
+  tone: "teal" | "coral";
+  onPress: () => void;
+}) {
+  const toneStyle = tone === "teal" ? styles.actionIconTeal : styles.actionIconCoral;
+
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionTile, pressed && styles.pressed]}>
+      <View style={[styles.actionIcon, toneStyle]}>
+        <Icon size={20} color={tone === "teal" ? colors.teal : colors.coral} />
+      </View>
+      <View style={styles.actionText}>
+        <AppText variant="bodyStrong" numberOfLines={1}>
+          {title}
+        </AppText>
+        <AppText variant="caption" color={colors.muted} numberOfLines={2}>
+          {subtitle}
+        </AppText>
+      </View>
+      <View style={styles.actionArrow}>
+        <ChevronRight size={17} color={colors.teal} />
+      </View>
+    </Pressable>
+  );
 }
 
 export function SpecialtyIntakeScreen() {
@@ -75,6 +110,7 @@ export function SpecialtyIntakeScreen() {
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
   const activeStep = status === "result" ? 2 : ["questions", "submitting"].includes(status) ? 1 : 0;
+  const progressLabel = activeStep === 0 ? "Bắt đầu mô tả" : activeStep === 1 ? `${answeredCount}/${questions.length} câu đã trả lời` : "Đã có gợi ý";
 
   useEffect(() => {
     if (status !== "result") return;
@@ -94,81 +130,87 @@ export function SpecialtyIntakeScreen() {
         />
       ) : null}
 
-      <View style={styles.header}>
-        <View style={styles.headerTextGroup}>
-          <AppText variant="eyebrow" color={colors.teal}>
-            Tư vấn chuyên khoa
-          </AppText>
-          <AppText variant="h1">Gợi ý chuyên khoa qua triệu chứng</AppText>
-          <AppText color={colors.muted}>
-            Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y
-            tế phù hợp.
+      <View style={styles.hero}>
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroMark}>
+            <Sparkles size={20} color={colors.white} />
+          </View>
+          <Pressable accessibilityRole="button" onPress={() => setHistoryVisible(true)} style={({ pressed }) => [styles.historyButton, pressed && styles.pressed]}>
+            <History size={17} color={colors.teal} />
+            <AppText variant="bodyStrong" color={colors.teal}>
+              Lịch sử
+            </AppText>
+          </Pressable>
+        </View>
+        <AppText variant="eyebrow" color={colors.teal}>
+          Tư vấn chuyên khoa
+        </AppText>
+        <AppText variant="h1" style={styles.heroTitle}>
+          Tìm đúng nơi khám từ triệu chứng của bạn
+        </AppText>
+        <AppText color={colors.muted} style={styles.heroCopy}>
+          Mô tả điều đang gặp, trả lời vài câu ngắn và nhận gợi ý chuyên khoa cùng cơ sở y tế phù hợp.
+        </AppText>
+        <View style={styles.heroMetaRow}>
+          <View style={styles.heroMetaPill}>
+            <Activity size={14} color={colors.teal} />
+            <AppText variant="caption" color={colors.teal}>
+              {progressLabel}
+            </AppText>
+          </View>
+          <View style={styles.heroMetaPillMuted}>
+            <MapPinned size={14} color={colors.amber} />
+            <AppText variant="caption" color={colors.amber}>
+              Có gợi ý cơ sở
+            </AppText>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.actionGrid}>
+        <ActionTile
+          title="Tư vấn trước khám"
+          subtitle="Checklist, câu hỏi và nhắc lịch trước buổi khám."
+          icon={CalendarClock}
+          tone="teal"
+          onPress={() => router.push("/(patient)/pre-consultation" as never)}
+        />
+        <ActionTile
+          title="Chẩn đoán chi tiết"
+          subtitle="Xem khả năng bệnh, ICD-10 và mức rủi ro."
+          icon={Stethoscope}
+          tone="coral"
+          onPress={() => router.push("/(patient)/symptom" as never)}
+        />
+      </View>
+
+      <View style={styles.flowCard}>
+        <View style={styles.scopeNote}>
+          <ShieldCheck size={17} color={colors.teal} />
+          <AppText variant="caption" color={colors.muted} style={styles.scopeNoteText}>
+            Kết quả chỉ dùng để định hướng, không thay thế chẩn đoán hoặc điều trị của bác sĩ.
           </AppText>
         </View>
-        <Button variant="secondary" size="sm" onPress={() => setHistoryVisible(true)}>
-          <View style={styles.historyButtonInline}>
-            <History size={16} color={colors.ink} />
-            <AppText variant="bodyStrong">Lịch sử</AppText>
-          </View>
-        </Button>
-      </View>
-
-      <View style={styles.scopeNote}>
-        <ShieldCheck size={18} color={colors.teal} />
-        <AppText variant="caption" color={colors.muted} style={styles.scopeNoteText}>
-          Kết quả không thay thế chẩn đoán hoặc điều trị của bác sĩ.
-        </AppText>
-      </View>
-
-      <Pressable accessibilityRole="button" onPress={() => router.push("/(patient)/pre-consultation" as never)}>
-        <Card variant="soft" style={styles.diagnosisLinkCard}>
-          <View style={styles.diagnosisLinkIcon}>
-            <CalendarClock size={20} color={colors.teal} />
-          </View>
-          <View style={styles.diagnosisLinkText}>
-            <AppText variant="bodyStrong">Tư vấn trước khám</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Chuẩn bị checklist, câu hỏi cho bác sĩ và nhắc lịch trước buổi khám.
-            </AppText>
-          </View>
-          <ChevronRight size={18} color={colors.subtle} />
-        </Card>
-      </Pressable>
-
-      <Pressable accessibilityRole="button" onPress={() => router.push("/(patient)/symptom" as never)}>
-        <Card variant="soft" style={styles.diagnosisLinkCard}>
-          <View style={styles.diagnosisLinkIcon}>
-            <Stethoscope size={20} color={colors.teal} />
-          </View>
-          <View style={styles.diagnosisLinkText}>
-            <AppText variant="bodyStrong">Chẩn đoán lâm sàng chi tiết</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Xem các khả năng bệnh được xếp hạng kèm mã ICD-10, tách riêng khỏi gợi ý chuyên khoa ở trên.
-            </AppText>
-          </View>
-          <ChevronRight size={18} color={colors.subtle} />
-        </Card>
-      </Pressable>
-
-      <View style={styles.stepper}>
-        {STEP_LABELS.map((label, index) => (
-          <View key={label} style={styles.stepItem}>
-            <View
-              style={[
-                styles.stepDot,
-                index === activeStep && styles.stepDotActive,
-                index < activeStep && styles.stepDotComplete,
-              ]}
-            >
-              <AppText variant="caption" color={index <= activeStep ? colors.white : colors.subtle}>
-                {index + 1}
+        <View style={styles.stepper}>
+          {STEP_LABELS.map((label, index) => (
+            <View key={label} style={styles.stepItem}>
+              <View
+                style={[
+                  styles.stepDot,
+                  index === activeStep && styles.stepDotActive,
+                  index < activeStep && styles.stepDotComplete,
+                ]}
+              >
+                <AppText variant="caption" color={index <= activeStep ? colors.white : colors.subtle}>
+                  {index + 1}
+                </AppText>
+              </View>
+              <AppText variant="caption" color={index === activeStep ? colors.ink : colors.subtle}>
+                {label}
               </AppText>
             </View>
-            <AppText variant="caption" color={index === activeStep ? colors.ink : colors.subtle}>
-              {label}
-            </AppText>
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
 
       {showIntakeForm ? (
@@ -242,23 +284,78 @@ export function SpecialtyIntakeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.md,
     paddingBottom: spacing["4xl"],
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+  pressed: {
+    opacity: 0.86,
+    transform: [{ translateY: 1 }],
+  },
+  hero: {
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.22)",
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    padding: spacing.xl,
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.1,
+    shadowRadius: 26,
+    elevation: 3,
   },
-  headerTextGroup: {
-    flex: 1,
-    gap: spacing.xs,
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  historyButtonInline: {
+  heroMark: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
+  },
+  historyButton: {
+    minHeight: 38,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+    paddingHorizontal: spacing.md,
+  },
+  heroTitle: {
+    maxWidth: 310,
+  },
+  heroCopy: {
+    maxWidth: 310,
+  },
+  heroMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  heroMetaPill: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.md,
+  },
+  heroMetaPillMuted: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: spacing.md,
   },
   scopeNote: {
     flexDirection: "row",
@@ -271,28 +368,65 @@ const styles = StyleSheet.create({
   scopeNoteText: {
     flex: 1,
   },
-  diagnosisLinkCard: {
+  actionGrid: {
+    gap: spacing.sm,
+  },
+  actionTile: {
+    minHeight: 82,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  diagnosisLinkIcon: {
+  actionIcon: {
     width: 40,
     height: 40,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
+  },
+  actionIconTeal: {
     backgroundColor: colors.mint,
   },
-  diagnosisLinkText: {
+  actionIconCoral: {
+    backgroundColor: colors.dangerBg,
+  },
+  actionText: {
     flex: 1,
     gap: spacing.xs / 2,
   },
+  actionArrow: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+  },
+  flowCard: {
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.84)",
+    padding: spacing.md,
+  },
   stepper: {
     flexDirection: "row",
-    gap: spacing.lg,
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
   stepItem: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
