@@ -45,7 +45,8 @@ export function ReviewForm({
       <TextField
         label="Nhận xét (không bắt buộc)"
         value={form.comment}
-        onChangeText={(value) => onChange({ ...form, comment: value.slice(0, 1000) })}
+        onChangeText={(value) => onChange({ ...form, comment: value })}
+        maxLength={1000}
         placeholder="Chia sẻ trải nghiệm của bạn tại cơ sở này..."
         multiline
         numberOfLines={3}

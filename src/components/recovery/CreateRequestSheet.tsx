@@ -418,7 +418,8 @@ export function CreateRequestSheet({
               label={`Ghi chú cho bác sĩ · ${form.requestNote.length}/${NOTE_MAX_LENGTH}`}
               placeholder="Mô tả điều bạn muốn bác sĩ lưu ý khi lên kế hoạch phục hồi"
               value={form.requestNote}
-              onChangeText={(value) => onChange("requestNote", value.slice(0, NOTE_MAX_LENGTH))}
+              onChangeText={(value) => onChange("requestNote", value)}
+              maxLength={NOTE_MAX_LENGTH}
               editable={!submitting}
               error={errors.requestNote}
               multiline

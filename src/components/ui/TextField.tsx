@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, TextInput, TextInputProps, View } from "react-native";
 
 import { colors, radius, spacing, typography } from "@/src/theme/tokens";
@@ -10,8 +10,17 @@ type TextFieldProps = TextInputProps & {
   hint?: string;
 };
 
-export function TextField({ label, error, hint, style, onBlur, onFocus, ...props }: TextFieldProps) {
+export function TextField({ label, error, hint, style, onBlur, onFocus, onChangeText, value, ...props }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
+  const [draftValue, setDraftValue] = useState(typeof value === "string" ? value : "");
+
+  useEffect(() => {
+    if (!focused && typeof value === "string") {
+      setDraftValue(value);
+    }
+  }, [focused, value]);
+
+  const inputValue = typeof value === "string" ? draftValue : value;
 
   return (
     <View style={styles.root}>
@@ -20,8 +29,18 @@ export function TextField({ label, error, hint, style, onBlur, onFocus, ...props
       </AppText>
       <TextInput
         {...props}
+        value={inputValue}
+        onChangeText={(text) => {
+          if (typeof value === "string") {
+            setDraftValue(text);
+          }
+          onChangeText?.(text);
+        }}
         onFocus={(event) => {
           setFocused(true);
+          if (typeof value === "string") {
+            setDraftValue(value);
+          }
           onFocus?.(event);
         }}
         onBlur={(event) => {

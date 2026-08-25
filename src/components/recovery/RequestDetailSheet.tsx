@@ -178,7 +178,8 @@ export function RequestDetailSheet({
                   <TextField
                     label={`Thông tin bổ sung · ${infoText.length}/${NOTE_MAX_LENGTH}`}
                     value={infoText}
-                    onChangeText={(value) => setInfoText(value.slice(0, NOTE_MAX_LENGTH))}
+                    onChangeText={setInfoText}
+                    maxLength={NOTE_MAX_LENGTH}
                     editable={!providingInfo}
                     multiline
                     numberOfLines={4}
