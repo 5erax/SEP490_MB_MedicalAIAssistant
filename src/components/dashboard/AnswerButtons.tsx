@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from "react-native";
 import * as Haptics from "expo-haptics";
+import { Check } from "lucide-react-native";
 
 import { AppText } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -29,8 +30,13 @@ function ChoicePill({ label, selected, tone, onPress }: { label: string; selecte
         Haptics.selectionAsync();
         onPress();
       }}
-      style={[styles.pill, selected && (tone === "yes" ? styles.pillSelectedYes : styles.pillSelectedNo)]}
+      style={[styles.pill, selected && styles.pillSelected]}
     >
+      {selected ? (
+        <View style={styles.pillCheck}>
+          <Check size={12} color={colors.white} />
+        </View>
+      ) : null}
       <AppText variant="bodyStrong" color={selected ? colors.white : colors.ink}>
         {label}
       </AppText>
@@ -105,19 +111,26 @@ const styles = StyleSheet.create({
   pill: {
     flex: 1,
     minHeight: 52,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.lineStrong,
     borderRadius: radius.sm,
     backgroundColor: colors.paper,
   },
-  pillSelectedYes: {
-    borderColor: colors.teal,
-    backgroundColor: colors.teal,
+  pillSelected: {
+    borderColor: colors.limeDark,
+    backgroundColor: colors.limeDark,
   },
-  pillSelectedNo: {
-    borderColor: colors.danger,
-    backgroundColor: colors.danger,
+  pillCheck: {
+    width: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.white,
+    borderRadius: radius.pill,
   },
 });

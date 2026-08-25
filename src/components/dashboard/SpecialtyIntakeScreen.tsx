@@ -34,34 +34,37 @@ const SEGMENT_HEIGHT = 30;
 function IntroPanel({ activeStep }: { activeStep: number }) {
   return (
     <View style={styles.introPanel}>
-      <View style={styles.introIcon}>
-        <ClipboardPlus size={22} color={colors.white} />
+      <View style={styles.introTop}>
+        <View style={styles.introIcon}>
+          <ClipboardPlus size={22} color={colors.white} />
+        </View>
+        <View style={styles.introPill}>
+          <AppText variant="caption" color={colors.white}>
+            Tư vấn chuyên khoa
+          </AppText>
+        </View>
       </View>
-      <View style={styles.introCopy}>
-        <AppText variant="eyebrow" color={colors.teal}>
-          Tư vấn chuyên khoa
-        </AppText>
-        <AppText variant="h2" style={styles.introTitle}>
-          Gợi ý chuyên khoa qua triệu chứng
-        </AppText>
-        <AppText color={colors.muted}>
-          Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
-        </AppText>
-      </View>
+      <AppText variant="h1" color={colors.white} style={styles.introTitle}>
+        Gợi ý chuyên khoa qua triệu chứng
+      </AppText>
+      <AppText color="rgba(255,255,255,0.86)" style={styles.introCopy}>
+        Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
+      </AppText>
       <View style={styles.introStepper}>
         {STEP_LABELS.map((label, index) => {
           const active = index === activeStep;
           const complete = index < activeStep;
+          const filled = active || complete;
           return (
             <View key={label} style={styles.introStep}>
               <View style={[styles.introStepLine, styles.introStepLineLeft, index === 0 && styles.introStepLineHidden]} />
-              <View style={[styles.introStepDot, (active || complete) && styles.introStepDotActive]}>
-                <AppText variant="caption" color={active || complete ? colors.white : colors.teal}>
+              <View style={[styles.introStepDot, filled && styles.introStepDotActive]}>
+                <AppText variant="caption" color={filled ? colors.limeDark : colors.white}>
                   {index + 1}
                 </AppText>
               </View>
               <View style={[styles.introStepLine, styles.introStepLineRight, index === STEP_LABELS.length - 1 && styles.introStepLineHidden]} />
-              <AppText variant="caption" color={active ? colors.ink : colors.muted} style={styles.introStepLabel}>
+              <AppText variant="caption" color={active ? colors.white : "rgba(255,255,255,0.7)"} style={styles.introStepLabel}>
                 {label}
               </AppText>
             </View>
@@ -376,46 +379,50 @@ const styles = StyleSheet.create({
   },
   introPanel: {
     gap: spacing.md,
-    borderWidth: 1,
-    borderTopWidth: 3,
-    borderColor: "rgba(8,127,140,0.2)",
-    borderTopColor: colors.teal,
     borderRadius: radius.xl,
-    backgroundColor: colors.paper,
-    padding: spacing.lg,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.09,
-    shadowRadius: 22,
-    elevation: 2,
+    backgroundColor: colors.limeDark,
+    padding: spacing.xl,
+    shadowColor: colors.limeDark,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.28,
+    shadowRadius: 30,
+    elevation: 4,
+  },
+  introTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
   },
   introIcon: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.teal,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    elevation: 2,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.16)",
   },
-  introCopy: {
+  introPill: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    paddingHorizontal: spacing.md,
   },
   introTitle: {
-    lineHeight: 32,
+    maxWidth: 300,
+  },
+  introCopy: {
+    maxWidth: 330,
   },
   introStepper: {
     minHeight: 80,
     flexDirection: "row",
     alignItems: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.22)",
     borderRadius: radius.lg,
-    backgroundColor: "rgba(231,243,245,0.58)",
+    backgroundColor: "rgba(255,255,255,0.16)",
     paddingVertical: spacing.md,
     overflow: "hidden",
   },
@@ -429,20 +436,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.teal,
+    borderColor: "rgba(255,255,255,0.6)",
     borderRadius: radius.pill,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.limeDark,
     zIndex: 2,
   },
   introStepDotActive: {
-    backgroundColor: colors.teal,
+    backgroundColor: colors.white,
+    borderColor: colors.white,
   },
   introStepLine: {
     position: "absolute",
     top: 15,
     width: "50%",
     height: 1,
-    backgroundColor: "rgba(8,127,140,0.3)",
+    backgroundColor: "rgba(255,255,255,0.35)",
   },
   introStepLineLeft: {
     left: 0,
