@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -34,6 +34,31 @@ const palette = {
 
 const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["waitingForDoctor", "assigned", "inReview", "needMoreInformation"]);
 const CURRENT_PLAN_STATUSES = new Set<RecoveryPlan["status"]>(["active", "readyToStart"]);
+const PHASE_COLORS = ["#0f8b8d", "#2e7d32", "#7c3aed", "#d97706", "#be123c"];
+
+function addDays(value: string, days: number) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
+function formatShortDate(date: Date) {
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(date);
+}
+
+function formatWeekday(date: Date) {
+  return new Intl.DateTimeFormat("vi-VN", { weekday: "short" }).format(date);
+}
+
+function getPhaseIndexForDay(plan: RecoveryPlan, dayNumber: number) {
+  const index = (plan.phases ?? []).findIndex((phase) => {
+    const start = phase.startDay ?? 1;
+    const end = phase.endDay ?? start;
+    return dayNumber >= start && dayNumber <= end;
+  });
+  return index >= 0 ? index : 0;
+}
 
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   if (totalPages <= 1) return null;
@@ -128,6 +153,90 @@ function CollapsibleSectionHeader({
       </View>
       <View style={styles.dropdownChevron}>{expanded ? <ChevronUp size={18} color={palette.primaryDark} /> : <ChevronDown size={18} color={palette.primaryDark} />}</View>
     </Pressable>
+  );
+}
+
+function RecoveryTimelineCard({ plan, onOpenPlan }: { plan: RecoveryPlan | null; onOpenPlan: (plan: RecoveryPlan) => void }) {
+  if (!plan) return null;
+
+  const duration = Math.max(1, Number(plan.durationDays || 1));
+  const visibleDays = Array.from({ length: Math.min(duration, 14) }, (_, index) => index + 1);
+  const hasCalendar = Boolean(plan.startDate);
+
+  return (
+    <View style={styles.timelineCard}>
+      <View style={styles.timelineHeader}>
+        <View style={styles.timelineIcon}>
+          <Route size={19} color={palette.white} />
+        </View>
+        <View style={styles.timelineTitleWrap}>
+          <AppText variant="caption" color={palette.primaryDark}>
+            Lộ trình của bạn
+          </AppText>
+          <AppText variant="h3" color={palette.ink} numberOfLines={1}>
+            {plan.planName}
+          </AppText>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineOpenButton}>
+          <ChevronRight size={18} color={palette.primaryDark} />
+        </Pressable>
+      </View>
+
+      <AppText variant="caption" color={palette.muted}>
+        {hasCalendar ? "Mỗi màu tương ứng với một giai đoạn trong kế hoạch." : "Bắt đầu kế hoạch để mở lịch theo từng ngày."}
+      </AppText>
+
+      {hasCalendar ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.timelineDays}>
+          {visibleDays.map((dayNumber) => {
+            const phaseIndex = getPhaseIndexForDay(plan, dayNumber);
+            const date = addDays(plan.startDate as string, dayNumber - 1);
+            const phase = plan.phases?.[phaseIndex];
+            const color = PHASE_COLORS[phaseIndex % PHASE_COLORS.length];
+
+            return (
+              <Pressable key={dayNumber} accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={[styles.timelineDay, { borderColor: color }]}>
+                <View style={[styles.timelineDayDot, { backgroundColor: color }]} />
+                <AppText variant="caption" color={palette.faint}>
+                  Ngày {dayNumber}
+                </AppText>
+                <AppText variant="bodyStrong" color={palette.ink}>
+                  {date ? formatShortDate(date) : "--/--"}
+                </AppText>
+                <AppText variant="caption" color={palette.muted} numberOfLines={1}>
+                  {date ? formatWeekday(date) : ""}
+                </AppText>
+                {phase ? (
+                  <AppText variant="caption" color={color} numberOfLines={1}>
+                    {phase.phaseName}
+                  </AppText>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineStartHint}>
+          <CalendarDays size={18} color={palette.primaryDark} />
+          <AppText variant="bodyStrong" color={palette.primaryDark}>
+            Xem chi tiết để bắt đầu kế hoạch
+          </AppText>
+        </Pressable>
+      )}
+
+      {(plan.phases ?? []).length > 0 ? (
+        <View style={styles.timelineLegend}>
+          {(plan.phases ?? []).map((phase, index) => (
+            <View key={phase.id} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: PHASE_COLORS[index % PHASE_COLORS.length] }]} />
+              <AppText variant="caption" color={palette.muted} numberOfLines={1} style={styles.legendText}>
+                Ngày {phase.startDay ?? 1}-{phase.endDay ?? phase.startDay ?? 1}: {phase.phaseName}
+              </AppText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -393,6 +502,8 @@ export function RecoveryPlanScreen() {
           ) : null}
         </View>
 
+        <RecoveryTimelineCard plan={primaryPlan} onOpenPlan={openPlan} />
+
         <AppText variant="caption" color={palette.faint} style={styles.disclaimer}>
           Thông tin hỗ trợ, không thay thế chăm sóc y tế. Trong tình huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
         </AppText>
@@ -640,6 +751,98 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.mint,
+  },
+  timelineCard: {
+    gap: spacing.md,
+    borderWidth: 1,
+    borderTopWidth: 3,
+    borderColor: "rgba(8,127,140,0.28)",
+    borderTopColor: palette.primary,
+    borderRadius: radius.xl,
+    backgroundColor: palette.surface,
+    padding: spacing.lg,
+    shadowColor: palette.primaryDark,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.08,
+    shadowRadius: 22,
+    elevation: 2,
+  },
+  timelineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  timelineIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: palette.primary,
+  },
+  timelineTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  timelineOpenButton: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: palette.mint,
+  },
+  timelineDays: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg,
+  },
+  timelineDay: {
+    width: 116,
+    minHeight: 132,
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(248,251,247,0.96)",
+    padding: spacing.md,
+  },
+  timelineDayDot: {
+    width: 28,
+    height: 5,
+    borderRadius: radius.pill,
+    marginBottom: spacing.xs,
+  },
+  timelineStartHint: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.22)",
+    borderRadius: radius.md,
+    backgroundColor: palette.mint,
+    paddingHorizontal: spacing.md,
+  },
+  timelineLegend: {
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: palette.line,
+    paddingTop: spacing.md,
+  },
+  legendItem: {
+    minHeight: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: radius.pill,
+  },
+  legendText: {
+    flex: 1,
   },
   list: {
     gap: spacing.sm,
