@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(8,127,140,0.24)",
     borderRadius: radius.lg,
-    backgroundColor: "rgba(232,246,244,0.58)",
+    backgroundColor: palette.surface,
   },
   calendarBar: {
     minHeight: 46,
@@ -861,8 +861,9 @@ const styles = StyleSheet.create({
   },
   weekdayRow: {
     flexDirection: "row",
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   weekdayCell: {
     flex: 1,
@@ -871,22 +872,23 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: spacing.xs,
-    paddingTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingTop: 0,
     paddingBottom: spacing.sm,
   },
   calendarDay: {
     width: "14.2857%",
-    aspectRatio: 1,
+    minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "transparent",
-    borderRadius: 0,
-    backgroundColor: "transparent",
+    borderColor: palette.surface,
+    borderRadius: radius.sm,
+    backgroundColor: "rgba(248,251,247,0.96)",
   },
   calendarPlanDay: {
     borderRadius: radius.sm,
+    borderWidth: 1.5,
   },
   calendarToday: {
     borderColor: palette.primaryDark,
