@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, RefObject } from "react";
 import { ScrollView, StyleSheet, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -10,15 +10,16 @@ type ScreenProps = {
   padded?: boolean;
   style?: ViewStyle;
   contentContainerStyle?: ViewStyle;
+  scrollRef?: RefObject<ScrollView | null>;
 };
 
-export function Screen({ children, scroll = false, padded = true, style, contentContainerStyle }: ScreenProps) {
+export function Screen({ children, scroll = false, padded = true, style, contentContainerStyle, scrollRef }: ScreenProps) {
   const contentStyle = [padded && styles.padded, contentContainerStyle];
 
   return (
     <SafeAreaView style={[styles.root, style]}>
       {scroll ? (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={contentStyle}>
+        <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={contentStyle}>
           {children}
         </ScrollView>
       ) : (
@@ -40,4 +41,3 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 });
-

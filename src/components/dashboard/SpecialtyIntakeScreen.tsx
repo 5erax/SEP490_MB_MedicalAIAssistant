@@ -8,7 +8,7 @@
 // the current flow). The destination (Nearby Clinics/Map, same query
 // params: source/facilityId/departmentId/sessionId) is unchanged.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { ClipboardPlus } from "lucide-react-native";
 
@@ -143,11 +143,22 @@ export function SpecialtyIntakeScreen() {
     shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
   );
   const segmentTranslate = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView | null>(null);
+  const questionFlowYRef = useRef(0);
   const historyLoadedRef = useRef(false);
 
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
   const activeStep = status === "result" ? 2 : ["questions", "submitting"].includes(status) ? 1 : 0;
+
+  const scrollToQuestionFlow = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, questionFlowYRef.current - spacing.lg),
+        animated: true,
+      });
+    }, 80);
+  }, []);
 
   useEffect(() => {
     if (status !== "result") return;
@@ -182,8 +193,13 @@ export function SpecialtyIntakeScreen() {
     }
   }, [activeTab, historyLoading, loadHistory, segmentTranslate]);
 
+  useEffect(() => {
+    if (activeTab !== "chat" || !["questions", "submitting"].includes(status)) return;
+    scrollToQuestionFlow();
+  }, [activeTab, status, currentQuestionIndex, scrollToQuestionFlow]);
+
   return (
-    <Screen scroll contentContainerStyle={styles.content}>
+    <Screen scroll scrollRef={scrollRef} contentContainerStyle={styles.content}>
       {showIntakeForm && profileNudgeVisible ? (
         <ProfileNudgeCard
           onDismiss={() => {
@@ -296,19 +312,26 @@ export function SpecialtyIntakeScreen() {
       ) : null}
 
       {activeTab === "chat" && showQuestionFlow ? (
-        <QuestionFlow
-          questions={questions}
-          currentQuestionIndex={currentQuestionIndex}
-          answers={answers}
-          answeredCount={answeredCount}
-          submitting={status === "submitting"}
-          canSubmitAnswers={canSubmitAnswers}
-          onAnswerChange={updateAnswer}
-          onPrevious={() => setCurrentQuestionIndex((index: number) => Math.max(0, index - 1))}
-          onNext={() => setCurrentQuestionIndex((index: number) => Math.min(questions.length - 1, index + 1))}
-          onSubmit={submitAnswers}
-          onReset={() => resetDiagnosis()}
-        />
+        <View
+          onLayout={(event) => {
+            questionFlowYRef.current = event.nativeEvent.layout.y;
+            scrollToQuestionFlow();
+          }}
+        >
+          <QuestionFlow
+            questions={questions}
+            currentQuestionIndex={currentQuestionIndex}
+            answers={answers}
+            answeredCount={answeredCount}
+            submitting={status === "submitting"}
+            canSubmitAnswers={canSubmitAnswers}
+            onAnswerChange={updateAnswer}
+            onPrevious={() => setCurrentQuestionIndex((index: number) => Math.max(0, index - 1))}
+            onNext={() => setCurrentQuestionIndex((index: number) => Math.min(questions.length - 1, index + 1))}
+            onSubmit={submitAnswers}
+            onReset={() => resetDiagnosis()}
+          />
+        </View>
       ) : null}
 
       {activeTab === "chat" && status === "result" ? (
