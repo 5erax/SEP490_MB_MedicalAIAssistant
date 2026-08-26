@@ -30,8 +30,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   tests: "Xét nghiệm",
   treatment: "Điều trị",
   lifestyle: "Sinh hoạt",
-  followUp: "Theo dõi",
+  followup: "Theo dõi",
 };
+
+function formatQuestionCategory(value?: string) {
+  const key = String(value || "").trim().toLowerCase().replace(/[^a-z]/g, "");
+  return CATEGORY_LABELS[key] || "Câu hỏi tư vấn";
+}
 
 function formatDateTime(value?: string, fallback = "Chưa cập nhật") {
   if (!value) return fallback;
@@ -368,9 +373,11 @@ export function PreConsultationScreen() {
                       </View>
                       <View style={styles.checklistText}>
                         <AppText variant="bodyStrong">{item.content}</AppText>
-                        <AppText variant="caption" color={colors.subtle}>
-                          {item.isMandatory ? "Cần lưu ý" : "Khuyến nghị"}
-                        </AppText>
+                        <View style={[styles.checklistBadge, item.isMandatory ? styles.checklistBadgeWarning : styles.checklistBadgeInfo]}>
+                          <AppText variant="caption" color={item.isMandatory ? colors.warning : colors.teal}>
+                            {item.isMandatory ? "Cần lưu ý" : "Khuyến nghị"}
+                          </AppText>
+                        </View>
                       </View>
                     </View>
                   ))}
@@ -406,9 +413,11 @@ export function PreConsultationScreen() {
                         </AppText>
                       </View>
                       <View style={styles.checklistText}>
-                        <AppText variant="caption" color={colors.subtle}>
-                          {CATEGORY_LABELS[question.category] || question.category || "Câu hỏi tư vấn"}
-                        </AppText>
+                        <View style={[styles.checklistBadge, styles.checklistBadgeInfo]}>
+                          <AppText variant="caption" color={colors.teal}>
+                            {formatQuestionCategory(question.category)}
+                          </AppText>
+                        </View>
                         <AppText variant="bodyStrong">{question.text}</AppText>
                       </View>
                     </View>
@@ -439,13 +448,17 @@ export function PreConsultationScreen() {
                 accessibilityState={{ checked: wizard.reminderEnabled === true }}
                 onPress={() => wizard.chooseReminder(true)}
               >
-                <Card variant={wizard.reminderEnabled === true ? "dark" : "soft"} style={styles.reminderOption}>
-                  <AppText variant="bodyStrong" color={wizard.reminderEnabled === true ? colors.white : colors.ink}>
-                    Có, nhắc tôi
-                  </AppText>
-                  <AppText variant="caption" color={wizard.reminderEnabled === true ? "rgba(255,255,255,0.7)" : colors.muted}>
-                    Đăng ký nhận thông báo cho lịch khám này.
-                  </AppText>
+                <Card variant="soft" style={[styles.reminderOption, wizard.reminderEnabled === true && styles.reminderOptionSelected]}>
+                  <View style={[styles.reminderOptionIcon, wizard.reminderEnabled === true && styles.reminderOptionIconSelected]}>
+                    <BellRing size={18} color={wizard.reminderEnabled === true ? colors.white : colors.subtle} />
+                  </View>
+                  <View style={styles.reminderOptionCopy}>
+                    <AppText variant="bodyStrong">Có, nhắc tôi</AppText>
+                    <AppText variant="caption" color={colors.muted}>
+                      Đăng ký nhận thông báo cho lịch khám này.
+                    </AppText>
+                  </View>
+                  {wizard.reminderEnabled === true ? <Check size={20} color={colors.teal} /> : null}
                 </Card>
               </Pressable>
 
@@ -454,13 +467,17 @@ export function PreConsultationScreen() {
                 accessibilityState={{ checked: wizard.reminderEnabled === false }}
                 onPress={() => wizard.chooseReminder(false)}
               >
-                <Card variant={wizard.reminderEnabled === false ? "dark" : "soft"} style={styles.reminderOption}>
-                  <AppText variant="bodyStrong" color={wizard.reminderEnabled === false ? colors.white : colors.ink}>
-                    Không cần nhắc
-                  </AppText>
-                  <AppText variant="caption" color={wizard.reminderEnabled === false ? "rgba(255,255,255,0.7)" : colors.muted}>
-                    Tôi sẽ tự theo dõi lịch khám.
-                  </AppText>
+                <Card variant="soft" style={[styles.reminderOption, wizard.reminderEnabled === false && styles.reminderOptionSelected]}>
+                  <View style={[styles.reminderOptionIcon, wizard.reminderEnabled === false && styles.reminderOptionIconSelected]}>
+                    <BellRing size={18} color={wizard.reminderEnabled === false ? colors.white : colors.subtle} />
+                  </View>
+                  <View style={styles.reminderOptionCopy}>
+                    <AppText variant="bodyStrong">Không cần nhắc</AppText>
+                    <AppText variant="caption" color={colors.muted}>
+                      Tôi sẽ tự theo dõi lịch khám.
+                    </AppText>
+                  </View>
+                  {wizard.reminderEnabled === false ? <Check size={20} color={colors.teal} /> : null}
                 </Card>
               </Pressable>
 
@@ -497,28 +514,41 @@ export function PreConsultationScreen() {
 
               <View style={styles.summaryGrid}>
                 <View style={styles.summaryItem}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Chuyên khoa
-                  </AppText>
+                  <View style={styles.summaryItemHeader}>
+                    <Stethoscope size={16} color={colors.teal} />
+                    <AppText variant="caption" color={colors.subtle}>
+                      Chuyên khoa
+                    </AppText>
+                  </View>
                   <AppText variant="bodyStrong">{wizard.summary?.departmentName || wizard.form.departmentName || "Chưa cập nhật"}</AppText>
                 </View>
                 <View style={styles.summaryItem}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Thời gian khám
-                  </AppText>
+                  <View style={styles.summaryItemHeader}>
+                    <CalendarDays size={16} color={colors.teal} />
+                    <AppText variant="caption" color={colors.subtle}>
+                      Thời gian khám
+                    </AppText>
+                  </View>
                   <AppText variant="bodyStrong">{formatDateTime(wizard.summary?.appointmentTime || wizard.form.appointmentTime)}</AppText>
                 </View>
                 <View style={styles.summaryItem}>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Nhắc lịch
-                  </AppText>
+                  <View style={styles.summaryItemHeader}>
+                    <BellRing size={16} color={colors.teal} />
+                    <AppText variant="caption" color={colors.subtle}>
+                      Nhắc lịch
+                    </AppText>
+                  </View>
                   <AppText variant="bodyStrong">{wizard.reminderEnabled ? "Đã đăng ký" : "Không đăng ký"}</AppText>
                 </View>
-              </View>
-
-              <View style={styles.summaryBlock}>
-                <AppText variant="bodyStrong">Điều cần tư vấn</AppText>
-                <AppText color={colors.muted}>{wizard.summary?.symptoms || wizard.form.symptoms}</AppText>
+                <View style={styles.summaryItem}>
+                  <View style={styles.summaryItemHeader}>
+                    <FileQuestionMark size={16} color={colors.teal} />
+                    <AppText variant="caption" color={colors.subtle}>
+                      Điều cần tư vấn
+                    </AppText>
+                  </View>
+                  <AppText color={colors.muted}>{wizard.summary?.symptoms || wizard.form.symptoms}</AppText>
+                </View>
               </View>
 
               <View style={styles.actionsRow}>
@@ -830,6 +860,11 @@ const styles = StyleSheet.create({
   checklistRow: {
     flexDirection: "row",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
   },
   checklistNumber: {
     width: 24,
@@ -841,7 +876,20 @@ const styles = StyleSheet.create({
   },
   checklistText: {
     flex: 1,
-    gap: spacing.xs / 2,
+    gap: spacing.xs,
+  },
+  checklistBadge: {
+    alignSelf: "flex-start",
+    minHeight: 22,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+  },
+  checklistBadgeWarning: {
+    backgroundColor: colors.warningBg,
+  },
+  checklistBadgeInfo: {
+    backgroundColor: colors.mint,
   },
   actionsRow: {
     flexDirection: "row",
@@ -849,6 +897,27 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   reminderOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  reminderOptionSelected: {
+    borderColor: colors.teal,
+    backgroundColor: colors.mint,
+  },
+  reminderOptionIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+  },
+  reminderOptionIconSelected: {
+    backgroundColor: colors.teal,
+  },
+  reminderOptionCopy: {
+    flex: 1,
     gap: spacing.xs / 2,
   },
   successBanner: {
@@ -870,7 +939,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     padding: spacing.md,
   },
-  summaryBlock: {
+  summaryItemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
   },
   sheetRoot: {
