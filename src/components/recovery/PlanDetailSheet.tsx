@@ -221,7 +221,7 @@ export function PlanDetailSheet({ visible, plan, state, starting, cancelling, on
                 </Button>
               ) : null}
               {cancellable ? (
-                <Button variant="danger" disabled={cancelling} onPress={() => onCancel(plan.id)} style={styles.cancelPlanButton}>
+                <Button fullWidth variant="danger" disabled={cancelling} onPress={() => onCancel(plan.id)} style={styles.cancelPlanButton}>
                   {cancelling ? "Đang hủy..." : "Hủy kế hoạch"}
                 </Button>
               ) : null}
@@ -453,12 +453,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cancelPlanButton: {
-    alignSelf: "flex-start",
-    minHeight: 44,
+    minHeight: 48,
     borderRadius: 12,
     backgroundColor: colors.danger,
     borderColor: colors.danger,
-    paddingHorizontal: spacing.lg,
     shadowColor: colors.danger,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.16,
