@@ -24,11 +24,16 @@ import {
 type SectionState = "loading" | "ready" | "error";
 const PAGE_SIZE = 10;
 const EMPTY_PAGE = { items: [], pageNumber: 1, pageSize: PAGE_SIZE, totalCount: 0, totalPages: 0 };
+const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["waitingForDoctor", "assigned", "inReview", "needMoreInformation"]);
 
 export type CreateRequestForm = { diseaseGroup: DiseaseGroup | ""; requestNote: string; primaryLabTestSessionId: string };
 
 function errorPayload(error: unknown) {
   return (error as { payload?: ApiErrorPayload })?.payload;
+}
+
+function isInProgressRequest(request: RecoveryPlanRequest | null | undefined) {
+  return Boolean(request && IN_PROGRESS_REQUEST_STATUSES.has(request.status));
 }
 
 export function useRecoveryPlan() {
@@ -41,6 +46,7 @@ export function useRecoveryPlan() {
   const [requestsState, setRequestsState] = useState<SectionState>("loading");
   const [requestsError, setRequestsError] = useState("");
   const [requestsPage, setRequestsPage] = useState(1);
+  const [pinnedRequest, setPinnedRequest] = useState<RecoveryPlanRequest | null>(null);
 
   const [selectedRequest, setSelectedRequest] = useState<RecoveryPlanRequest | null>(null);
   const [requestDetailState, setRequestDetailState] = useState<"idle" | SectionState>("idle");
@@ -95,7 +101,14 @@ export function useRecoveryPlan() {
     setRequestsError("");
     try {
       const response = await recoveryPlanRequestsApi.listMine(page, PAGE_SIZE);
-      setRequests(response.data ?? EMPTY_PAGE);
+      const nextPage = response.data ?? EMPTY_PAGE;
+      setRequests(nextPage);
+      const inProgressRequest = nextPage.items.find(isInProgressRequest) ?? null;
+      if (inProgressRequest) {
+        setPinnedRequest(inProgressRequest);
+      } else if (nextPage.totalCount === 0) {
+        setPinnedRequest(null);
+      }
       setRequestsState("ready");
     } catch (error) {
       setRequestsState("error");
@@ -265,7 +278,7 @@ export function useRecoveryPlan() {
         }
       }
 
-      await recoveryPlanRequestsApi.create(
+      const createResponse = await recoveryPlanRequestsApi.create(
         {
           diseaseGroup: createForm.diseaseGroup as DiseaseGroup,
           treatmentJourneyId: null,
@@ -275,6 +288,20 @@ export function useRecoveryPlan() {
         },
         idempotencyKeyRef.current,
       );
+      const createdRequest = createResponse.data ?? null;
+      if (createdRequest) {
+        setPinnedRequest(isInProgressRequest(createdRequest) ? createdRequest : null);
+        setRequests((current) => {
+          const alreadyInPage = current.items.some((item) => item.id === createdRequest.id);
+          return {
+            ...current,
+            pageNumber: 1,
+            totalCount: current.totalCount + (alreadyInPage ? 0 : 1),
+            totalPages: Math.max(1, Math.ceil((current.totalCount + (alreadyInPage ? 0 : 1)) / PAGE_SIZE)),
+            items: [createdRequest, ...current.items.filter((item) => item.id !== createdRequest.id)].slice(0, PAGE_SIZE),
+          };
+        });
+      }
       resetCreateForm();
       setRequestsPage(1);
       loadRequests(1);
@@ -300,6 +327,7 @@ export function useRecoveryPlan() {
 
       if (cancelledRequest) {
         setSelectedRequest(cancelledRequest);
+        setPinnedRequest((current) => (current?.id === requestId ? (isInProgressRequest(cancelledRequest) ? cancelledRequest : null) : current));
         setRequests((current) => ({
           ...current,
           items: current.items.map((item) => (item.id === requestId ? cancelledRequest : item)),
@@ -323,7 +351,15 @@ export function useRecoveryPlan() {
     setProvidingInfo(true);
     try {
       const response = await recoveryPlanRequestsApi.provideInformation(requestId, trimmed);
-      setSelectedRequest(response.data ?? null);
+      const updatedRequest = response.data ?? null;
+      setSelectedRequest(updatedRequest);
+      if (updatedRequest) {
+        setPinnedRequest((current) => (current?.id === requestId ? (isInProgressRequest(updatedRequest) ? updatedRequest : null) : current));
+        setRequests((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === requestId ? updatedRequest : item)),
+        }));
+      }
       loadRequests(requestsPage);
       return { status: "success" as const };
     } catch (error) {
@@ -385,6 +421,7 @@ export function useRecoveryPlan() {
     requestsPage,
     setRequestsPage,
     requestsInfo: requests,
+    pinnedRequest,
 
     selectedRequest,
     requestDetailState,

@@ -302,12 +302,12 @@ export function RecoveryPlanScreen() {
     !recovery.quota ||
     Number(recovery.quota.remainingCount) <= 0;
   const activePlans = recovery.plans.filter((plan) => CURRENT_PLAN_STATUSES.has(plan.status)).length;
-  const waitingRequests = recovery.requests.filter((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)).length;
   const latestPlan = recovery.plans[0];
-  const primaryRequest = recovery.requests.find((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)) ?? null;
+  const primaryRequest = recovery.pinnedRequest ?? recovery.requests.find((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)) ?? null;
   const primaryPlan = recovery.plans.find((plan) => CURRENT_PLAN_STATUSES.has(plan.status)) ?? null;
   const archivedRequests = primaryRequest ? recovery.requests.filter((request) => request.id !== primaryRequest.id) : recovery.requests;
   const archivedPlans = primaryPlan ? recovery.plans.filter((plan) => plan.id !== primaryPlan.id) : recovery.plans;
+  const waitingRequests = Math.max(primaryRequest ? 1 : 0, recovery.requests.filter((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)).length);
   const requestsCount = Math.max(0, (recovery.requestsInfo.totalCount || recovery.requests.length) - (primaryRequest ? 1 : 0));
   const plansCount = Math.max(0, (recovery.plansInfo.totalCount || recovery.plans.length) - (primaryPlan ? 1 : 0));
   const createBlocker =
@@ -337,6 +337,7 @@ export function RecoveryPlanScreen() {
     const result = await recovery.submitCreateRequest();
     if (result === "success") {
       setCreateVisible(false);
+      setRequestsExpanded(false);
       showToast({ type: "success", message: "Đã gửi yêu cầu kế hoạch phục hồi." });
     }
   }
