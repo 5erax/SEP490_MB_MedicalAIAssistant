@@ -7,7 +7,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { BellRing, Check, ChevronRight, ClipboardCheck, FileQuestionMark, ShieldCheck, Stethoscope, X } from "lucide-react-native";
+import { BellRing, CalendarDays, Check, ChevronRight, ClipboardCheck, Clock3, FileQuestionMark, ShieldCheck, Stethoscope, X } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, Card, EmptyState, Screen } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -54,6 +55,22 @@ function formatHistoryStatus(value?: string) {
   if (["cancelled", "canceled"].includes(normalized)) return "Đã hủy";
   if (normalized === "failed") return "Không thành công";
   return "Đang cập nhật";
+}
+
+function SectionHead({ step, title, description }: { step: number; title: string; description?: string }) {
+  return (
+    <View style={styles.sectionHead}>
+      <View style={styles.sectionHeadBadge}>
+        <AppText variant="bodyStrong" color={colors.white}>
+          {step}
+        </AppText>
+      </View>
+      <View style={styles.sectionHeadCopy}>
+        <AppText variant="h3">{title}</AppText>
+        {description ? <AppText color={colors.muted}>{description}</AppText> : null}
+      </View>
+    </View>
+  );
 }
 
 export function PreConsultationScreen() {
@@ -147,7 +164,7 @@ export function PreConsultationScreen() {
             </AppText>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.stepperCard} contentContainerStyle={styles.stepperCardContent}>
+          <View style={[styles.stepperCard, styles.stepperCardContent]}>
             {STEPS.map((item, index) => {
               const Icon = item.icon;
               const active = index === wizard.step;
@@ -155,15 +172,15 @@ export function PreConsultationScreen() {
               return (
                 <View key={item.label} style={[styles.stepColumn, index > 0 && styles.stepDivider, active && styles.stepColumnActive]}>
                   <View style={[styles.stepIcon, active && styles.stepIconActive, done && styles.stepIconDone]}>
-                    {done ? <Check size={17} color="#15803d" /> : <Icon size={17} color={active ? colors.white : colors.subtle} />}
+                    {done ? <Check size={15} color="#15803d" /> : <Icon size={15} color={active ? colors.white : colors.subtle} />}
                   </View>
-                  <AppText variant="bodyStrong" color={active ? colors.teal : colors.ink}>
+                  <AppText variant="caption" color={active ? colors.teal : colors.ink} numberOfLines={1}>
                     {item.label}
                   </AppText>
                 </View>
               );
             })}
-          </ScrollView>
+          </View>
 
           {wizard.error ? (
             <View style={styles.errorBanner}>
@@ -173,11 +190,11 @@ export function PreConsultationScreen() {
 
           {wizard.step === 0 ? (
             <Card variant="hard" style={styles.card}>
-              <AppText variant="h3">Thông tin buổi khám</AppText>
-              <AppText color={colors.muted}>
-                Chọn phiên gợi ý chuyên khoa để điền chuyên khoa, triệu chứng và bệnh viện, sau đó chọn thời gian dự
-                kiến khám.
-              </AppText>
+              <SectionHead
+                step={1}
+                title="Thông tin buổi khám"
+                description="Chọn phiên gợi ý chuyên khoa để điền chuyên khoa, triệu chứng và bệnh viện, sau đó chọn thời gian dự kiến khám."
+              />
 
               <Pressable accessibilityRole="button" onPress={openSessionPicker}>
                 <Card variant="soft" style={styles.pickerRow}>
@@ -203,6 +220,10 @@ export function PreConsultationScreen() {
                     <AppText variant="caption" color={colors.danger}>
                       {wizard.formErrors.departmentId}
                     </AppText>
+                  ) : wizard.form.departmentName ? (
+                    <AppText variant="caption" color={colors.subtle}>
+                      Được điền tự động từ phiên gợi ý đã chọn.
+                    </AppText>
                   ) : null}
                 </View>
 
@@ -214,6 +235,10 @@ export function PreConsultationScreen() {
                   {wizard.formErrors.symptoms ? (
                     <AppText variant="caption" color={colors.danger}>
                       {wizard.formErrors.symptoms}
+                    </AppText>
+                  ) : wizard.form.symptoms ? (
+                    <AppText variant="caption" color={colors.subtle}>
+                      Được điền tự động từ phiên gợi ý đã chọn.
                     </AppText>
                   ) : null}
                 </View>
@@ -258,6 +283,7 @@ export function PreConsultationScreen() {
                     onPress={() => setDatePickerVisible(true)}
                     style={[styles.dateInput, wizard.formErrors.appointmentTime && styles.readonlyBoxError]}
                   >
+                    <CalendarDays size={16} color={colors.subtle} />
                     <AppText>{wizard.form.appointmentTime ? appointmentDate.toLocaleDateString("vi-VN") : "Chọn ngày"}</AppText>
                   </Pressable>
                   <Pressable
@@ -265,6 +291,7 @@ export function PreConsultationScreen() {
                     onPress={() => setTimePickerVisible(true)}
                     style={[styles.dateInput, wizard.formErrors.appointmentTime && styles.readonlyBoxError]}
                   >
+                    <Clock3 size={16} color={colors.subtle} />
                     <AppText>
                       {wizard.form.appointmentTime
                         ? appointmentDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
@@ -295,7 +322,7 @@ export function PreConsultationScreen() {
                   <DateTimePicker
                     value={appointmentDate}
                     mode="time"
-                    display="default"
+                    display="spinner"
                     onChange={(event, selectedTime) => {
                       setTimePickerVisible(false);
                       if (event.type === "set" && selectedTime) {
@@ -323,7 +350,11 @@ export function PreConsultationScreen() {
 
           {wizard.step === 1 ? (
             <Card variant="hard" style={styles.card}>
-              <AppText variant="h3">Danh sách chuẩn bị</AppText>
+              <SectionHead
+                step={2}
+                title="Danh sách chuẩn bị"
+                description="Đọc các lưu ý dưới đây để chủ động chuẩn bị trước khi đến khám."
+              />
               {wizard.busy === "checklist" ? (
                 <ActivityIndicator color={colors.teal} />
               ) : wizard.checklistItems.length > 0 ? (
@@ -360,7 +391,11 @@ export function PreConsultationScreen() {
 
           {wizard.step === 2 ? (
             <Card variant="hard" style={styles.card}>
-              <AppText variant="h3">Câu hỏi nên trao đổi với bác sĩ</AppText>
+              <SectionHead
+                step={3}
+                title="Câu hỏi nên trao đổi với bác sĩ"
+                description="Lưu lại những câu phù hợp. Đây là gợi ý chuẩn bị, không phải chẩn đoán y tế."
+              />
               {wizard.questions.length > 0 ? (
                 <View style={styles.checklist}>
                   {wizard.questions.map((question, index) => (
@@ -393,8 +428,11 @@ export function PreConsultationScreen() {
 
           {wizard.step === 3 ? (
             <Card variant="hard" style={styles.card}>
-              <AppText variant="h3">Bạn có muốn được nhắc lịch?</AppText>
-              <AppText color={colors.muted}>Nếu bật, thông báo nhắc lịch sẽ được gửi tới email của tài khoản này.</AppText>
+              <SectionHead
+                step={4}
+                title="Bạn có muốn được nhắc lịch?"
+                description="Nếu bật, thông báo nhắc lịch sẽ được gửi tới email của tài khoản này."
+              />
 
               <Pressable
                 accessibilityRole="radio"
@@ -439,7 +477,15 @@ export function PreConsultationScreen() {
 
           {wizard.step === 4 ? (
             <Card variant="hard" style={styles.card}>
-              <AppText variant="h3">{wizard.completed ? "Đã hoàn thành tư vấn trước khám" : "Kiểm tra bản tổng kết"}</AppText>
+              <SectionHead
+                step={5}
+                title={wizard.completed ? "Đã hoàn thành tư vấn trước khám" : "Kiểm tra bản tổng kết"}
+                description={
+                  wizard.completed
+                    ? "Thông tin đã được lưu để bạn chuẩn bị cho buổi khám."
+                    : "Xem lại nội dung trước khi xác nhận hoàn thành phiên."
+                }
+              />
               {wizard.completed ? (
                 <View style={styles.successBanner}>
                   <Check size={18} color={colors.teal} />
@@ -503,9 +549,14 @@ export function PreConsultationScreen() {
       )}
 
       <Modal visible={sessionPickerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSessionPickerVisible(false)}>
-        <View style={styles.sheetRoot}>
+        <SafeAreaView style={styles.sheetRoot} edges={["top", "bottom"]}>
           <View style={styles.sheetHeader}>
-            <AppText variant="h3">Danh sách phiên gợi ý chuyên khoa</AppText>
+            <View style={styles.headerSpacer} />
+            <View style={styles.headerTitleWrap}>
+              <AppText variant="h3" center>
+                Danh sách phiên gợi ý chuyên khoa
+              </AppText>
+            </View>
             <Pressable accessibilityRole="button" onPress={() => setSessionPickerVisible(false)} style={styles.closeButton} hitSlop={8}>
               <X size={20} color={colors.ink} />
             </Pressable>
@@ -549,13 +600,18 @@ export function PreConsultationScreen() {
               })
             )}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       <Modal visible={facilityPickerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setFacilityPickerVisible(false)}>
-        <View style={styles.sheetRoot}>
+        <SafeAreaView style={styles.sheetRoot} edges={["top", "bottom"]}>
           <View style={styles.sheetHeader}>
-            <AppText variant="h3">Chọn bệnh viện gợi ý</AppText>
+            <View style={styles.headerSpacer} />
+            <View style={styles.headerTitleWrap}>
+              <AppText variant="h3" center>
+                Chọn bệnh viện gợi ý
+              </AppText>
+            </View>
             <Pressable accessibilityRole="button" onPress={() => setFacilityPickerVisible(false)} style={styles.closeButton} hitSlop={8}>
               <X size={20} color={colors.ink} />
             </Pressable>
@@ -581,7 +637,7 @@ export function PreConsultationScreen() {
               </Pressable>
             ))}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </Screen>
   );
@@ -659,11 +715,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   stepColumn: {
+    flex: 1,
     alignItems: "center",
-    gap: spacing.xs,
-    minWidth: 92,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    gap: spacing.xs / 2,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   stepColumnActive: {
     backgroundColor: colors.mint,
@@ -673,8 +729,8 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.line,
   },
   stepIcon: {
-    width: 34,
-    height: 34,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -698,6 +754,22 @@ const styles = StyleSheet.create({
   card: {
     gap: spacing.md,
   },
+  sectionHead: {
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  sectionHeadBadge: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
+  },
+  sectionHeadCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
+  },
   pickerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -717,12 +789,15 @@ const styles = StyleSheet.create({
     gap: spacing.xs / 2,
     borderWidth: 1,
     borderColor: colors.line,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.teal,
     borderRadius: radius.md,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
   readonlyBoxError: {
     borderColor: colors.danger,
+    borderLeftColor: colors.danger,
     backgroundColor: colors.dangerBg,
   },
   fieldGroup: {
@@ -735,7 +810,9 @@ const styles = StyleSheet.create({
   dateInput: {
     flex: 1,
     minHeight: 48,
-    justifyContent: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
     borderRadius: radius.sm,
@@ -809,6 +886,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    paddingHorizontal: spacing.sm,
+  },
+  headerSpacer: {
+    width: 36,
+    height: 36,
   },
   closeButton: {
     width: 36,
