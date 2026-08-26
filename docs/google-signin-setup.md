@@ -12,7 +12,11 @@ No backend change is required.
 
 ## Required local environment
 
-`.env.development` must contain the Web OAuth client ID:
+The app has public fallback Google client IDs in `src/config/env.ts`, so EAS
+preview/production builds still enable Google Sign-In even when Expo
+environment variables are not configured. Keep `.env.development` in sync for
+local testing and use EAS environment variables only when overriding the
+defaults:
 
 ```txt
 EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=976426394148-eub0i02sbrseoob7r4lbe8ubr3bqv3n2.apps.googleusercontent.com
@@ -65,3 +69,10 @@ or Firebase as well:
 
 - upload key SHA-1
 - Google Play app signing SHA-1
+
+For EAS preview APKs, also add the SHA-1 of the Android keystore used by EAS for
+the `preview` profile. The app package remains:
+
+```txt
+com.medimate.medicalaiassistant
+```
