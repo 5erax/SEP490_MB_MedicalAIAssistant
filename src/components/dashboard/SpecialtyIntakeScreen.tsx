@@ -39,7 +39,7 @@ function IntroPanel({ activeStep }: { activeStep: number }) {
           <ClipboardPlus size={22} color={colors.white} />
         </View>
         <View style={styles.introPill}>
-          <AppText variant="caption" color={colors.white}>
+          <AppText variant="caption" color={colors.teal}>
             Tư vấn chuyên khoa
           </AppText>
         </View>
@@ -328,7 +328,7 @@ export function SpecialtyIntakeScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.md,
     paddingBottom: spacing["4xl"],
   },
   pressed: {
@@ -380,11 +380,13 @@ const styles = StyleSheet.create({
   introPanel: {
     gap: spacing.md,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
     backgroundColor: colors.limeDark,
-    padding: spacing.xl,
+    padding: spacing.lg,
     shadowColor: colors.limeDark,
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.22,
     shadowRadius: 30,
     elevation: 4,
   },
@@ -408,22 +410,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: colors.white,
     paddingHorizontal: spacing.md,
   },
   introTitle: {
-    maxWidth: 300,
+    maxWidth: 310,
+    fontSize: 32,
+    lineHeight: 36,
   },
   introCopy: {
     maxWidth: 330,
   },
   introStepper: {
-    minHeight: 80,
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "flex-start",
     borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingVertical: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
     overflow: "hidden",
   },
   introStep: {
@@ -431,8 +436,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   introStepDot: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -447,7 +452,7 @@ const styles = StyleSheet.create({
   },
   introStepLine: {
     position: "absolute",
-    top: 15,
+    top: 14,
     width: "50%",
     height: 1,
     backgroundColor: "rgba(255,255,255,0.35)",
@@ -462,7 +467,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   introStepLabel: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   historyStrip: {
     gap: spacing.md,
