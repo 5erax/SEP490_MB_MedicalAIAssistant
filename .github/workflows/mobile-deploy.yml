@@ -92,7 +92,7 @@ jobs:
         run: npm ci
 
       - name: Trigger EAS preview build
-        run: eas build --platform android --profile preview --non-interactive --no-wait
+        run: eas build --platform android --profile preview --non-interactive
 
   release:
     name: Build and submit production apps
@@ -124,7 +124,7 @@ jobs:
         run: npm ci
 
       - name: Trigger production builds and submissions
-        run: eas build --platform all --profile production --auto-submit --non-interactive --no-wait
+        run: eas build --platform all --profile production --auto-submit --non-interactive
 
   manual:
     name: Run requested mobile build
@@ -163,8 +163,8 @@ jobs:
 
       - name: Trigger EAS build
         if: ${{ !inputs.submit }}
-        run: eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive --no-wait
+        run: eas build --platform ${{ inputs.platform }} --profile ${{ inputs.profile }} --non-interactive
 
       - name: Trigger EAS build and submission
         if: inputs.submit
-        run: eas build --platform ${{ inputs.platform }} --profile production --auto-submit --non-interactive --no-wait
+        run: eas build --platform ${{ inputs.platform }} --profile production --auto-submit --non-interactive
