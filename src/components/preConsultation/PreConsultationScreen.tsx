@@ -211,7 +211,7 @@ export function PreConsultationScreen() {
                       {wizard.appliedSessionTitle || "Danh sách phiên gợi ý chuyên khoa"}
                     </AppText>
                   </View>
-                  <ChevronRight size={18} color={colors.subtle} />
+                  <ChevronRight size={18} color={colors.teal} />
                 </Card>
               </Pressable>
 
@@ -269,7 +269,7 @@ export function PreConsultationScreen() {
                           : `Chọn bệnh viện gợi ý (${wizard.suggestedFacilities.length})`)}
                     </AppText>
                   </View>
-                  <ChevronRight size={18} color={colors.subtle} />
+                  <ChevronRight size={18} color={colors.teal} />
                 </Card>
               </Pressable>
               {wizard.formErrors.facilityId ? (
@@ -288,7 +288,7 @@ export function PreConsultationScreen() {
                     onPress={() => setDatePickerVisible(true)}
                     style={[styles.dateInput, wizard.formErrors.appointmentTime && styles.readonlyBoxError]}
                   >
-                    <CalendarDays size={16} color={colors.subtle} />
+                    <CalendarDays size={16} color={colors.teal} />
                     <AppText>{wizard.form.appointmentTime ? appointmentDate.toLocaleDateString("vi-VN") : "Chọn ngày"}</AppText>
                   </Pressable>
                   <Pressable
@@ -296,7 +296,7 @@ export function PreConsultationScreen() {
                     onPress={() => setTimePickerVisible(true)}
                     style={[styles.dateInput, wizard.formErrors.appointmentTime && styles.readonlyBoxError]}
                   >
-                    <Clock3 size={16} color={colors.subtle} />
+                    <Clock3 size={16} color={colors.teal} />
                     <AppText>
                       {wizard.form.appointmentTime
                         ? appointmentDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
@@ -804,6 +804,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.teal,
   },
   pickerRowDisabled: {
     opacity: 0.6,
@@ -819,10 +821,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs / 2,
     borderWidth: 1,
     borderColor: colors.line,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: colors.teal,
     borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: colors.mint,
     padding: spacing.md,
   },
   readonlyBoxError: {
