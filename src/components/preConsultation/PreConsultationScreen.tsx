@@ -372,12 +372,12 @@ export function PreConsultationScreen() {
                         </AppText>
                       </View>
                       <View style={styles.checklistText}>
-                        <AppText variant="bodyStrong">{item.content}</AppText>
                         <View style={[styles.checklistBadge, item.isMandatory ? styles.checklistBadgeWarning : styles.checklistBadgeInfo]}>
                           <AppText variant="caption" color={item.isMandatory ? colors.warning : colors.teal}>
                             {item.isMandatory ? "Cần lưu ý" : "Khuyến nghị"}
                           </AppText>
                         </View>
+                        <AppText variant="bodyStrong">{item.content}</AppText>
                       </View>
                     </View>
                   ))}
