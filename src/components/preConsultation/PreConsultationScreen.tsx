@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { BellRing, CalendarDays, Check, ChevronRight, ClipboardCheck, Clock3, FileQuestionMark, ShieldCheck, Stethoscope, X } from "lucide-react-native";
+import { BellRing, CalendarDays, Check, ChevronRight, ClipboardCheck, Clock3, FileQuestionMark, MapPin, ShieldCheck, Stethoscope, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, Card, EmptyState, Screen } from "@/src/components/ui";
@@ -647,25 +647,32 @@ export function PreConsultationScreen() {
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.sheetContent}>
-            {wizard.suggestedFacilities.map((facility: SuggestedConsultationFacility) => (
-              <Pressable
-                key={facility.facilityId}
-                onPress={() => {
-                  wizard.selectSuggestedFacility(facility);
-                  setFacilityPickerVisible(false);
-                }}
-                style={styles.sessionRow}
-              >
-                <View style={styles.pickerRowText}>
-                  <AppText variant="bodyStrong">{facility.facilityName}</AppText>
-                  {facility.address ? (
-                    <AppText variant="caption" color={colors.subtle}>
-                      {facility.address}
-                    </AppText>
-                  ) : null}
-                </View>
-              </Pressable>
-            ))}
+            {wizard.suggestedFacilities.map((facility: SuggestedConsultationFacility) => {
+              const selected = facility.facilityId === wizard.form.facilityId;
+              return (
+                <Pressable
+                  key={facility.facilityId}
+                  onPress={() => {
+                    wizard.selectSuggestedFacility(facility);
+                    setFacilityPickerVisible(false);
+                  }}
+                  style={[styles.sessionRow, selected && styles.reminderOptionSelected]}
+                >
+                  <View style={[styles.reminderOptionIcon, selected && styles.reminderOptionIconSelected]}>
+                    <MapPin size={18} color={selected ? colors.white : colors.subtle} />
+                  </View>
+                  <View style={styles.pickerRowText}>
+                    <AppText variant="bodyStrong">{facility.facilityName}</AppText>
+                    {facility.address ? (
+                      <AppText variant="caption" color={colors.subtle}>
+                        {facility.address}
+                      </AppText>
+                    ) : null}
+                  </View>
+                  {selected ? <Check size={20} color={colors.teal} /> : <ChevronRight size={18} color={colors.teal} />}
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </SafeAreaView>
       </Modal>
