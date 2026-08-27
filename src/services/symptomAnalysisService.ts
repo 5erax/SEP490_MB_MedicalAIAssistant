@@ -133,6 +133,12 @@ async function storeClinicalMapSnapshot(snapshot: ClinicalMapSnapshot) {
   }
 }
 
+async function cacheClinicalMapSnapshot(snapshot: ClinicalMapSnapshot) {
+  clinicalAnalysisCache.clear();
+  clinicalAnalysisCache.set(snapshot.sessionId, snapshot);
+  await storeClinicalMapSnapshot(snapshot);
+}
+
 async function readStoredClinicalMapSnapshot(sessionId: string): Promise<{ available: boolean; snapshot: ClinicalMapSnapshot | null }> {
   try {
     const raw = await AsyncStorage.getItem(CLINICAL_MAP_CACHE_KEY);
@@ -187,11 +193,9 @@ export const symptomAnalysisApi = {
     const resolvedSessionId = String(data.sessionId ?? sessionId ?? "").trim();
     const analysis = createClinicalMapSnapshot(data.analysis ?? data.result ?? null, resolvedSessionId);
 
-    clinicalAnalysisCache.clear();
     await clearStoredClinicalMapSnapshot();
     if (resolvedSessionId && analysis) {
-      clinicalAnalysisCache.set(resolvedSessionId, analysis);
-      await storeClinicalMapSnapshot(analysis);
+      await cacheClinicalMapSnapshot(analysis);
     }
 
     return response;
@@ -268,11 +272,25 @@ export const symptomAnalysisApi = {
       requiresAuth: true,
     });
   },
+
+  async cacheClinicalResult(sessionId: string, analysis: unknown) {
+    const snapshot = createClinicalMapSnapshot(analysis, sessionId);
+    if (!snapshot?.sessionId) return null;
+    await clearStoredClinicalMapSnapshot();
+    await cacheClinicalMapSnapshot(snapshot);
+    return snapshot;
+  },
 };
 
 export { readSuggestClinicalQuestionsPayload, unwrapApiData };
 
 export function readResultPayload(response: unknown): ClinicalAnalysisResult | null {
   const data = unwrapApiData<Record<string, unknown>>(response);
-  return (data?.analysis ?? data?.result ?? data ?? null) as ClinicalAnalysisResult | null;
+  const sessionId = String(data?.sessionId ?? data?.SessionId ?? "").trim();
+  const snapshot = createClinicalMapSnapshot(data?.analysis ?? data?.Analysis ?? data?.result ?? data?.Result ?? data ?? null, sessionId);
+  if (!snapshot) return null;
+  return {
+    recommendedDepartment: snapshot.recommendedDepartment,
+    recommendedFacilities: snapshot.recommendedFacilities,
+  };
 }

@@ -20,8 +20,7 @@ import { useAuth } from "@/src/providers";
 import { shouldSetupPatientProfile } from "@/src/utils/roles";
 import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
 import { ClinicalAnalysisResult, SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
-import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
-import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
+import { readResultPayload, symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
 import { IntakeForm } from "./IntakeForm";
 import { dismissProfileNudgeForSession, isProfileNudgeDismissed, ProfileNudgeCard } from "./ProfileNudgeCard";
 import { QuestionFlow } from "./QuestionFlow";
@@ -135,10 +134,11 @@ export function SpecialtyIntakeScreen() {
 
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
   const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
-  const [historyVisible, setHistoryVisible] = useState(false);
   const [historySessions, setHistorySessions] = useState<SymptomAnalysisSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const [historyDetailLoadingId, setHistoryDetailLoadingId] = useState("");
+  const [historyResultView, setHistoryResultView] = useState<{ result: ClinicalAnalysisResult; sessionId: string; title: string } | null>(null);
   const [profileNudgeVisible, setProfileNudgeVisible] = useState(
     shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
   );
@@ -180,6 +180,32 @@ export function SpecialtyIntakeScreen() {
       setHistoryLoading(false);
     }
   }, []);
+
+  const openHistoryResult = useCallback(async (item: SymptomAnalysisSession) => {
+    const historySessionId = String(item.sessionId || item.id || "").trim();
+    if (!historySessionId || historyDetailLoadingId) return;
+
+    setHistoryError("");
+    setHistoryDetailLoadingId(historySessionId);
+    try {
+      const response = await symptomAnalysisApi.get(historySessionId);
+      const historyResult = readResultPayload(response);
+      if (!historyResult) {
+        setHistoryError("Phiên này chưa có kết quả gợi ý để hiển thị.");
+        return;
+      }
+      await symptomAnalysisApi.cacheClinicalResult(historySessionId, historyResult);
+      setHistoryResultView({
+        result: historyResult,
+        sessionId: historySessionId,
+        title: getSessionTitle(item, "Phiên gợi ý chuyên khoa"),
+      });
+    } catch (requestError) {
+      setHistoryError((requestError as Error)?.message || "Chưa thể tải chi tiết phiên gợi ý.");
+    } finally {
+      setHistoryDetailLoadingId("");
+    }
+  }, [historyDetailLoadingId]);
 
   useEffect(() => {
     Animated.spring(segmentTranslate, {
@@ -225,7 +251,37 @@ export function SpecialtyIntakeScreen() {
 
       {activeTab === "chat" ? <IntroPanel activeStep={activeStep} /> : null}
 
-      {activeTab === "history" ? (
+      {activeTab === "history" && historyResultView ? (
+        <View style={styles.historyResultGroup}>
+          <View style={styles.historyResultHeader}>
+            <View style={styles.historyResultText}>
+              <AppText variant="caption" color={colors.teal}>
+                Kết quả từ lịch sử
+              </AppText>
+              <AppText variant="h3" numberOfLines={2}>
+                {historyResultView.title}
+              </AppText>
+            </View>
+            <Button variant="secondary" size="sm" onPress={() => setHistoryResultView(null)}>
+              Quay lại
+            </Button>
+          </View>
+          <ResultPanel
+            result={historyResultView.result}
+            userLocation={userLocation}
+            locationStatus={locationStatus}
+            onRequestLocation={requestUserLocation}
+            onOpenMap={() => openFacilities(historyResultView.result, historyResultView.sessionId)}
+            onNewSymptom={() => {
+              setHistoryResultView(null);
+              setActiveTab("chat");
+              resetDiagnosis({ clearInput: true });
+            }}
+          />
+        </View>
+      ) : null}
+
+      {activeTab === "history" && !historyResultView ? (
         <View style={styles.historyStrip}>
           {historyLoading ? (
             <View style={styles.historyLoading}>
@@ -261,8 +317,14 @@ export function SpecialtyIntakeScreen() {
                       </AppText>
                     </View>
                   </View>
-                  <Button variant="secondary" size="sm" onPress={() => setHistoryVisible(true)} style={styles.detailButton}>
-                    Chi tiết
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={historyDetailLoadingId === (item.sessionId || item.id || "")}
+                    onPress={() => openHistoryResult(item)}
+                    style={styles.detailButton}
+                  >
+                    {historyDetailLoadingId === (item.sessionId || item.id || "") ? "Đang tải" : "Chi tiết"}
                   </Button>
                 </View>
               ))}
@@ -344,7 +406,6 @@ export function SpecialtyIntakeScreen() {
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}
-      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="department" />
     </Screen>
   );
 }
@@ -494,6 +555,23 @@ const styles = StyleSheet.create({
   },
   historyStrip: {
     gap: spacing.md,
+  },
+  historyResultGroup: {
+    gap: spacing.lg,
+  },
+  historyResultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
+  },
+  historyResultText: {
+    flex: 1,
+    gap: spacing.xs,
   },
   historyLoading: {
     minHeight: 72,
