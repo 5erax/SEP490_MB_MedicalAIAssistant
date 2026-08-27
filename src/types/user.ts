@@ -6,8 +6,8 @@ export type UserProfile = {
   displayName?: string;
   name?: string;
   phoneNumber?: string | null;
-  address?: string;
-  gender?: number;
+  address?: string | null;
+  gender?: number | string | null;
   dateOfBirth?: string | null;
   roles?: string[] | string;
   status?: number;

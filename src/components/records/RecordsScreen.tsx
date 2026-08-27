@@ -6,7 +6,7 @@
 // pattern (PaymentDetailSheet, MedicationFormSheet).
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { Plus } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
@@ -15,6 +15,7 @@ import { LabSessionStatus } from "@/src/types/labTest";
 import { SessionCard } from "./SessionCard";
 import { SessionDetailSheet } from "./SessionDetailSheet";
 import { UploadRecordSheet } from "./UploadRecordSheet";
+import { LabTrendsPanel } from "./LabTrendsPanel";
 
 const FILTERS: { value: LabSessionStatus | ""; label: string }[] = [
   { value: "", label: "Tất cả" },
@@ -26,11 +27,11 @@ const FILTERS: { value: LabSessionStatus | ""; label: string }[] = [
 export function RecordsScreen() {
   const {
     profile,
-    testDate,
-    setTestDate,
     document,
     formError,
-    pickDocument,
+    pickImage,
+    pickPdf,
+    takePhoto,
     clearDocument,
     submissionStatus,
     submissionMessage,
@@ -45,11 +46,16 @@ export function RecordsScreen() {
     historyInfo,
     reloadHistory,
     selectedSession,
+    ocrExtracts,
     detailState,
     detailError,
+    summaryText,
+    summaryState,
+    summaryError,
     selectSession,
     clearSelectedSession,
     retryDetail,
+    retrySummary,
   } = useMedicalRecords();
 
   const [uploadVisible, setUploadVisible] = useState(false);
@@ -78,14 +84,28 @@ export function RecordsScreen() {
   return (
     <Screen padded={false} style={styles.screen}>
       <View style={styles.header}>
-        <AppText variant="eyebrow" color={colors.teal}>
-          Phân tích xét nghiệm
-        </AppText>
-        <AppText variant="h1">Đọc phiếu xét nghiệm rõ ràng hơn</AppText>
-        <AppText color={colors.muted}>Tải phiếu xét nghiệm lên để nhận giải thích chỉ số bằng AI, tham khảo trước khi gặp bác sĩ.</AppText>
+        <View style={styles.headerTop}>
+          <View style={styles.headerCopy}>
+            <AppText variant="eyebrow" color={colors.teal}>Phân tích xét nghiệm</AppText>
+            <AppText variant="h1">Đọc phiếu xét nghiệm rõ ràng hơn</AppText>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Tải lại lịch sử" onPress={handleRefresh} style={styles.refreshButton}>
+            <RefreshCw size={18} color={colors.teal} />
+          </Pressable>
+        </View>
+        <AppText color={colors.muted}>Tải phiếu lên, xem tổng quan AI, chỉ số cần chú ý và theo dõi thay đổi qua các lần xét nghiệm.</AppText>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <View style={styles.trends}>
+        <LabTrendsPanel onOpenSession={(sessionId) => openSession({ sessionId, status: "completed" })} />
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
         {FILTERS.map(({ value, label }) => {
           const selected = historyFilter === value;
           return (
@@ -134,9 +154,15 @@ export function RecordsScreen() {
 
       {historyInfo.totalPages > 1 ? (
         <View style={styles.pagination}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Trang trước" disabled={historyPage <= 1} onPress={() => setHistoryPage((current) => current - 1)} style={[styles.pageButton, historyPage <= 1 && styles.pageButtonDisabled]}>
+            <ChevronLeft size={18} color={colors.ink} />
+          </Pressable>
           <AppText variant="caption" color={colors.subtle}>
             Trang {historyPage}/{historyInfo.totalPages} · {historyInfo.totalCount} phiên
           </AppText>
+          <Pressable accessibilityRole="button" accessibilityLabel="Trang sau" disabled={historyPage >= historyInfo.totalPages} onPress={() => setHistoryPage((current) => current + 1)} style={[styles.pageButton, historyPage >= historyInfo.totalPages && styles.pageButtonDisabled]}>
+            <ChevronRight size={18} color={colors.ink} />
+          </Pressable>
         </View>
       ) : null}
 
@@ -147,28 +173,33 @@ export function RecordsScreen() {
       <UploadRecordSheet
         visible={uploadVisible}
         profile={profile}
-        testDate={testDate}
         document={document}
         formError={formError}
         submissionStatus={submissionStatus}
         submissionMessage={submissionMessage}
         onClose={() => setUploadVisible(false)}
-        onPickDocument={pickDocument}
+        onPickImage={pickImage}
+        onPickPdf={pickPdf}
+        onTakePhoto={takePhoto}
         onClearDocument={clearDocument}
-        onChangeTestDate={setTestDate}
         onSubmit={handleSubmit}
       />
 
       <SessionDetailSheet
         visible={detailVisible}
         session={selectedSession}
+        ocrExtracts={ocrExtracts}
         state={detailState}
         error={detailError}
+        summary={summaryText}
+        summaryState={summaryState}
+        summaryError={summaryError}
         onClose={() => {
           setDetailVisible(false);
           clearSelectedSession();
         }}
         onRetry={retryDetail}
+        onRetrySummary={retrySummary}
       />
     </Screen>
   );
@@ -182,13 +213,25 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.lg,
   },
+  headerTop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  headerCopy: { flex: 1, gap: spacing.sm },
+  refreshButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper },
+  trends: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  filterScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   filterRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
   filterChip: {
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.pill,
@@ -209,9 +252,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   pagination: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.md,
     paddingVertical: spacing.sm,
   },
+  pageButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper },
+  pageButtonDisabled: { opacity: 0.35 },
   fab: {
     position: "absolute",
     right: spacing.lg,

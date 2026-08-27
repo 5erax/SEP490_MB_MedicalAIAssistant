@@ -1,26 +1,26 @@
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { FileText, Image as ImageIcon, Trash2, Upload, X } from "lucide-react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Camera, FileText, Image as ImageIcon, Images, Trash2, X } from "lucide-react-native";
 
 import { AppText, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { PickedDocument } from "@/src/services/cloudinaryUploadService";
 import { UserProfile } from "@/src/types/user";
+import { formatGenderLabel } from "@/src/utils/labTestPresentation";
 
 type SubmissionStatus = "idle" | "uploading" | "analyzing" | "success" | "error";
 
 type UploadRecordSheetProps = {
   visible: boolean;
   profile: UserProfile | null;
-  testDate: string;
   document: PickedDocument | null;
   formError: string;
   submissionStatus: SubmissionStatus;
   submissionMessage: string;
   onClose: () => void;
-  onPickDocument: () => void;
+  onPickImage: () => void;
+  onPickPdf: () => void;
+  onTakePhoto: () => void;
   onClearDocument: () => void;
-  onChangeTestDate: (date: string) => void;
   onSubmit: () => void;
 };
 
@@ -30,33 +30,24 @@ function formatDateLabel(value: string) {
   return `${day}/${month}/${year}`;
 }
 
-function toIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function submitLabel(status: SubmissionStatus) {
   if (status === "uploading") return "Đang tải tài liệu...";
   if (status === "analyzing") return "Đang gửi phân tích...";
   return "Phân tích kết quả";
 }
 
-const GENDER_LABEL: Record<number, string> = { 1: "Nam", 2: "Nữ", 0: "Khác" };
-
 export function UploadRecordSheet({
   visible,
   profile,
-  testDate,
   document,
   formError,
   submissionStatus,
   submissionMessage,
   onClose,
-  onPickDocument,
+  onPickImage,
+  onPickPdf,
+  onTakePhoto,
   onClearDocument,
-  onChangeTestDate,
   onSubmit,
 }: UploadRecordSheetProps) {
   const busy = submissionStatus === "uploading" || submissionStatus === "analyzing";
@@ -87,29 +78,12 @@ export function UploadRecordSheet({
             </View>
             <View style={styles.infoRow}>
               <AppText color={colors.muted}>Giới tính</AppText>
-              <AppText variant="bodyStrong">{GENDER_LABEL[Number(profile?.gender ?? -1)] || "—"}</AppText>
+              <AppText variant="bodyStrong">{formatGenderLabel(profile?.gender)}</AppText>
             </View>
             <View style={styles.infoRow}>
               <AppText color={colors.muted}>Ngày sinh</AppText>
               <AppText variant="bodyStrong">{profile?.dateOfBirth ? formatDateLabel(String(profile.dateOfBirth).slice(0, 10)) : "—"}</AppText>
             </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <AppText variant="caption" color={colors.muted}>
-              Ngày xét nghiệm
-            </AppText>
-            <DateTimePicker
-              value={testDate ? new Date(testDate) : new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              maximumDate={new Date()}
-              onChange={(event, selectedDate) => {
-                if (event.type === "set" && selectedDate) {
-                  onChangeTestDate(toIsoDate(selectedDate));
-                }
-              }}
-            />
           </View>
 
           <View style={styles.fieldGroup}>
@@ -127,13 +101,25 @@ export function UploadRecordSheet({
                 </Pressable>
               </View>
             ) : (
-              <Pressable accessibilityRole="button" onPress={onPickDocument} disabled={busy} style={styles.dropzone}>
-                <Upload size={22} color={colors.teal} />
-                <AppText variant="bodyStrong">Chọn ảnh hoặc PDF</AppText>
-                <AppText variant="caption" color={colors.subtle}>
-                  Hỗ trợ JPG, PNG, PDF · tối đa 10 MB
-                </AppText>
-              </Pressable>
+              <View style={styles.sourceOptions}>
+                <Pressable accessibilityRole="button" onPress={onPickImage} disabled={busy} style={styles.sourceOption}>
+                  <Images size={22} color={colors.teal} />
+                  <AppText variant="bodyStrong">Thư viện ảnh</AppText>
+                  <AppText variant="caption" color={colors.subtle}>Chọn JPG hoặc PNG</AppText>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={onTakePhoto} disabled={busy} style={styles.sourceOption}>
+                  <Camera size={22} color={colors.teal} />
+                  <AppText variant="bodyStrong">Chụp ảnh</AppText>
+                  <AppText variant="caption" color={colors.subtle}>Mở camera thiết bị</AppText>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={onPickPdf} disabled={busy} style={styles.pdfOption}>
+                  <FileText size={20} color={colors.teal} />
+                  <View style={styles.pdfCopy}>
+                    <AppText variant="bodyStrong">Chọn tệp PDF</AppText>
+                    <AppText variant="caption" color={colors.subtle}>Tối đa 10 MB</AppText>
+                  </View>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -144,7 +130,7 @@ export function UploadRecordSheet({
           ) : null}
 
           <AppText variant="caption" color={colors.subtle}>
-            {submissionMessage || "Không tải tài liệu chứa giấy tờ tùy thân hoặc dữ liệu của người khác."}
+            {submissionMessage || "Ngày của phiên được ghi nhận tự động khi hệ thống tiếp nhận tài liệu. Không tải giấy tờ tùy thân hoặc dữ liệu của người khác."}
           </AppText>
         </ScrollView>
 
@@ -218,7 +204,10 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: spacing.sm,
   },
-  dropzone: {
+  sourceOptions: {
+    gap: spacing.sm,
+  },
+  sourceOption: {
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
@@ -226,7 +215,20 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderColor: colors.lineStrong,
     borderRadius: radius.md,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
+  },
+  pdfOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  pdfCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   documentPreview: {
     flexDirection: "row",

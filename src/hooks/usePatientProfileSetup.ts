@@ -13,6 +13,7 @@ import { UserProfile } from "@/src/types/user";
 import {
   MedicalProfileErrors,
   PersonalProfileErrors,
+  toGenderFormValue,
   validateMedicalProfile,
   validatePersonalProfile,
 } from "@/src/utils/profileValidation";
@@ -92,7 +93,7 @@ export function usePatientProfileSetup() {
         ...current,
         displayName: resolvedUser?.displayName || resolvedUser?.name || "",
         dateOfBirth: toDateInput(resolvedUser?.dateOfBirth),
-        gender: String(resolvedUser?.gender ?? "1"),
+        gender: toGenderFormValue(resolvedUser?.gender),
         phoneNumber: resolvedUser?.phoneNumber || "",
         address: resolvedUser?.address || "",
       }));

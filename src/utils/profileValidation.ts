@@ -4,17 +4,69 @@ import { ChronicDisease } from "@/src/types/patientProfile";
 const PHONE_PATTERN = /^(?:0\d{8,10}|\+[1-9]\d{8,14})$/;
 export const MAX_NOTE_LENGTH = 1000;
 export const MAX_DISEASE_NAME_LENGTH = 160;
+export const MAXIMUM_PATIENT_AGE = 100;
 
 export function normalizePhoneNumber(value: unknown) {
   return String(value ?? "").trim().replace(/[\s.-]/g, "");
 }
 
-function isDateInRange(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return false;
-  const min = new Date(1900, 0, 1);
-  const max = new Date();
-  return date >= min && date <= max;
+export function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function parseDateInputValue(value: string) {
+  const match = String(value ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return date;
+}
+
+export function getLatestAllowedBirthDate(today = new Date()) {
+  return formatDateInputValue(new Date(today.getFullYear(), today.getMonth(), today.getDate()));
+}
+
+export function getEarliestAllowedBirthDate(today = new Date()) {
+  const targetYear = today.getFullYear() - MAXIMUM_PATIENT_AGE - 1;
+  const lastDayOfTargetMonth = new Date(targetYear, today.getMonth() + 1, 0).getDate();
+  const cutoff = new Date(targetYear, today.getMonth(), Math.min(today.getDate(), lastDayOfTargetMonth));
+  cutoff.setDate(cutoff.getDate() + 1);
+  return formatDateInputValue(cutoff);
+}
+
+function validateDateOfBirth(value: string) {
+  const date = parseDateInputValue(value);
+  if (!date) return "Ngày sinh không hợp lệ. Vui lòng kiểm tra lại.";
+
+  const earliest = parseDateInputValue(getEarliestAllowedBirthDate());
+  const latest = parseDateInputValue(getLatestAllowedBirthDate());
+  if (!earliest || !latest) return "Ngày sinh không hợp lệ. Vui lòng kiểm tra lại.";
+  if (date < earliest) return "Tuổi không được vượt quá 100. Vui lòng kiểm tra lại ngày sinh.";
+  if (date > latest) return "Ngày sinh không thể nằm trong tương lai.";
+  return "";
+}
+
+export function toGenderFormValue(value: unknown): PersonalProfileForm["gender"] {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["female", "2"].includes(normalized)) return "2";
+  return "1";
+}
+
+export function normalizeGender(value: unknown): "male" | "female" | null {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (["male", "1"].includes(normalized)) return "male";
+  if (["female", "2"].includes(normalized)) return "female";
+  return null;
 }
 
 function validateMeasurement(value: unknown, minimum: number, maximum: number, label: string) {
@@ -50,8 +102,9 @@ export function validatePersonalProfile(form: PersonalProfileForm, { required = 
 
   if (required && !form.dateOfBirth) {
     errors.dateOfBirth = "Vui lòng chọn ngày sinh.";
-  } else if (form.dateOfBirth && !isDateInRange(form.dateOfBirth)) {
-    errors.dateOfBirth = "Ngày sinh phải từ năm 1900 đến hôm nay.";
+  } else if (form.dateOfBirth) {
+    const dateOfBirthError = validateDateOfBirth(form.dateOfBirth);
+    if (dateOfBirthError) errors.dateOfBirth = dateOfBirthError;
   }
 
   if (required && !phoneNumber) {
@@ -66,7 +119,7 @@ export function validatePersonalProfile(form: PersonalProfileForm, { required = 
     errors.address = "Địa chỉ phải có từ 5 đến 255 ký tự.";
   }
 
-  if (!["0", "1", "2"].includes(String(form.gender))) {
+  if (!normalizeGender(form.gender)) {
     errors.gender = "Vui lòng chọn giới tính hợp lệ.";
   }
 
@@ -76,11 +129,14 @@ export function validatePersonalProfile(form: PersonalProfileForm, { required = 
 export function normalizePersonalProfile(form: PersonalProfileForm) {
   return {
     displayName: String(form.displayName ?? "").trim(),
-    address: String(form.address ?? "").trim(),
-    gender: Number(form.gender),
+    address: String(form.address ?? "").trim() || null,
+    gender: normalizeGender(form.gender),
     dateOfBirth: form.dateOfBirth || null,
-    phoneNumber: normalizePhoneNumber(form.phoneNumber) || null,
   };
+}
+
+export function normalizePhoneProfile(form: PersonalProfileForm) {
+  return normalizePhoneNumber(form.phoneNumber) || null;
 }
 
 export type MedicalProfileForm = {

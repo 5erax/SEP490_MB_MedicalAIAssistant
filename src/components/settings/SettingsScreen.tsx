@@ -14,9 +14,8 @@ import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useLogout } from "@/src/hooks";
 import { ROUTES } from "@/src/navigation/routes";
 
-// Web's only entry point for Medical Records is a persistent sidebar nav
-// item (excluded from Web's own mobile bottom-nav set) — Settings is the
-// closest native equivalent to a secondary, always-reachable nav hub.
+// Keep a secondary entry point in Settings in addition to the persistent
+// patient tab so the feature stays discoverable from the account hub.
 const FEATURE_LINKS = [{ icon: ClipboardList, label: "Phân tích xét nghiệm", route: ROUTES.PATIENT.RECORDS }] as const;
 
 const LEGAL_LINKS = [

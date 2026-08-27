@@ -14,6 +14,7 @@ import { AppText, Button, Card, LoadingState, Screen, TextField } from "@/src/co
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { usePatientProfileSetup } from "@/src/hooks/usePatientProfileSetup";
 import { ChronicDisease } from "@/src/types/patientProfile";
+import { DateOfBirthField } from "./DateOfBirthField";
 
 const BLOOD_TYPES = ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
@@ -38,7 +39,6 @@ export function PatientProfileSetupScreen() {
     updateDisease,
     submit,
   } = usePatientProfileSetup();
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeDiseasePicker, setActiveDiseasePicker] = useState<{ localId: string; field: "from" | "to" } | null>(null);
 
   if (loading) {
@@ -72,38 +72,12 @@ export function PatientProfileSetupScreen() {
           error={personalErrors.displayName}
         />
 
-        <View style={styles.fieldGroup}>
-          <AppText variant="caption" color={personalErrors.dateOfBirth ? colors.danger : colors.muted}>
-            Ngày sinh
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            disabled={submitting}
-            onPress={() => setShowDatePicker(true)}
-            style={[styles.dateInput, personalErrors.dateOfBirth && styles.dateInputError]}
-          >
-            <AppText color={form.dateOfBirth ? colors.ink : colors.subtle}>{form.dateOfBirth || "Chọn ngày sinh"}</AppText>
-          </Pressable>
-          {personalErrors.dateOfBirth ? (
-            <AppText variant="caption" color={colors.danger}>
-              {personalErrors.dateOfBirth}
-            </AppText>
-          ) : null}
-          {showDatePicker ? (
-            <DateTimePicker
-              value={form.dateOfBirth ? new Date(form.dateOfBirth) : new Date(2000, 0, 1)}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              maximumDate={new Date()}
-              onChange={(event, selectedDate) => {
-                setShowDatePicker(Platform.OS === "ios");
-                if (event.type === "set" && selectedDate) {
-                  updateField("dateOfBirth", toIsoDate(selectedDate));
-                }
-              }}
-            />
-          ) : null}
-        </View>
+        <DateOfBirthField
+          value={form.dateOfBirth}
+          onChange={(value) => updateField("dateOfBirth", value)}
+          disabled={submitting}
+          error={personalErrors.dateOfBirth}
+        />
 
         <View style={styles.fieldGroup}>
           <AppText variant="caption" color={personalErrors.gender ? colors.danger : colors.muted}>
@@ -347,19 +321,6 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: spacing.sm,
-  },
-  dateInput: {
-    minHeight: 48,
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: radius.sm,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
-  },
-  dateInputError: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerBg,
   },
   segmented: {
     flexDirection: "row",

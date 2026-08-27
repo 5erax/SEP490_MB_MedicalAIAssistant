@@ -101,7 +101,7 @@ function buildRegisterPayload(form: RegisterForm): RegisterPayload {
     userName: form.userName.trim(),
     displayName: form.displayName.trim(),
     address: form.address.trim(),
-    gender: Number(form.gender),
+    gender: form.gender === "2" ? "female" : "male",
     dateOfBirth: form.dateOfBirth.trim() || null,
     password: form.password,
     confirmPassword: form.confirmPassword,

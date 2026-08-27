@@ -14,11 +14,13 @@ import { UserProfile } from "@/src/types/user";
 import {
   MedicalProfileErrors,
   MedicalProfileForm,
+  normalizePhoneProfile,
   normalizePersonalProfile,
   PersonalProfileErrors,
   PersonalProfileForm,
   validateMedicalProfile,
   validatePersonalProfile,
+  toGenderFormValue,
 } from "@/src/utils/profileValidation";
 
 type SectionState = "loading" | "ready" | "error";
@@ -99,7 +101,7 @@ export function useProfile() {
       setEmail(user?.email || "");
       setPersonalForm({
         displayName: user?.displayName || user?.name || "",
-        gender: String(user?.gender ?? "1"),
+        gender: toGenderFormValue(user?.gender),
         dateOfBirth: user?.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : "",
         phoneNumber: user?.phoneNumber || "",
         address: user?.address || "",
@@ -166,7 +168,7 @@ export function useProfile() {
     setPersonalForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function savePersonal(userId: string) {
+  async function savePersonal() {
     const errors = validatePersonalProfile(personalForm);
     if (Object.keys(errors).length > 0) {
       setPersonalErrors(errors);
@@ -176,7 +178,8 @@ export function useProfile() {
     setSavingPersonal(true);
     setPersonalSaveError("");
     try {
-      await authService.updateUser(userId, normalizePersonalProfile(personalForm));
+      await authService.updateMe(normalizePersonalProfile(personalForm));
+      await authService.updatePhone(normalizePhoneProfile(personalForm));
       setIsEditingPersonal(false);
       setPersonalErrors({});
       return "success" as const;

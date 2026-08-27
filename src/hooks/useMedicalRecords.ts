@@ -5,11 +5,12 @@
 // 3s while the selected session is still "processing".
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 
 import { authService } from "@/src/services/authService";
 import { labTestsApi } from "@/src/services/labTestService";
 import { PickedDocument, uploadMedicalDocumentToCloudinary, validateMedicalDocument } from "@/src/services/cloudinaryUploadService";
-import { LabSessionStatus, LabTestSession } from "@/src/types/labTest";
+import { LabOcrExtract, LabSessionStatus, LabTestSession } from "@/src/types/labTest";
 import { UserProfile } from "@/src/types/user";
 import { calculateAgeAtTest, genderToAnalysisGender, todayInputValue } from "@/src/utils/labTestPresentation";
 
@@ -21,14 +22,13 @@ const POLL_INTERVAL_MS = 3000;
 
 function documentIdentity(document: PickedDocument | null) {
   if (!document) return "";
-  return `${document.fileName || ""}:${document.fileSize || ""}`;
+  return `${document.uri}:${document.fileName || ""}:${document.fileSize || ""}`;
 }
 
 export function useMedicalRecords() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileState, setProfileState] = useState<SectionState>("loading");
 
-  const [testDate, setTestDate] = useState(todayInputValue());
   const [document, setDocument] = useState<PickedDocument | null>(null);
   const [uploadedDocument, setUploadedDocument] = useState<{ identity: string; secureUrl: string } | null>(null);
   const [formError, setFormError] = useState("");
@@ -46,6 +46,10 @@ export function useMedicalRecords() {
   const [selectedSession, setSelectedSession] = useState<LabTestSession | null>(null);
   const [detailState, setDetailState] = useState<"idle" | SectionState>("idle");
   const [detailError, setDetailError] = useState("");
+  const [ocrExtracts, setOcrExtracts] = useState<LabOcrExtract[]>([]);
+  const [summaryText, setSummaryText] = useState("");
+  const [summaryState, setSummaryState] = useState<"idle" | SectionState>("idle");
+  const [summaryError, setSummaryError] = useState("");
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -89,8 +93,18 @@ export function useMedicalRecords() {
     if (!quiet) setDetailState("loading");
     setDetailError("");
     try {
-      const response = await labTestsApi.get(sessionId);
-      setSelectedSession(response.data ?? null);
+      const [response, extractsResponse] = await Promise.all([
+        labTestsApi.get(sessionId),
+        labTestsApi.ocrExtracts(sessionId).catch(() => ({ data: [] as LabOcrExtract[] })),
+      ]);
+      const session = response.data ?? null;
+      setSelectedSession(session);
+      setOcrExtracts(extractsResponse.data ?? []);
+      if (session?.aiSummary) {
+        setSummaryText(session.aiSummary);
+        setSummaryState("ready");
+        setSummaryError("");
+      }
       setDetailState("ready");
     } catch (error) {
       if (!quiet) {
@@ -99,6 +113,24 @@ export function useMedicalRecords() {
       }
     }
   }, []);
+
+  const loadSummary = useCallback(async (sessionId: string) => {
+    setSummaryState("loading");
+    setSummaryError("");
+    try {
+      const response = await labTestsApi.summarize(sessionId);
+      setSummaryText(response.data ?? "");
+      setSummaryState("ready");
+    } catch (error) {
+      setSummaryState("error");
+      setSummaryError((error as Error)?.message || "Chưa thể tạo tóm tắt tổng quan. Vui lòng thử lại.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedSession?.status !== "completed" || !(selectedSession.results?.length) || selectedSession.aiSummary || summaryState !== "idle") return;
+    void loadSummary(selectedSession.sessionId);
+  }, [selectedSession, summaryState, loadSummary]);
 
   // Poll every 3s while the selected session is still processing, matching
   // Web's auto-refresh-on-processing behavior.
@@ -120,6 +152,10 @@ export function useMedicalRecords() {
 
   function selectSession(session: LabTestSession) {
     setSelectedSession(session);
+    setOcrExtracts([]);
+    setSummaryText(session.aiSummary ?? "");
+    setSummaryState(session.aiSummary ? "ready" : "idle");
+    setSummaryError("");
     loadSessionDetail(session.sessionId);
   }
 
@@ -127,25 +163,74 @@ export function useMedicalRecords() {
     setSelectedSession(null);
     setDetailState("idle");
     setDetailError("");
+    setOcrExtracts([]);
+    setSummaryText("");
+    setSummaryState("idle");
+    setSummaryError("");
   }
 
-  async function pickDocument() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["image/jpeg", "image/png", "application/pdf"],
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled || !result.assets?.length) return;
-
-    const asset = result.assets[0];
-    const picked: PickedDocument = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name };
+  function acceptDocument(picked: PickedDocument) {
     try {
       validateMedicalDocument(picked);
       setDocument(picked);
       setUploadedDocument(null);
       setFormError("");
+      setSubmissionStatus("idle");
+      setSubmissionMessage("");
     } catch (error) {
       setFormError((error as Error).message);
     }
+  }
+
+  async function pickPdf() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({ uri: asset.uri, file: asset.file, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name });
+  }
+
+  async function pickImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({
+      uri: asset.uri,
+      file: asset.file,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileSize: asset.fileSize,
+      fileName: asset.fileName || `lab-test-${Date.now()}.jpg`,
+    });
+  }
+
+  async function takePhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setFormError("Cần cho phép truy cập camera để chụp phiếu xét nghiệm.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({
+      uri: asset.uri,
+      file: asset.file,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileSize: asset.fileSize,
+      fileName: asset.fileName || `lab-test-camera-${Date.now()}.jpg`,
+    });
   }
 
   function clearDocument() {
@@ -158,10 +243,6 @@ export function useMedicalRecords() {
       setFormError("Hãy chọn ảnh hoặc PDF phiếu xét nghiệm.");
       return "invalid" as const;
     }
-    if (!testDate || testDate > todayInputValue()) {
-      setFormError("Ngày xét nghiệm không được ở tương lai.");
-      return "invalid" as const;
-    }
     if (!profile?.dateOfBirth) {
       setFormError("Hồ sơ cá nhân chưa có ngày sinh.");
       return "invalid" as const;
@@ -171,9 +252,9 @@ export function useMedicalRecords() {
       setFormError("Giới tính trong hồ sơ chưa phù hợp với biểu mẫu phân tích hiện tại.");
       return "invalid" as const;
     }
-    const ageAtTest = calculateAgeAtTest(profile.dateOfBirth, testDate);
+    const ageAtTest = calculateAgeAtTest(profile.dateOfBirth, todayInputValue());
     if (ageAtTest === null) {
-      setFormError("Ngày xét nghiệm phải sau ngày sinh trong hồ sơ.");
+      setFormError("Ngày sinh trong hồ sơ chưa hợp lệ.");
       return "invalid" as const;
     }
 
@@ -195,10 +276,13 @@ export function useMedicalRecords() {
         documentUrl: secureUrl,
         patientGenderAtTest: gender,
         patientAgeAtTest: ageAtTest,
-        testDate,
       });
 
       setSelectedSession(response.data ?? null);
+      setOcrExtracts([]);
+      setSummaryText(response.data?.aiSummary ?? "");
+      setSummaryState(response.data?.aiSummary ? "ready" : "idle");
+      setSummaryError("");
       setDetailState("ready");
       setSubmissionStatus("success");
       setSubmissionMessage("Đã gửi phiếu xét nghiệm để phân tích.");
@@ -217,11 +301,11 @@ export function useMedicalRecords() {
     profileState,
     reloadProfile: loadProfile,
 
-    testDate,
-    setTestDate,
     document,
     formError,
-    pickDocument,
+    pickImage,
+    pickPdf,
+    takePhoto,
     clearDocument,
 
     submissionStatus,
@@ -239,10 +323,15 @@ export function useMedicalRecords() {
     reloadHistory: () => loadHistory(historyPage, historyFilter),
 
     selectedSession,
+    ocrExtracts,
     detailState,
     detailError,
+    summaryText,
+    summaryState,
+    summaryError,
     selectSession,
     clearSelectedSession,
     retryDetail: () => selectedSession && loadSessionDetail(selectedSession.sessionId),
+    retrySummary: () => selectedSession && loadSummary(selectedSession.sessionId),
   };
 }
