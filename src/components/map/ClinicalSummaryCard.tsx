@@ -111,8 +111,8 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
               {descriptionExpanded ? (
                 <AppText color={colors.muted}>{departmentDescription}</AppText>
               ) : (
-                <AppText variant="caption" color={colors.subtle}>
-                  Chạm để xem mô tả và phạm vi tiếp nhận của chuyên khoa này.
+                <AppText color={colors.muted} numberOfLines={3}>
+                  {departmentDescription}
                 </AppText>
               )}
             </Pressable>
