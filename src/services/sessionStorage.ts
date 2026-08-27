@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 import { STORAGE_KEYS } from "@/src/constants/storageKeys";
 import { AuthSession } from "@/src/types/auth";
@@ -10,6 +11,7 @@ import { isExpiredToken } from "@/src/utils/jwt";
 // has a practical ~2KB per-value limit on some iOS releases, so only the
 // small, sensitive token pair is stored there.
 const TOKEN_KEY = `${STORAGE_KEYS.authSession}.tokens`;
+const WEB_TOKEN_KEY = `${TOKEN_KEY}.web`;
 
 type StoredTokens = {
   accessToken?: string;
@@ -18,7 +20,9 @@ type StoredTokens = {
 
 async function getStoredTokens(): Promise<StoredTokens | null> {
   try {
-    const raw = await SecureStore.getItemAsync(TOKEN_KEY);
+    const raw = Platform.OS === "web"
+      ? await AsyncStorage.getItem(WEB_TOKEN_KEY)
+      : await SecureStore.getItemAsync(TOKEN_KEY);
     return raw ? (JSON.parse(raw) as StoredTokens) : null;
   } catch {
     return null;
@@ -26,10 +30,19 @@ async function getStoredTokens(): Promise<StoredTokens | null> {
 }
 
 async function setStoredTokens(tokens: StoredTokens) {
-  await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(tokens));
+  const value = JSON.stringify(tokens);
+  if (Platform.OS === "web") {
+    await AsyncStorage.setItem(WEB_TOKEN_KEY, value);
+    return;
+  }
+  await SecureStore.setItemAsync(TOKEN_KEY, value);
 }
 
 async function clearStoredTokens() {
+  if (Platform.OS === "web") {
+    await AsyncStorage.removeItem(WEB_TOKEN_KEY);
+    return;
+  }
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 
