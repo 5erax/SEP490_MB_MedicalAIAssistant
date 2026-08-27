@@ -12,12 +12,11 @@
 // - trackUxEvent analytics call — no analytics service exists in this repo yet.
 import { useEffect, useState } from "react";
 
-import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
+import { readResultPayload, symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
 import {
   buildClinicalQuestionAnswerItems,
   isClinicalQuestionAnswered,
   readSuggestClinicalQuestionsPayload,
-  unwrapApiData,
 } from "@/src/utils/clinicalQuestions";
 import { ApiError } from "@/src/api/client";
 import { AnswerValue, ClinicalAnalysisResult, ClinicalQuestion } from "@/src/types/symptomAnalysis";
@@ -145,14 +144,10 @@ export function useSymptomIntake({ onResult }: UseSymptomIntakeOptions = {}) {
     try {
       const payload = buildClinicalQuestionAnswerItems(questions, answers);
       const recommendationResponse = await symptomAnalysisApi.submitClinicalQuestionAnswers(sessionId, payload);
-      const recommendation = (unwrapApiData<Record<string, unknown>>(recommendationResponse) ?? {}) as Record<string, unknown>;
-      const completedResult: ClinicalAnalysisResult = {
-        recommendedDepartment: (recommendation.recommendedDepartment ?? recommendation.RecommendedDepartment ?? null) as ClinicalAnalysisResult["recommendedDepartment"],
-        recommendedFacilities: Array.isArray(recommendation.recommendedFacilities)
-          ? recommendation.recommendedFacilities
-          : Array.isArray(recommendation.RecommendedFacilities)
-            ? (recommendation.RecommendedFacilities as ClinicalAnalysisResult["recommendedFacilities"])
-            : [],
+      const completedResult = readResultPayload(recommendationResponse) ?? {
+        diagnoses: [],
+        recommendedDepartment: null,
+        recommendedFacilities: [],
       };
       writeStoredIntakeState({ input, sessionId, questions, answers, currentQuestionIndex, result: completedResult, status: "result" });
       setResult(completedResult);

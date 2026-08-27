@@ -210,6 +210,7 @@ export function MapScreen() {
           clinicalStatus={clinical.status}
           clinicalNotice={clinical.notice}
           department={clinical.context?.recommendedDepartment ?? null}
+          diagnoses={clinical.context?.diagnoses ?? []}
           facilities={visibleFacilities}
           hasActiveFacilitiesWithoutMapData={hasActiveFacilitiesWithoutMapData}
           loading={loading}
@@ -244,6 +245,7 @@ type FacilityListSheetProps = {
       ? Department | null
       : null
     : null;
+  diagnoses: NonNullable<ReturnType<typeof useClinicalRecommendation>["context"]>["diagnoses"];
   facilities: NormalizedFacility[];
   hasActiveFacilitiesWithoutMapData: boolean;
   loading: boolean;
@@ -268,6 +270,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
   clinicalStatus,
   clinicalNotice,
   department,
+  diagnoses,
   facilities,
   hasActiveFacilitiesWithoutMapData,
   loading,
@@ -305,6 +308,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
           status={clinicalStatus}
           notice={clinicalNotice}
           department={department}
+          diagnoses={diagnoses}
           unavailableCount={unavailableCount}
           recommendedCount={facilities.length}
           sessionId={sessionId}
@@ -342,6 +346,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
       availableTypes,
       clinicalNotice,
       clinicalStatus,
+      diagnoses,
       department,
       facilities.length,
       hasActiveFacilitiesWithoutMapData,

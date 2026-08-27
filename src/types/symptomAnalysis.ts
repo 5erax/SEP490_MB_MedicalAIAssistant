@@ -44,12 +44,14 @@ export type ClinicalFacility = {
 };
 
 export type ClinicalAnalysisResult = {
+  diagnoses?: ClinicalDiagnosis[];
   recommendedDepartment: ClinicalDepartment | null;
   recommendedFacilities: ClinicalFacility[];
   [key: string]: unknown;
 };
 
 export type ClinicalMapSnapshot = {
+  diagnoses: ClinicalDiagnosis[];
   sessionId: string;
   recommendedDepartment: ClinicalDepartment | null;
   recommendedFacilities: ClinicalFacility[];

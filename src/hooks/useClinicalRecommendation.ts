@@ -7,12 +7,13 @@
 import { useEffect, useState } from "react";
 
 import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
-import { ClinicalDepartment, ClinicalFacility } from "@/src/types/symptomAnalysis";
+import { ClinicalDepartment, ClinicalDiagnosis, ClinicalFacility } from "@/src/types/symptomAnalysis";
 import { useAuth } from "@/src/providers";
 
 export type ClinicalStatus = "idle" | "locked" | "loading" | "ready" | "error";
 
 export type ClinicalRecommendationContext = {
+  diagnoses: ClinicalDiagnosis[];
   recommendedDepartment: ClinicalDepartment | null;
   recommendedFacilities: ClinicalFacility[];
   sessionId: string;
@@ -54,8 +55,9 @@ export function useClinicalRecommendation(params: Params) {
 
     symptomAnalysisApi.getCachedClinicalAnalysis(params.sessionId).then((snapshot) => {
       if (!active) return;
-      if (snapshot && (snapshot.recommendedDepartment || snapshot.recommendedFacilities.length)) {
+      if (snapshot && (snapshot.recommendedDepartment || snapshot.recommendedFacilities.length || snapshot.diagnoses.length)) {
         setContext({
+          diagnoses: snapshot.diagnoses ?? [],
           recommendedDepartment: snapshot.recommendedDepartment,
           recommendedFacilities: snapshot.recommendedFacilities,
           sessionId: snapshot.sessionId,
