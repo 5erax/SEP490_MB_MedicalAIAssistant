@@ -86,11 +86,15 @@ function createFacilitySnapshot(facility: unknown): ClinicalFacility | null {
 function createClinicalMapSnapshot(analysis: unknown, fallbackSessionId: string): ClinicalMapSnapshot | null {
   if (!isPlainObject(analysis)) return null;
 
+  const departmentItems = analysis.recommendedDepartments ?? analysis.RecommendedDepartments;
+  const firstRecommendedDepartment = Array.isArray(departmentItems) ? departmentItems[0] : null;
   const facilityItems = analysis.recommendedFacilities ?? analysis.RecommendedFacilities;
   const recommendedFacilities = (Array.isArray(facilityItems) ? facilityItems : [])
     .map(createFacilitySnapshot)
     .filter((facility): facility is ClinicalFacility => Boolean(facility));
-  const recommendedDepartment = createDepartmentSnapshot(analysis.recommendedDepartment ?? analysis.RecommendedDepartment)
+  const recommendedDepartment = createDepartmentSnapshot(
+    analysis.recommendedDepartment ?? analysis.RecommendedDepartment ?? firstRecommendedDepartment,
+  )
     ?? recommendedFacilities[0]?.departments?.[0]
     ?? null;
 
