@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronUp, Clock3, ClipboardList, Moon, Route, ShieldAlert } from "lucide-react-native";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronUp, Clock3, ClipboardList, Moon, Route, ShieldAlert, Star } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
+import { StarRatingDisplay } from "@/src/components/reviews/StarRatingInput";
 import { RecoveryPlan, RecoveryPlanPhase } from "@/src/types/recoveryPlan";
 import { CANCELLABLE_PLAN_STATUSES, formatDateOnly, PLAN_STATUS } from "@/src/utils/recoveryPlanPresentation";
 
@@ -105,9 +106,10 @@ type PlanDetailSheetProps = {
   onClose: () => void;
   onStart: (planId: string) => void;
   onCancel: (planId: string) => void;
+  onFeedback: () => void;
 };
 
-export function PlanDetailSheet({ visible, plan, state, starting, cancelling, onClose, onStart, onCancel }: PlanDetailSheetProps) {
+export function PlanDetailSheet({ visible, plan, state, starting, cancelling, onClose, onStart, onCancel, onFeedback }: PlanDetailSheetProps) {
   const status = plan ? PLAN_STATUS[plan.status] : null;
   const phaseCount = plan?.phases?.length ?? 0;
   const cancellable = plan ? CANCELLABLE_PLAN_STATUSES.has(plan.status) : false;
@@ -212,6 +214,47 @@ export function PlanDetailSheet({ visible, plan, state, starting, cancelling, on
                   <AppText color={colors.muted} style={styles.recheckText}>
                     {plan.recheckInstruction}
                   </AppText>
+                </View>
+              ) : null}
+
+              {plan.status === "completed" ? (
+                <View style={styles.feedbackCard}>
+                  <View style={styles.feedbackHeader}>
+                    <CalendarDays size={18} color={colors.teal} />
+                    <View style={styles.feedbackHeaderText}>
+                      <AppText variant="caption" color={colors.subtle}>
+                        HOÀN TẤT KẾ HOẠCH
+                      </AppText>
+                      <AppText variant="bodyStrong">Kế hoạch đã hoàn thành</AppText>
+                    </View>
+                  </View>
+                  <View style={styles.feedbackCompletedRow}>
+                    <AppText variant="caption" color={colors.subtle}>
+                      Hoàn thành
+                    </AppText>
+                    <AppText variant="bodyStrong">{formatDateOnly(plan.completedAt || plan.endDate)}</AppText>
+                  </View>
+                  {plan.feedbackSubmittedAt ? (
+                    <View style={styles.feedbackSubmittedRow}>
+                      <StarRatingDisplay value={plan.feedbackRating ?? 0} size={16} />
+                      <AppText variant="caption" color={colors.subtle}>
+                        Đã đánh giá {formatDateOnly(plan.feedbackSubmittedAt)}
+                      </AppText>
+                      {plan.feedbackNote ? <AppText color={colors.muted}>{plan.feedbackNote}</AppText> : null}
+                    </View>
+                  ) : (
+                    <View style={styles.feedbackPromptRow}>
+                      <View style={styles.feedbackPromptText}>
+                        <AppText variant="bodyStrong">Bạn chưa đánh giá kế hoạch này.</AppText>
+                        <AppText variant="caption" color={colors.subtle}>
+                          Chia sẻ mức độ hài lòng sau khi hoàn thành để phản hồi trải nghiệm của bạn.
+                        </AppText>
+                      </View>
+                      <Button variant="secondary" size="sm" leftIcon={<Star size={15} color={colors.amber} />} onPress={onFeedback}>
+                        Đánh giá kế hoạch
+                      </Button>
+                    </View>
+                  )}
                 </View>
               ) : null}
 
@@ -451,6 +494,42 @@ const styles = StyleSheet.create({
   },
   recheckText: {
     flex: 1,
+  },
+  feedbackCard: {
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  feedbackHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  feedbackHeaderText: {
+    gap: spacing.xs / 2,
+  },
+  feedbackCompletedRow: {
+    gap: spacing.xs / 2,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
+  feedbackSubmittedRow: {
+    gap: spacing.xs,
+  },
+  feedbackPromptRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  feedbackPromptText: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   cancelPlanButton: {
     minHeight: 48,

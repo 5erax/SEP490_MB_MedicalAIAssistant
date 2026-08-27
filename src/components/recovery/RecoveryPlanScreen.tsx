@@ -9,6 +9,7 @@ import { RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { CreateRequestSheet } from "./CreateRequestSheet";
 import { PlanCard } from "./PlanCard";
 import { PlanDetailSheet } from "./PlanDetailSheet";
+import { RecoveryPlanFeedbackDialog } from "./RecoveryPlanFeedbackDialog";
 import { QuotaCard } from "./QuotaCard";
 import { RequestCard } from "./RequestCard";
 import { RequestDetailSheet } from "./RequestDetailSheet";
@@ -350,6 +351,9 @@ export function RecoveryPlanScreen() {
   function openPlan(plan: RecoveryPlan) {
     recovery.selectPlan(plan);
     setPlanDetailVisible(true);
+    if (recovery.shouldAutoPromptFeedback(plan)) {
+      recovery.openFeedback(plan);
+    }
   }
 
   async function handleCancel(requestId: string) {
@@ -397,6 +401,16 @@ export function RecoveryPlanScreen() {
         },
       },
     ]);
+  }
+
+  async function handleSubmitFeedback(payload: { rating: number; note: string | null }) {
+    if (!recovery.selectedPlan) return;
+    const result = await recovery.submitFeedback(recovery.selectedPlan.id, payload);
+    if (result === "success") {
+      showToast({ type: "success", message: "Cảm ơn bạn đã đánh giá." });
+    } else {
+      showToast({ type: "error", message: result.message });
+    }
   }
 
   async function handleRefresh() {
@@ -605,6 +619,16 @@ export function RecoveryPlanScreen() {
         }}
         onStart={handleStartPlan}
         onCancel={handleCancelPlan}
+        onFeedback={() => recovery.selectedPlan && recovery.openFeedback(recovery.selectedPlan)}
+      />
+
+      <RecoveryPlanFeedbackDialog
+        visible={recovery.feedbackVisible}
+        plan={recovery.selectedPlan}
+        submitting={recovery.feedbackSubmitting}
+        errorMessage={recovery.feedbackError}
+        onClose={recovery.closeFeedback}
+        onSubmit={handleSubmitFeedback}
       />
     </Screen>
   );

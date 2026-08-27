@@ -19,6 +19,7 @@ import {
   makeIdempotencyKey,
   mapReadinessIssues,
   normalizeCompletedLabSessions,
+  recoveryPlanNeedsFeedback,
 } from "@/src/utils/recoveryPlanPresentation";
 
 type SectionState = "loading" | "ready" | "error";
@@ -58,6 +59,11 @@ export function useRecoveryPlan() {
 
   const [selectedPlan, setSelectedPlan] = useState<RecoveryPlan | null>(null);
   const [planDetailState, setPlanDetailState] = useState<"idle" | SectionState>("idle");
+
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const dismissedFeedbackIdsRef = useRef<Set<string>>(new Set());
 
   const [createForm, setCreateForm] = useState<CreateRequestForm>({ diseaseGroup: "", requestNote: "", primaryLabTestSessionId: "" });
   const [createErrors, setCreateErrors] = useState<{ diseaseGroup?: string; requestNote?: string }>({});
@@ -209,6 +215,46 @@ export function useRecoveryPlan() {
   function clearSelectedPlan() {
     setSelectedPlan(null);
     setPlanDetailState("idle");
+  }
+
+  function shouldAutoPromptFeedback(plan: RecoveryPlan) {
+    return recoveryPlanNeedsFeedback(plan) && !dismissedFeedbackIdsRef.current.has(plan.id);
+  }
+
+  function openFeedback(plan: RecoveryPlan) {
+    setSelectedPlan(plan);
+    setFeedbackError("");
+    setFeedbackVisible(true);
+  }
+
+  function closeFeedback() {
+    if (selectedPlan) dismissedFeedbackIdsRef.current.add(selectedPlan.id);
+    setFeedbackVisible(false);
+  }
+
+  async function submitFeedback(planId: string, payload: { rating: number; note: string | null }) {
+    setFeedbackSubmitting(true);
+    setFeedbackError("");
+    try {
+      const response = await recoveryPlansApi.submitFeedback(planId, payload);
+      const updatedPlan = response.data ?? null;
+      if (updatedPlan) {
+        setSelectedPlan((current) => (current?.id === planId ? { ...current, ...updatedPlan } : current));
+        setPlans((current) => ({
+          ...current,
+          items: current.items.map((item) => (item.id === planId ? { ...item, ...updatedPlan } : item)),
+        }));
+      }
+      dismissedFeedbackIdsRef.current.add(planId);
+      setFeedbackVisible(false);
+      return "success" as const;
+    } catch (error) {
+      const message = getRecoveryErrorMessage(errorPayload(error), "Chưa thể gửi đánh giá lúc này. Vui lòng thử lại.");
+      setFeedbackError(message);
+      return { status: "error" as const, message };
+    } finally {
+      setFeedbackSubmitting(false);
+    }
   }
 
   function updateCreateField<K extends keyof CreateRequestForm>(key: K, value: CreateRequestForm[K]) {
@@ -439,6 +485,14 @@ export function useRecoveryPlan() {
     planDetailState,
     selectPlan,
     clearSelectedPlan,
+
+    feedbackVisible,
+    feedbackSubmitting,
+    feedbackError,
+    shouldAutoPromptFeedback,
+    openFeedback,
+    closeFeedback,
+    submitFeedback,
 
     createForm,
     createErrors,
