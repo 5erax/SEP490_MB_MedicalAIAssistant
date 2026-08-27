@@ -1,7 +1,7 @@
 // Ported from src/services/patientProfileSetup.js (Web) — savePatientProfileSetup().
 import { authService } from "@/src/services/authService";
 import { findPatientProfileByUserId, patientProfilesApi } from "@/src/services/patientProfileService";
-import { normalizePersonalProfile, PersonalProfileForm } from "@/src/utils/profileValidation";
+import { normalizePersonalProfile, normalizePhoneProfile, PersonalProfileForm } from "@/src/utils/profileValidation";
 import { ChronicDisease } from "@/src/types/patientProfile";
 
 export { findPatientProfileByUserId };
@@ -29,7 +29,8 @@ export async function savePatientProfileSetup({
   existingProfileId?: string | null;
   form: PatientProfileSetupForm;
 }) {
-  await authService.updateUser(userId, normalizePersonalProfile(form));
+  await authService.updateMe(normalizePersonalProfile(form));
+  await authService.updatePhone(normalizePhoneProfile(form));
 
   const chronicDiseases = form.chronicDiseases
     .map((disease) => ({

@@ -16,7 +16,7 @@ export type RegisterPayload = {
   confirmPassword: string;
   displayName: string;
   address?: string;
-  gender?: number;
+  gender?: "male" | "female";
   dateOfBirth?: string | null;
   otp: string;
 };
@@ -141,6 +141,22 @@ export const authService = {
 
   me() {
     return apiRequest<UserProfile>(ENDPOINTS.USERS.ME, { requiresAuth: true });
+  },
+
+  updateMe(payload: Partial<UserProfile>) {
+    return apiRequest<UserProfile>(ENDPOINTS.USERS.ME, {
+      method: "PUT",
+      data: payload,
+      requiresAuth: true,
+    });
+  },
+
+  updatePhone(phoneNumber: string | null) {
+    return apiRequest(ENDPOINTS.USERS.PHONE, {
+      method: "PUT",
+      data: { phoneNumber },
+      requiresAuth: true,
+    });
   },
 
   updateUser(userId: string, payload: Partial<UserProfile>) {

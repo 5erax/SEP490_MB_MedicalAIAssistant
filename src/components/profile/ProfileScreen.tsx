@@ -86,7 +86,7 @@ export function ProfileScreen() {
               onStartEditing={profile.startEditingPersonal}
               onCancel={profile.cancelEditingPersonal}
               onChange={profile.updatePersonalField}
-              onSave={() => profile.savePersonal(userId)}
+              onSave={profile.savePersonal}
               onRetry={profile.reload}
             />
           ) : null}

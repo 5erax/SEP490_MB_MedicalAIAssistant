@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   USERS: {
     BASE: USERS_BASE,
     ME: `${USERS_BASE}/me`,
+    PHONE: `${USERS_BASE}/me/phone`,
     BY_ID: (userId: string | number) => byId(USERS_BASE, userId),
   },
   MEDICAL_DEPARTMENTS: {

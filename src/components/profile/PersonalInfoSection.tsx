@@ -1,30 +1,15 @@
-import { Platform, Pressable, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { UserRound } from "lucide-react-native";
 
 import { AppText, Button, Card, EmptyState, LoadingState, TextField } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { PersonalProfileErrors, PersonalProfileForm } from "@/src/utils/profileValidation";
+import { DateOfBirthField } from "./DateOfBirthField";
 
 const GENDER_OPTIONS: { value: PersonalProfileForm["gender"]; label: string }[] = [
   { value: "1", label: "Nam" },
   { value: "2", label: "Nữ" },
-  { value: "0", label: "Khác" },
 ];
-
-function toIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatDateLabel(value: string) {
-  if (!value) return "Chọn ngày sinh";
-  const [year, month, day] = value.split("-");
-  return `${day}/${month}/${year}`;
-}
 
 type PersonalInfoSectionProps = {
   state: "loading" | "ready" | "error";
@@ -55,8 +40,6 @@ export function PersonalInfoSection({
   onSave,
   onRetry,
 }: PersonalInfoSectionProps) {
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
   if (state === "loading") {
     return <LoadingState title="Đang tải thông tin cá nhân..." />;
   }
@@ -121,38 +104,12 @@ export function PersonalInfoSection({
         ) : null}
       </View>
 
-      <View style={styles.fieldGroup}>
-        <AppText variant="caption" color={errors.dateOfBirth ? colors.danger : colors.muted}>
-          Ngày sinh
-        </AppText>
-        <Pressable
-          accessibilityRole="button"
-          disabled={!isEditing || saving}
-          onPress={() => setShowDatePicker(true)}
-          style={[styles.dateInput, errors.dateOfBirth && styles.dateInputError]}
-        >
-          <AppText color={form.dateOfBirth ? colors.ink : colors.subtle}>{formatDateLabel(form.dateOfBirth)}</AppText>
-        </Pressable>
-        {errors.dateOfBirth ? (
-          <AppText variant="caption" color={colors.danger}>
-            {errors.dateOfBirth}
-          </AppText>
-        ) : null}
-        {showDatePicker ? (
-          <DateTimePicker
-            value={form.dateOfBirth ? new Date(form.dateOfBirth) : new Date(2000, 0, 1)}
-            mode="date"
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            maximumDate={new Date()}
-            onChange={(event, selectedDate) => {
-              setShowDatePicker(Platform.OS === "ios");
-              if (event.type === "set" && selectedDate) {
-                onChange("dateOfBirth", toIsoDate(selectedDate));
-              }
-            }}
-          />
-        ) : null}
-      </View>
+      <DateOfBirthField
+        value={form.dateOfBirth}
+        onChange={(value) => onChange("dateOfBirth", value)}
+        disabled={!isEditing || saving}
+        error={errors.dateOfBirth}
+      />
 
       <TextField
         label="Số điện thoại"
@@ -235,19 +192,6 @@ const styles = StyleSheet.create({
   segmentSelected: {
     borderColor: colors.teal,
     backgroundColor: colors.teal,
-  },
-  dateInput: {
-    minHeight: 48,
-    justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: radius.sm,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
-  },
-  dateInputError: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerBg,
   },
   actions: {
     flexDirection: "row",
