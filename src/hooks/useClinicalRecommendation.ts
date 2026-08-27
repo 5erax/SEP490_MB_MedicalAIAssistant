@@ -6,13 +6,16 @@
 // apply on mobile as long as the app wasn't killed between screens).
 import { useEffect, useState } from "react";
 
+import { medicalDepartmentsService } from "@/src/services/domainServices";
 import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
-import { ClinicalDepartment, ClinicalFacility } from "@/src/types/symptomAnalysis";
+import { ClinicalDepartment, ClinicalDiagnosis, ClinicalFacility } from "@/src/types/symptomAnalysis";
+import { getObjectData } from "@/src/utils/facilityNormalize";
 import { useAuth } from "@/src/providers";
 
 export type ClinicalStatus = "idle" | "locked" | "loading" | "ready" | "error";
 
 export type ClinicalRecommendationContext = {
+  diagnoses: ClinicalDiagnosis[];
   recommendedDepartment: ClinicalDepartment | null;
   recommendedFacilities: ClinicalFacility[];
   sessionId: string;
@@ -24,6 +27,14 @@ type Params = {
   facilityId?: string;
   departmentId?: string;
 };
+
+function readDepartmentDescription(response: unknown) {
+  const department = getObjectData<Record<string, unknown>>(response);
+  return {
+    departmentName: String(department.departmentName ?? department.DepartmentName ?? department.name ?? "").trim(),
+    description: String(department.description ?? department.Description ?? "").trim(),
+  };
+}
 
 export function useClinicalRecommendation(params: Params) {
   const { session, isRestoring } = useAuth();
@@ -54,8 +65,9 @@ export function useClinicalRecommendation(params: Params) {
 
     symptomAnalysisApi.getCachedClinicalAnalysis(params.sessionId).then((snapshot) => {
       if (!active) return;
-      if (snapshot && (snapshot.recommendedDepartment || snapshot.recommendedFacilities.length)) {
+      if (snapshot && (snapshot.recommendedDepartment || snapshot.recommendedFacilities.length || snapshot.diagnoses.length)) {
         setContext({
+          diagnoses: snapshot.diagnoses ?? [],
           recommendedDepartment: snapshot.recommendedDepartment,
           recommendedFacilities: snapshot.recommendedFacilities,
           sessionId: snapshot.sessionId,
@@ -73,6 +85,48 @@ export function useClinicalRecommendation(params: Params) {
       active = false;
     };
   }, [isClinicalFlow, isRestoring, session?.accessToken, params.sessionId]);
+
+  useEffect(() => {
+    const recommendedDepartment = context?.recommendedDepartment;
+    const departmentId = recommendedDepartment?.departmentId;
+    if (!isClinicalFlow || !departmentId || recommendedDepartment.description) return;
+
+    let active = true;
+
+    medicalDepartmentsService
+      .get(departmentId)
+      .then((response) => {
+        if (!active) return;
+        const department = readDepartmentDescription(response);
+        if (!department.description) return;
+
+        setContext((current) => {
+          if (
+            !current?.recommendedDepartment
+            || current.recommendedDepartment.departmentId !== departmentId
+            || current.recommendedDepartment.description
+          ) {
+            return current;
+          }
+
+          return {
+            ...current,
+            recommendedDepartment: {
+              ...current.recommendedDepartment,
+              departmentName: current.recommendedDepartment.departmentName || department.departmentName,
+              description: department.description,
+            },
+          };
+        });
+      })
+      .catch(() => {
+        // Keep the recommendation usable when the department catalog is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [context?.recommendedDepartment, isClinicalFlow]);
 
   return { isClinicalFlow, status, notice, context };
 }

@@ -10,7 +10,7 @@ Workflow `.github/workflows/mobile-deploy.yml` dùng GitHub Actions để kiểm
 | Publish một GitHub Release | Tạo Android/iOS production build và tự động gửi tới kênh Store nội bộ mặc định |
 | Chạy workflow thủ công | Chọn `android`, `ios` hoặc `all`; chọn `preview` hoặc `production`; tùy chọn submit |
 
-Lệnh build dùng `--no-wait`: GitHub Actions kết thúc sau khi EAS nhận yêu cầu. Tiến độ và file cài đặt được xem trong Expo dashboard.
+GitHub Actions chờ EAS Build hoàn tất. Nếu APK/IPA build lỗi, workflow sẽ fail ngay thay vì chỉ xác nhận đã gửi yêu cầu lên Expo.
 
 ## Thiết lập một lần
 

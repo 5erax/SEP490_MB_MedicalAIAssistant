@@ -1,6 +1,7 @@
 import { ApiErrorPayload } from "@/src/types/api";
 import {
   DiseaseGroup,
+  RecoveryPlan,
   RecoveryPlanReadinessIssue,
   RecoveryPlanRequestStatus,
   RecoveryPlanStatus,
@@ -37,6 +38,10 @@ export const CANCELLABLE_REQUEST_STATUSES = new Set<RecoveryPlanRequestStatus>([
 ]);
 
 export const CANCELLABLE_PLAN_STATUSES = new Set<RecoveryPlanStatus>(["readyToStart", "active"]);
+
+export function recoveryPlanNeedsFeedback(plan: RecoveryPlan) {
+  return plan.status === "completed" && !plan.feedbackSubmittedAt;
+}
 
 export const PLAN_STATUS: Record<RecoveryPlanStatus, { label: string; tone: StatusTone }> = {
   readyToStart: { label: "Sẵn sàng bắt đầu", tone: "warning" },
@@ -86,6 +91,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_USER_TIME_ZONE: "Múi giờ trong hồ sơ chưa hợp lệ. Vui lòng cập nhật hồ sơ.",
   INVALID_REQUEST_STATE: "Trạng thái yêu cầu đã thay đổi. Đang tải lại dữ liệu mới nhất.",
   QUOTA_MUTATION_FAILED: "Hạn mức chưa được cập nhật. Vui lòng tải lại rồi thử lại.",
+  RECOVERY_PLAN_FEEDBACK_ALREADY_SUBMITTED: "Kế hoạch này đã được đánh giá.",
+  RECOVERY_PLAN_NOT_COMPLETED: "Chỉ có thể đánh giá kế hoạch đã hoàn thành.",
 };
 
 export function getRecoveryErrorMessage(payload: ApiErrorPayload | undefined, fallback: string) {

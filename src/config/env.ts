@@ -7,6 +7,8 @@
 // out with no response at all). That mismatch is what produced the
 // generic axios "Network Error" seen when testing Login/Register.
 export const DEFAULT_API_BASE_URL = "http://52.77.210.243";
+export const DEFAULT_GOOGLE_WEB_CLIENT_ID = "976426394148-eub0i02sbrseoob7r4lbe8ubr3bqv3n2.apps.googleusercontent.com";
+export const DEFAULT_GOOGLE_ANDROID_CLIENT_ID = "976426394148-9n1brtej8v6105qr9h76bk1dv3put34s.apps.googleusercontent.com";
 
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, "");
@@ -19,8 +21,8 @@ export const env = {
   // @react-native-google-signin for the idToken flow against our backend.
   // Android/iOS client IDs are preferred on native builds. googleWebClientId
   // remains useful for Expo Go/web and as the backend audience for id tokens.
-  googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "",
-  googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "",
+  googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || DEFAULT_GOOGLE_WEB_CLIENT_ID,
+  googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || DEFAULT_GOOGLE_ANDROID_CLIENT_ID,
   googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "",
   // Same unsigned Cloudinary upload preset Web's .env.production uses
   // (VITE_CLOUDINARY_*) — an unsigned preset is designed to be public/

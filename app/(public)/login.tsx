@@ -121,7 +121,7 @@ export default function LoginScreen() {
     setApiError("");
 
     if (!googleLoginEnabled) {
-      setApiError("Dang nhap Google chua duoc cau hinh. Hay them EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.");
+      setApiError("Đăng nhập Google chưa được cấu hình. Hãy thêm EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.");
       return;
     }
 
@@ -138,21 +138,21 @@ export default function LoginScreen() {
 
       const idToken = result.data.idToken || (await GoogleSignin.getTokens()).idToken;
       if (!idToken) {
-        throw new Error("Google chua tra idToken. Kiem tra webClientId va Android OAuth SHA-1 trong Google Cloud.");
+        throw new Error("Google chưa trả idToken. Kiểm tra webClientId và Android OAuth SHA-1 trong Google Cloud.");
       }
 
       const response = await authService.googleLogin(idToken);
       const nextSession = normalizeAuthSession(response);
 
       if (!nextSession?.accessToken) {
-        throw new Error("Backend chua tra access token. Vui long thu lai.");
+        throw new Error("Backend chưa trả access token. Vui lòng thử lại.");
       }
 
       await setSession(nextSession);
       showToast({
         type: "success",
-        title: "Dang nhap Google thanh cong",
-        message: "Dang mo khong gian phu hop voi tai khoan cua ban.",
+        title: "Đăng nhập Google thành công",
+        message: "Đang mở không gian phù hợp với tài khoản của bạn.",
       });
       router.replace(getInitialRouteForSession(nextSession));
     } catch (error) {
@@ -161,16 +161,16 @@ export default function LoginScreen() {
         return;
       }
       if (errorCode === statusCodes.IN_PROGRESS) {
-        setApiError("Google Sign-In dang duoc xu ly. Vui long cho trong giay lat.");
+        setApiError("Google Sign-In đang được xử lý. Vui lòng chờ trong giây lát.");
         return;
       }
       if (errorCode === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setApiError("Thiet bi chua co Google Play Services hoac can cap nhat.");
+        setApiError("Thiết bị chưa có Google Play Services hoặc cần cập nhật.");
         return;
       }
       if (errorCode === "10" || errorCode === "DEVELOPER_ERROR") {
         setApiError(
-          "Google Sign-In bi DEVELOPER_ERROR. Kiem tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, va Web Client ID dung de lay idToken.",
+          "Google Sign-In bị DEVELOPER_ERROR. Kiểm tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, và Web Client ID dùng để lấy idToken.",
         );
         return;
       }
@@ -178,16 +178,16 @@ export default function LoginScreen() {
       const message = error instanceof Error ? error.message : "";
       if (message.includes("DEVELOPER_ERROR")) {
         setApiError(
-          "Google Sign-In bi DEVELOPER_ERROR. Kiem tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, va Web Client ID dung de lay idToken.",
+          "Google Sign-In bị DEVELOPER_ERROR. Kiểm tra Android OAuth client: package com.medimate.medicalaiassistant, SHA-1 debug, và Web Client ID dùng để lấy idToken.",
         );
         return;
       }
       if (message.includes("RNGoogleSignin") || message.includes("native module")) {
-        setApiError("Google Sign-In native can development build. Hay chay npx expo run:android thay vi Expo Go.");
+        setApiError("Google Sign-In native cần development build. Hãy chạy npx expo run:android thay vì Expo Go.");
         return;
       }
 
-      setApiError(message || "Dang nhap Google that bai. Vui long thu lai.");
+      setApiError(message || "Đăng nhập Google thất bại. Vui lòng thử lại.");
     } finally {
       setGoogleSubmitting(false);
     }
@@ -262,7 +262,7 @@ export default function LoginScreen() {
                 <View style={styles.loadingLabel}>
                   <ActivityIndicator color={colors.ink} size="small" />
                   <AppText variant="bodyStrong" color={colors.ink}>
-                    Dang mo Google...
+                    Đang mở Google...
                   </AppText>
                 </View>
               ) : (
@@ -273,7 +273,7 @@ export default function LoginScreen() {
                     </AppText>
                   </View>
                   <AppText variant="bodyStrong" color={colors.ink}>
-                    Tiep tuc voi Google
+                    Tiếp tục với Google
                   </AppText>
                 </View>
               )}

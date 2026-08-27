@@ -84,6 +84,10 @@ export type RecoveryPlan = {
   durationDays?: number;
   startDate?: string | null;
   endDate?: string | null;
+  completedAt?: string | null;
   recheckInstruction?: string | null;
   phases?: RecoveryPlanPhase[];
+  feedbackSubmittedAt?: string | null;
+  feedbackRating?: number | null;
+  feedbackNote?: string | null;
 };

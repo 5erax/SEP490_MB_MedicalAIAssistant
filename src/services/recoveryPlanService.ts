@@ -91,4 +91,12 @@ export const recoveryPlansApi = {
       requiresAuth: true,
     });
   },
+
+  submitFeedback(planId: string, payload: { rating: number; note: string | null }) {
+    return apiRequest<RecoveryPlan>(ENDPOINTS.RECOVERY_PLANS.FEEDBACK(planId), {
+      method: "POST",
+      data: payload,
+      requiresAuth: true,
+    });
+  },
 };

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Globe, MapPin, Navigation, Phone, Share2, Stethoscope, X } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Badge, Button, EmptyState, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -93,7 +94,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.root}>
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
         <View style={styles.header}>
           <AppText variant="h3" style={styles.headerTitle} numberOfLines={2}>
             {current.facilityName}
@@ -208,7 +209,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
             <ReviewsSection facilityId={current.facilityId} />
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
 
       <DoctorDetailSheet
         doctor={selectedDoctor}
@@ -232,7 +233,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
+    paddingTop: spacing["2xl"],
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
@@ -264,7 +265,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.teal,
   },
   content: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing["4xl"],
     gap: spacing.md,
   },
   infoRow: {

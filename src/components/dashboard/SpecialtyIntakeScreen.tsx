@@ -8,7 +8,7 @@
 // the current flow). The destination (Nearby Clinics/Map, same query
 // params: source/facilityId/departmentId/sessionId) is unchanged.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { ClipboardPlus } from "lucide-react-native";
 
@@ -20,8 +20,7 @@ import { useAuth } from "@/src/providers";
 import { shouldSetupPatientProfile } from "@/src/utils/roles";
 import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
 import { ClinicalAnalysisResult, SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
-import { symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
-import { AnalysisHistorySheet } from "./AnalysisHistorySheet";
+import { readResultPayload, symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
 import { IntakeForm } from "./IntakeForm";
 import { dismissProfileNudgeForSession, isProfileNudgeDismissed, ProfileNudgeCard } from "./ProfileNudgeCard";
 import { QuestionFlow } from "./QuestionFlow";
@@ -39,7 +38,7 @@ function IntroPanel({ activeStep }: { activeStep: number }) {
           <ClipboardPlus size={22} color={colors.white} />
         </View>
         <View style={styles.introPill}>
-          <AppText variant="caption" color={colors.white}>
+          <AppText variant="caption" color={colors.teal}>
             Tư vấn chuyên khoa
           </AppText>
         </View>
@@ -135,19 +134,31 @@ export function SpecialtyIntakeScreen() {
 
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
   const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
-  const [historyVisible, setHistoryVisible] = useState(false);
   const [historySessions, setHistorySessions] = useState<SymptomAnalysisSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
+  const [historyDetailLoadingId, setHistoryDetailLoadingId] = useState("");
+  const [historyResultView, setHistoryResultView] = useState<{ result: ClinicalAnalysisResult; sessionId: string; title: string } | null>(null);
   const [profileNudgeVisible, setProfileNudgeVisible] = useState(
     shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
   );
   const segmentTranslate = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView | null>(null);
+  const questionFlowYRef = useRef(0);
   const historyLoadedRef = useRef(false);
 
   const showIntakeForm = ["idle", "loading-questions", "no-questions"].includes(status);
   const showQuestionFlow = ["questions", "submitting"].includes(status) && questions[currentQuestionIndex];
   const activeStep = status === "result" ? 2 : ["questions", "submitting"].includes(status) ? 1 : 0;
+
+  const scrollToQuestionFlow = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, questionFlowYRef.current - spacing.lg),
+        animated: true,
+      });
+    }, 80);
+  }, []);
 
   useEffect(() => {
     if (status !== "result") return;
@@ -170,6 +181,32 @@ export function SpecialtyIntakeScreen() {
     }
   }, []);
 
+  const openHistoryResult = useCallback(async (item: SymptomAnalysisSession) => {
+    const historySessionId = String(item.sessionId || item.id || "").trim();
+    if (!historySessionId || historyDetailLoadingId) return;
+
+    setHistoryError("");
+    setHistoryDetailLoadingId(historySessionId);
+    try {
+      const response = await symptomAnalysisApi.get(historySessionId);
+      const historyResult = readResultPayload(response);
+      if (!historyResult) {
+        setHistoryError("Phiên này chưa có kết quả gợi ý để hiển thị.");
+        return;
+      }
+      await symptomAnalysisApi.cacheClinicalResult(historySessionId, historyResult);
+      setHistoryResultView({
+        result: historyResult,
+        sessionId: historySessionId,
+        title: getSessionTitle(item, "Phiên gợi ý chuyên khoa"),
+      });
+    } catch (requestError) {
+      setHistoryError((requestError as Error)?.message || "Chưa thể tải chi tiết phiên gợi ý.");
+    } finally {
+      setHistoryDetailLoadingId("");
+    }
+  }, [historyDetailLoadingId]);
+
   useEffect(() => {
     Animated.spring(segmentTranslate, {
       toValue: activeTab === "chat" ? 0 : SEGMENT_WIDTH,
@@ -182,8 +219,13 @@ export function SpecialtyIntakeScreen() {
     }
   }, [activeTab, historyLoading, loadHistory, segmentTranslate]);
 
+  useEffect(() => {
+    if (activeTab !== "chat" || !["questions", "submitting"].includes(status)) return;
+    scrollToQuestionFlow();
+  }, [activeTab, status, currentQuestionIndex, scrollToQuestionFlow]);
+
   return (
-    <Screen scroll contentContainerStyle={styles.content}>
+    <Screen scroll scrollRef={scrollRef} contentContainerStyle={styles.content}>
       {showIntakeForm && profileNudgeVisible ? (
         <ProfileNudgeCard
           onDismiss={() => {
@@ -209,7 +251,37 @@ export function SpecialtyIntakeScreen() {
 
       {activeTab === "chat" ? <IntroPanel activeStep={activeStep} /> : null}
 
-      {activeTab === "history" ? (
+      {activeTab === "history" && historyResultView ? (
+        <View style={styles.historyResultGroup}>
+          <View style={styles.historyResultHeader}>
+            <View style={styles.historyResultText}>
+              <AppText variant="caption" color={colors.teal}>
+                Kết quả từ lịch sử
+              </AppText>
+              <AppText variant="h3" numberOfLines={2}>
+                {historyResultView.title}
+              </AppText>
+            </View>
+            <Button variant="secondary" size="sm" onPress={() => setHistoryResultView(null)}>
+              Quay lại
+            </Button>
+          </View>
+          <ResultPanel
+            result={historyResultView.result}
+            userLocation={userLocation}
+            locationStatus={locationStatus}
+            onRequestLocation={requestUserLocation}
+            onOpenMap={() => openFacilities(historyResultView.result, historyResultView.sessionId)}
+            onNewSymptom={() => {
+              setHistoryResultView(null);
+              setActiveTab("chat");
+              resetDiagnosis({ clearInput: true });
+            }}
+          />
+        </View>
+      ) : null}
+
+      {activeTab === "history" && !historyResultView ? (
         <View style={styles.historyStrip}>
           {historyLoading ? (
             <View style={styles.historyLoading}>
@@ -245,8 +317,14 @@ export function SpecialtyIntakeScreen() {
                       </AppText>
                     </View>
                   </View>
-                  <Button variant="secondary" size="sm" onPress={() => setHistoryVisible(true)} style={styles.detailButton}>
-                    Chi tiết
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={historyDetailLoadingId === (item.sessionId || item.id || "")}
+                    onPress={() => openHistoryResult(item)}
+                    style={styles.detailButton}
+                  >
+                    {historyDetailLoadingId === (item.sessionId || item.id || "") ? "Đang tải" : "Chi tiết"}
                   </Button>
                 </View>
               ))}
@@ -296,19 +374,26 @@ export function SpecialtyIntakeScreen() {
       ) : null}
 
       {activeTab === "chat" && showQuestionFlow ? (
-        <QuestionFlow
-          questions={questions}
-          currentQuestionIndex={currentQuestionIndex}
-          answers={answers}
-          answeredCount={answeredCount}
-          submitting={status === "submitting"}
-          canSubmitAnswers={canSubmitAnswers}
-          onAnswerChange={updateAnswer}
-          onPrevious={() => setCurrentQuestionIndex((index: number) => Math.max(0, index - 1))}
-          onNext={() => setCurrentQuestionIndex((index: number) => Math.min(questions.length - 1, index + 1))}
-          onSubmit={submitAnswers}
-          onReset={() => resetDiagnosis()}
-        />
+        <View
+          onLayout={(event) => {
+            questionFlowYRef.current = event.nativeEvent.layout.y;
+            scrollToQuestionFlow();
+          }}
+        >
+          <QuestionFlow
+            questions={questions}
+            currentQuestionIndex={currentQuestionIndex}
+            answers={answers}
+            answeredCount={answeredCount}
+            submitting={status === "submitting"}
+            canSubmitAnswers={canSubmitAnswers}
+            onAnswerChange={updateAnswer}
+            onPrevious={() => setCurrentQuestionIndex((index: number) => Math.max(0, index - 1))}
+            onNext={() => setCurrentQuestionIndex((index: number) => Math.min(questions.length - 1, index + 1))}
+            onSubmit={submitAnswers}
+            onReset={() => resetDiagnosis()}
+          />
+        </View>
       ) : null}
 
       {activeTab === "chat" && status === "result" ? (
@@ -321,14 +406,13 @@ export function SpecialtyIntakeScreen() {
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}
-      <AnalysisHistorySheet visible={historyVisible} onClose={() => setHistoryVisible(false)} sessionType="department" />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    gap: spacing.lg,
+    gap: spacing.md,
     paddingBottom: spacing["4xl"],
   },
   pressed: {
@@ -380,11 +464,13 @@ const styles = StyleSheet.create({
   introPanel: {
     gap: spacing.md,
     borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
     backgroundColor: colors.limeDark,
-    padding: spacing.xl,
+    padding: spacing.lg,
     shadowColor: colors.limeDark,
     shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.22,
     shadowRadius: 30,
     elevation: 4,
   },
@@ -408,22 +494,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.16)",
+    backgroundColor: colors.white,
     paddingHorizontal: spacing.md,
   },
   introTitle: {
-    maxWidth: 300,
+    maxWidth: 310,
+    fontSize: 32,
+    lineHeight: 36,
   },
   introCopy: {
     maxWidth: 330,
   },
   introStepper: {
-    minHeight: 80,
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "flex-start",
     borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingVertical: spacing.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
     overflow: "hidden",
   },
   introStep: {
@@ -431,8 +520,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   introStepDot: {
-    width: 30,
-    height: 30,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -447,7 +536,7 @@ const styles = StyleSheet.create({
   },
   introStepLine: {
     position: "absolute",
-    top: 15,
+    top: 14,
     width: "50%",
     height: 1,
     backgroundColor: "rgba(255,255,255,0.35)",
@@ -462,10 +551,27 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   introStepLabel: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   historyStrip: {
     gap: spacing.md,
+  },
+  historyResultGroup: {
+    gap: spacing.lg,
+  },
+  historyResultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
+  },
+  historyResultText: {
+    flex: 1,
+    gap: spacing.xs,
   },
   historyLoading: {
     minHeight: 72,

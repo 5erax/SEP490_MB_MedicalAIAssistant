@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   group: {
     alignItems: "center",
     gap: spacing.md,
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
   },
   pressed: {
     opacity: 0.86,
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   },
   composer: {
     width: "100%",
-    maxWidth: 360,
+    maxWidth: 352,
     minHeight: 60,
     flexDirection: "row",
     alignItems: "center",
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   },
   statusRow: {
     width: "100%",
-    maxWidth: 348,
+    maxWidth: 336,
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.sm,

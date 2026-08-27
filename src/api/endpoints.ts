@@ -140,6 +140,7 @@ export const ENDPOINTS = {
     BY_ID: (planId: string) => byId(RECOVERY_PLANS_BASE, planId),
     START: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/start`,
     CANCEL: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/cancel`,
+    FEEDBACK: (planId: string) => `${byId(RECOVERY_PLANS_BASE, planId)}/feedback`,
   },
   CONSULTATION_SESSIONS: {
     GENERATE_QUESTIONS: `${CONSULTATION_SESSIONS_BASE}/generate-questions-for-consultant-session`,

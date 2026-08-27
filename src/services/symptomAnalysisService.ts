@@ -11,6 +11,7 @@ import {
   ClinicalAnalysisResult,
   ClinicalAnswerItem,
   ClinicalDepartment,
+  ClinicalDiagnosis,
   ClinicalFacility,
   ClinicalMapSnapshot,
   SymptomAnalysisSession,
@@ -43,6 +44,7 @@ function createDepartmentSnapshot(department: unknown): ClinicalDepartment | nul
 
   return {
     confidenceScore: Number(department.confidenceScore ?? department.ConfidenceScore ?? 0) || 0,
+    description: normalizeText(department.description ?? department.Description),
     departmentId,
     departmentName,
     icdChapterCode: normalizeText(department.icdChapterCode ?? department.IcdChapterCode),
@@ -50,6 +52,50 @@ function createDepartmentSnapshot(department: unknown): ClinicalDepartment | nul
     priorityRank: Number(department.priorityRank ?? department.PriorityRank ?? 0) || 0,
     reason: normalizeText(department.reason ?? department.Reason),
   };
+}
+
+function normalizeProbability(value: unknown) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function createDiagnosisSnapshot(diagnosis: unknown, index = 0): ClinicalDiagnosis | null {
+  if (!isPlainObject(diagnosis)) return null;
+
+  const diseaseName = normalizeText(diagnosis.diseaseName ?? diagnosis.DiseaseName ?? diagnosis.name);
+  const icd10Code = normalizeText(diagnosis.icd10Code ?? diagnosis.Icd10Code ?? diagnosis.icdCode);
+  if (!diseaseName && !icd10Code) return null;
+
+  return {
+    clinicalReasoning: normalizeText(diagnosis.clinicalReasoning ?? diagnosis.ClinicalReasoning),
+    diseaseName,
+    icd10Code,
+    paGivenB: normalizeProbability(
+      diagnosis.paGivenB
+        ?? diagnosis.PaGivenB
+        ?? diagnosis.probability
+        ?? diagnosis.Probability
+        ?? diagnosis.confidenceScore
+        ?? diagnosis.ConfidenceScore,
+    ),
+    rank: Number(diagnosis.rank ?? diagnosis.Rank ?? index + 1) || index + 1,
+    searchKeyword: normalizeText(diagnosis.searchKeyword ?? diagnosis.SearchKeyword),
+  };
+}
+
+function createSymptomDiagnosisSnapshot(symptom: unknown, index = 0): ClinicalDiagnosis | null {
+  if (!isPlainObject(symptom)) return null;
+
+  return createDiagnosisSnapshot(
+    {
+      clinicalReasoning: symptom.extractedText ?? symptom.ExtractedText,
+      diseaseName: symptom.symptomName ?? symptom.SymptomName,
+      icd10Code: symptom.icd10Code ?? symptom.Icd10Code,
+      paGivenB: symptom.confidenceScore ?? symptom.ConfidenceScore,
+      rank: index + 1,
+    },
+    index,
+  );
 }
 
 function createFacilitySnapshot(facility: unknown): ClinicalFacility | null {
@@ -86,17 +132,37 @@ function createFacilitySnapshot(facility: unknown): ClinicalFacility | null {
 function createClinicalMapSnapshot(analysis: unknown, fallbackSessionId: string): ClinicalMapSnapshot | null {
   if (!isPlainObject(analysis)) return null;
 
+  const diagnosisItems = analysis.diagnoses ?? analysis.Diagnoses;
+  const primaryDiagnosis = analysis.primaryDiagnosis ?? analysis.PrimaryDiagnosis;
+  let diagnoses = (Array.isArray(diagnosisItems) && diagnosisItems.length > 0 ? diagnosisItems : primaryDiagnosis ? [primaryDiagnosis] : [])
+    .map(createDiagnosisSnapshot)
+    .filter((diagnosis): diagnosis is ClinicalDiagnosis => Boolean(diagnosis))
+    .sort((left, right) => left.rank - right.rank);
+  if (diagnoses.length === 0) {
+    const symptomItems = analysis.symptoms ?? analysis.Symptoms;
+    diagnoses = (Array.isArray(symptomItems) ? symptomItems : [])
+      .map(createSymptomDiagnosisSnapshot)
+      .filter((diagnosis): diagnosis is ClinicalDiagnosis => Boolean(diagnosis))
+      .sort((left, right) => (right.paGivenB ?? 0) - (left.paGivenB ?? 0))
+      .map((diagnosis, index) => ({ ...diagnosis, rank: index + 1 }));
+  }
+
+  const departmentItems = analysis.recommendedDepartments ?? analysis.RecommendedDepartments;
+  const firstRecommendedDepartment = Array.isArray(departmentItems) ? departmentItems[0] : null;
   const facilityItems = analysis.recommendedFacilities ?? analysis.RecommendedFacilities;
   const recommendedFacilities = (Array.isArray(facilityItems) ? facilityItems : [])
     .map(createFacilitySnapshot)
     .filter((facility): facility is ClinicalFacility => Boolean(facility));
-  const recommendedDepartment = createDepartmentSnapshot(analysis.recommendedDepartment ?? analysis.RecommendedDepartment)
+  const recommendedDepartment = createDepartmentSnapshot(
+    analysis.recommendedDepartment ?? analysis.RecommendedDepartment ?? firstRecommendedDepartment,
+  )
     ?? recommendedFacilities[0]?.departments?.[0]
     ?? null;
 
-  if (!recommendedDepartment && recommendedFacilities.length === 0) return null;
+  if (!recommendedDepartment && recommendedFacilities.length === 0 && diagnoses.length === 0) return null;
 
   return {
+    diagnoses,
     recommendedDepartment,
     recommendedFacilities,
     sessionId: normalizeText(analysis.sessionId ?? analysis.SessionId ?? fallbackSessionId),
@@ -105,6 +171,7 @@ function createClinicalMapSnapshot(analysis: unknown, fallbackSessionId: string)
 
 function createStoredClinicalMapSnapshot(snapshot: ClinicalMapSnapshot) {
   return {
+    diagnoses: snapshot.diagnoses,
     sessionId: snapshot.sessionId,
     recommendedDepartment: snapshot.recommendedDepartment,
     recommendedFacilities: snapshot.recommendedFacilities.map((facility) => ({
@@ -131,6 +198,12 @@ async function storeClinicalMapSnapshot(snapshot: ClinicalMapSnapshot) {
   } catch {
     // the in-memory cache still supports the current app session
   }
+}
+
+async function cacheClinicalMapSnapshot(snapshot: ClinicalMapSnapshot) {
+  clinicalAnalysisCache.clear();
+  clinicalAnalysisCache.set(snapshot.sessionId, snapshot);
+  await storeClinicalMapSnapshot(snapshot);
 }
 
 async function readStoredClinicalMapSnapshot(sessionId: string): Promise<{ available: boolean; snapshot: ClinicalMapSnapshot | null }> {
@@ -187,11 +260,9 @@ export const symptomAnalysisApi = {
     const resolvedSessionId = String(data.sessionId ?? sessionId ?? "").trim();
     const analysis = createClinicalMapSnapshot(data.analysis ?? data.result ?? null, resolvedSessionId);
 
-    clinicalAnalysisCache.clear();
     await clearStoredClinicalMapSnapshot();
     if (resolvedSessionId && analysis) {
-      clinicalAnalysisCache.set(resolvedSessionId, analysis);
-      await storeClinicalMapSnapshot(analysis);
+      await cacheClinicalMapSnapshot(analysis);
     }
 
     return response;
@@ -268,11 +339,26 @@ export const symptomAnalysisApi = {
       requiresAuth: true,
     });
   },
+
+  async cacheClinicalResult(sessionId: string, analysis: unknown) {
+    const snapshot = createClinicalMapSnapshot(analysis, sessionId);
+    if (!snapshot?.sessionId) return null;
+    await clearStoredClinicalMapSnapshot();
+    await cacheClinicalMapSnapshot(snapshot);
+    return snapshot;
+  },
 };
 
 export { readSuggestClinicalQuestionsPayload, unwrapApiData };
 
 export function readResultPayload(response: unknown): ClinicalAnalysisResult | null {
   const data = unwrapApiData<Record<string, unknown>>(response);
-  return (data?.analysis ?? data?.result ?? data ?? null) as ClinicalAnalysisResult | null;
+  const sessionId = String(data?.sessionId ?? data?.SessionId ?? "").trim();
+  const snapshot = createClinicalMapSnapshot(data?.analysis ?? data?.Analysis ?? data?.result ?? data?.Result ?? data ?? null, sessionId);
+  if (!snapshot) return null;
+  return {
+    diagnoses: snapshot.diagnoses,
+    recommendedDepartment: snapshot.recommendedDepartment,
+    recommendedFacilities: snapshot.recommendedFacilities,
+  };
 }
