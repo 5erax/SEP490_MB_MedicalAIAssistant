@@ -1,10 +1,11 @@
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { FileText, Image as ImageIcon, Trash2, Upload, X } from "lucide-react-native";
+import { Camera, FileText, Image as ImageIcon, Images, Trash2, X } from "lucide-react-native";
 
 import { AppText, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { PickedDocument } from "@/src/services/cloudinaryUploadService";
 import { UserProfile } from "@/src/types/user";
+import { formatGenderLabel } from "@/src/utils/labTestPresentation";
 
 type SubmissionStatus = "idle" | "uploading" | "analyzing" | "success" | "error";
 
@@ -16,7 +17,9 @@ type UploadRecordSheetProps = {
   submissionStatus: SubmissionStatus;
   submissionMessage: string;
   onClose: () => void;
-  onPickDocument: () => void;
+  onPickImage: () => void;
+  onPickPdf: () => void;
+  onTakePhoto: () => void;
   onClearDocument: () => void;
   onSubmit: () => void;
 };
@@ -33,8 +36,6 @@ function submitLabel(status: SubmissionStatus) {
   return "Phân tích kết quả";
 }
 
-const GENDER_LABEL: Record<number, string> = { 1: "Nam", 2: "Nữ", 0: "Khác" };
-
 export function UploadRecordSheet({
   visible,
   profile,
@@ -43,7 +44,9 @@ export function UploadRecordSheet({
   submissionStatus,
   submissionMessage,
   onClose,
-  onPickDocument,
+  onPickImage,
+  onPickPdf,
+  onTakePhoto,
   onClearDocument,
   onSubmit,
 }: UploadRecordSheetProps) {
@@ -75,7 +78,7 @@ export function UploadRecordSheet({
             </View>
             <View style={styles.infoRow}>
               <AppText color={colors.muted}>Giới tính</AppText>
-              <AppText variant="bodyStrong">{GENDER_LABEL[Number(profile?.gender ?? -1)] || "—"}</AppText>
+              <AppText variant="bodyStrong">{formatGenderLabel(profile?.gender)}</AppText>
             </View>
             <View style={styles.infoRow}>
               <AppText color={colors.muted}>Ngày sinh</AppText>
@@ -98,13 +101,25 @@ export function UploadRecordSheet({
                 </Pressable>
               </View>
             ) : (
-              <Pressable accessibilityRole="button" onPress={onPickDocument} disabled={busy} style={styles.dropzone}>
-                <Upload size={22} color={colors.teal} />
-                <AppText variant="bodyStrong">Chọn ảnh hoặc PDF</AppText>
-                <AppText variant="caption" color={colors.subtle}>
-                  Hỗ trợ JPG, PNG, PDF · tối đa 10 MB
-                </AppText>
-              </Pressable>
+              <View style={styles.sourceOptions}>
+                <Pressable accessibilityRole="button" onPress={onPickImage} disabled={busy} style={styles.sourceOption}>
+                  <Images size={22} color={colors.teal} />
+                  <AppText variant="bodyStrong">Thư viện ảnh</AppText>
+                  <AppText variant="caption" color={colors.subtle}>Chọn JPG hoặc PNG</AppText>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={onTakePhoto} disabled={busy} style={styles.sourceOption}>
+                  <Camera size={22} color={colors.teal} />
+                  <AppText variant="bodyStrong">Chụp ảnh</AppText>
+                  <AppText variant="caption" color={colors.subtle}>Mở camera thiết bị</AppText>
+                </Pressable>
+                <Pressable accessibilityRole="button" onPress={onPickPdf} disabled={busy} style={styles.pdfOption}>
+                  <FileText size={20} color={colors.teal} />
+                  <View style={styles.pdfCopy}>
+                    <AppText variant="bodyStrong">Chọn tệp PDF</AppText>
+                    <AppText variant="caption" color={colors.subtle}>Tối đa 10 MB</AppText>
+                  </View>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -189,7 +204,10 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: spacing.sm,
   },
-  dropzone: {
+  sourceOptions: {
+    gap: spacing.sm,
+  },
+  sourceOption: {
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
@@ -197,7 +215,20 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderColor: colors.lineStrong,
     borderRadius: radius.md,
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.lg,
+  },
+  pdfOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  pdfCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   documentPreview: {
     flexDirection: "row",

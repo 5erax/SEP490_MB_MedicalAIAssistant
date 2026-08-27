@@ -5,6 +5,7 @@
 // 3s while the selected session is still "processing".
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 
 import { authService } from "@/src/services/authService";
 import { labTestsApi } from "@/src/services/labTestService";
@@ -21,7 +22,7 @@ const POLL_INTERVAL_MS = 3000;
 
 function documentIdentity(document: PickedDocument | null) {
   if (!document) return "";
-  return `${document.fileName || ""}:${document.fileSize || ""}`;
+  return `${document.uri}:${document.fileName || ""}:${document.fileSize || ""}`;
 }
 
 export function useMedicalRecords() {
@@ -168,23 +169,66 @@ export function useMedicalRecords() {
     setSummaryError("");
   }
 
-  async function pickDocument() {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ["image/jpeg", "image/png", "application/pdf"],
-      copyToCacheDirectory: true,
-    });
-    if (result.canceled || !result.assets?.length) return;
-
-    const asset = result.assets[0];
-    const picked: PickedDocument = { uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name };
+  function acceptDocument(picked: PickedDocument) {
     try {
       validateMedicalDocument(picked);
       setDocument(picked);
       setUploadedDocument(null);
       setFormError("");
+      setSubmissionStatus("idle");
+      setSubmissionMessage("");
     } catch (error) {
       setFormError((error as Error).message);
     }
+  }
+
+  async function pickPdf() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({ uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name });
+  }
+
+  async function pickImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({
+      uri: asset.uri,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileSize: asset.fileSize,
+      fileName: asset.fileName || `lab-test-${Date.now()}.jpg`,
+    });
+  }
+
+  async function takePhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setFormError("Cần cho phép truy cập camera để chụp phiếu xét nghiệm.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 1,
+    });
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    acceptDocument({
+      uri: asset.uri,
+      mimeType: asset.mimeType || "image/jpeg",
+      fileSize: asset.fileSize,
+      fileName: asset.fileName || `lab-test-camera-${Date.now()}.jpg`,
+    });
   }
 
   function clearDocument() {
@@ -257,7 +301,9 @@ export function useMedicalRecords() {
 
     document,
     formError,
-    pickDocument,
+    pickImage,
+    pickPdf,
+    takePhoto,
     clearDocument,
 
     submissionStatus,

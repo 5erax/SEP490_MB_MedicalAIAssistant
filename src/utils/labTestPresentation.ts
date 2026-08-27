@@ -25,13 +25,20 @@ export function calculateAgeAtTest(dateOfBirth: string, testDate: string): numbe
   return age >= 0 ? age : null;
 }
 
-// Web's profileProblem(): gender 1 = Nam, 2 = Nữ, 0 = Khác (per
-// profileValidation.ts) — only 1/2 map to the male/female field the
-// analyze endpoint expects.
+// The current API serializes Gender as "male"/"female", while older
+// accounts and cached sessions can still contain 1/2. Accept both shapes.
 export function genderToAnalysisGender(gender: unknown): "male" | "female" | null {
-  if (Number(gender) === 1) return "male";
-  if (Number(gender) === 2) return "female";
+  const normalized = String(gender ?? "").trim().toLowerCase();
+  if (["male", "1"].includes(normalized)) return "male";
+  if (["female", "2"].includes(normalized)) return "female";
   return null;
+}
+
+export function formatGenderLabel(gender: unknown) {
+  const normalized = genderToAnalysisGender(gender);
+  if (normalized === "male") return "Nam";
+  if (normalized === "female") return "Nữ";
+  return "—";
 }
 
 export type SessionStatusPresentation = { label: string; tone: "warning" | "success" | "danger" };

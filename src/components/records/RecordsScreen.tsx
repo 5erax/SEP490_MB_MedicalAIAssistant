@@ -29,7 +29,9 @@ export function RecordsScreen() {
     profile,
     document,
     formError,
-    pickDocument,
+    pickImage,
+    pickPdf,
+    takePhoto,
     clearDocument,
     submissionStatus,
     submissionMessage,
@@ -171,7 +173,9 @@ export function RecordsScreen() {
         submissionStatus={submissionStatus}
         submissionMessage={submissionMessage}
         onClose={() => setUploadVisible(false)}
-        onPickDocument={pickDocument}
+        onPickImage={pickImage}
+        onPickPdf={pickPdf}
+        onTakePhoto={takePhoto}
         onClearDocument={clearDocument}
         onSubmit={handleSubmit}
       />
