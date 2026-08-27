@@ -57,9 +57,6 @@ function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
           </AppText>
           <AppText variant="h3">Các chẩn đoán được cân nhắc</AppText>
         </View>
-        <AppText variant="caption" color={colors.subtle}>
-          Chạm để xem giải thích
-        </AppText>
       </View>
 
       <View style={styles.diagnosisList}>
@@ -207,7 +204,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           <Button size="sm" onPress={onOpenMap} style={styles.mapButton}>
             <View style={styles.buttonInline}>
               <ArrowRight size={16} color={colors.white} />
-              <AppText variant="bodyStrong" color={colors.white}>
+              <AppText variant="bodyStrong" color={colors.white} style={styles.mapButtonText} numberOfLines={1}>
                 Tìm cơ sở
               </AppText>
             </View>
@@ -335,6 +332,10 @@ const styles = StyleSheet.create({
   },
   mapButton: {
     flexGrow: 1,
+    minWidth: 150,
+  },
+  mapButtonText: {
+    flexShrink: 0,
   },
   buttonInline: {
     flexDirection: "row",
