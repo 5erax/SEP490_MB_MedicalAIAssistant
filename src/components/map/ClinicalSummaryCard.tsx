@@ -111,9 +111,14 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
               {descriptionExpanded ? (
                 <AppText color={colors.muted}>{departmentDescription}</AppText>
               ) : (
-                <AppText color={colors.muted} numberOfLines={3}>
-                  {departmentDescription}
-                </AppText>
+                <View style={styles.descriptionPreview}>
+                  <AppText color={colors.muted} numberOfLines={5}>
+                    {departmentDescription}
+                  </AppText>
+                  <AppText variant="caption" color={colors.teal}>
+                    Xem đầy đủ
+                  </AppText>
+                </View>
               )}
             </Pressable>
           ) : (
@@ -218,6 +223,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.mint,
+  },
+  descriptionPreview: {
+    gap: spacing.xs,
   },
   ctaInline: {
     flexDirection: "row",
