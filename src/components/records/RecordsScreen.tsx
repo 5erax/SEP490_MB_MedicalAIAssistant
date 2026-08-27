@@ -100,7 +100,12 @@ export function RecordsScreen() {
         <LabTrendsPanel onOpenSession={(sessionId) => openSession({ sessionId, status: "completed" })} />
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
         {FILTERS.map(({ value, label }) => {
           const selected = historyFilter === value;
           return (
@@ -212,13 +217,21 @@ const styles = StyleSheet.create({
   headerCopy: { flex: 1, gap: spacing.sm },
   refreshButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper },
   trends: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  filterScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   filterRow: {
     flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
   filterChip: {
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.pill,
