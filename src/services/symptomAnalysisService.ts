@@ -44,6 +44,7 @@ function createDepartmentSnapshot(department: unknown): ClinicalDepartment | nul
 
   return {
     confidenceScore: Number(department.confidenceScore ?? department.ConfidenceScore ?? 0) || 0,
+    description: normalizeText(department.description ?? department.Description),
     departmentId,
     departmentName,
     icdChapterCode: normalizeText(department.icdChapterCode ?? department.IcdChapterCode),

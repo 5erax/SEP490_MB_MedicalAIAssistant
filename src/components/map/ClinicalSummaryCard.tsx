@@ -1,6 +1,7 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowRight, ClipboardCheck, Stethoscope } from "lucide-react-native";
+import { ArrowRight, ChevronDown, ChevronUp, ClipboardCheck, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -24,8 +25,10 @@ function confidencePercent(value: number | undefined) {
 }
 
 export function ClinicalSummaryCard({ status, notice, department, unavailableCount, recommendedCount, sessionId }: ClinicalSummaryCardProps) {
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   if (status === "idle") return null;
   const confidence = confidencePercent(department?.confidenceScore);
+  const departmentDescription = department?.description || department?.reason || "";
 
   return (
     <Card variant="soft" style={styles.card}>
@@ -87,10 +90,32 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
               </AppText>
             </View>
           </View>
-          {department?.reason ? (
-            <AppText color={colors.muted} numberOfLines={3}>
-              {department.reason}
-            </AppText>
+          {departmentDescription ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: descriptionExpanded }}
+              onPress={() => setDescriptionExpanded((current) => !current)}
+              style={({ pressed }) => [styles.descriptionBox, pressed && styles.pressed]}
+            >
+              <View style={styles.descriptionHeader}>
+                <View>
+                  <AppText variant="caption" color={colors.teal}>
+                    Chuyên khoa được gợi ý
+                  </AppText>
+                  <AppText variant="bodyStrong">Thông tin chuyên khoa</AppText>
+                </View>
+                <View style={styles.descriptionChevron}>
+                  {descriptionExpanded ? <ChevronUp size={17} color={colors.teal} /> : <ChevronDown size={17} color={colors.teal} />}
+                </View>
+              </View>
+              {descriptionExpanded ? (
+                <AppText color={colors.muted}>{departmentDescription}</AppText>
+              ) : (
+                <AppText variant="caption" color={colors.subtle}>
+                  Chạm để xem mô tả và phạm vi tiếp nhận của chuyên khoa này.
+                </AppText>
+              )}
+            </Pressable>
           ) : (
             <AppText color={colors.muted}>
               Chọn một cơ sở bên dưới để xem thông tin, bác sĩ đang hoạt động và mở chỉ đường khi cần.
@@ -136,6 +161,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: "flex-start",
   },
+  pressed: {
+    opacity: 0.86,
+  },
   readyGroup: {
     gap: spacing.md,
   },
@@ -168,6 +196,28 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.paper,
     padding: spacing.md,
+  },
+  descriptionBox: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  descriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  descriptionChevron: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
   },
   ctaInline: {
     flexDirection: "row",

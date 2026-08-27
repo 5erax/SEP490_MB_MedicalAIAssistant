@@ -16,6 +16,7 @@ export type ClinicalQuestion = {
 
 export type ClinicalDepartment = {
   confidenceScore: number;
+  description?: string;
   departmentId: string;
   departmentName: string;
   icdChapterCode?: string;
