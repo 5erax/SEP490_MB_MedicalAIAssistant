@@ -4,7 +4,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { ListFilter, MapPin, X } from "lucide-react-native";
+import { ListFilter, MapPin, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -47,6 +47,7 @@ export function MapScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
+  const autoListOpenedRef = useRef(false);
 
   const { facilities: recommendedFacilities, unavailableCount } = useMemo(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || !clinical.context) {
@@ -133,6 +134,12 @@ export function MapScreen() {
     setSelectedFacility(match);
   }, [clinical.isClinicalFlow, clinical.status, params.facilityId, visibleFacilities]);
 
+  useEffect(() => {
+    if (!clinical.isClinicalFlow || clinical.status !== "ready" || autoListOpenedRef.current) return;
+    autoListOpenedRef.current = true;
+    setListVisible(true);
+  }, [clinical.isClinicalFlow, clinical.status]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await reload();
@@ -152,6 +159,22 @@ export function MapScreen() {
       </View>
 
       <View pointerEvents="box-none" style={styles.floatingActions}>
+        {clinical.isClinicalFlow && clinical.status === "ready" ? (
+          <View style={styles.clinicalContextChip}>
+            <View style={styles.clinicalChipIcon}>
+              <Stethoscope size={16} color={colors.teal} />
+            </View>
+            <View style={styles.clinicalChipText}>
+              <AppText variant="caption" color={colors.subtle}>
+                Đang tìm theo chuyên khoa
+              </AppText>
+              <AppText variant="bodyStrong" numberOfLines={1}>
+                {clinical.context?.recommendedDepartment?.departmentName || "Chuyên khoa được gợi ý"}
+              </AppText>
+            </View>
+          </View>
+        ) : null}
+
         <Button
           variant="secondary"
           size="sm"
@@ -169,7 +192,7 @@ export function MapScreen() {
           <View style={styles.nearbyInline}>
             <ListFilter size={17} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
-              Cơ sở y tế gần bạn
+              {clinical.isClinicalFlow ? "Xem cơ sở phù hợp" : "Cơ sở y tế gần bạn"}
             </AppText>
             <View style={styles.countPill}>
               <AppText variant="caption" color={colors.teal}>
@@ -200,6 +223,8 @@ export function MapScreen() {
           searchText={searchText}
           selectedFacilityId={selectedFacility?.facilityId ?? ""}
           selectedType={selectedType}
+          sessionId={clinical.context?.sessionId}
+          isClinicalFlow={clinical.isClinicalFlow}
           unavailableCount={unavailableCount}
         />
       ) : null}
@@ -232,6 +257,8 @@ type FacilityListSheetProps = {
   searchText: string;
   selectedFacilityId: string;
   selectedType: FacilityTypeKey | "all";
+  sessionId?: string;
+  isClinicalFlow: boolean;
   unavailableCount: number;
 };
 
@@ -254,6 +281,8 @@ const FacilityListSheet = memo(function FacilityListSheet({
   searchText,
   selectedFacilityId,
   selectedType,
+  sessionId,
+  isClinicalFlow,
   unavailableCount,
 }: FacilityListSheetProps) {
   const keyExtractor = useCallback((facility: NormalizedFacility) => facility.facilityId, []);
@@ -277,6 +306,8 @@ const FacilityListSheet = memo(function FacilityListSheet({
           notice={clinicalNotice}
           department={department}
           unavailableCount={unavailableCount}
+          recommendedCount={facilities.length}
+          sessionId={sessionId}
         />
 
         <FacilityFilters
@@ -312,12 +343,14 @@ const FacilityListSheet = memo(function FacilityListSheet({
       clinicalNotice,
       clinicalStatus,
       department,
+      facilities.length,
       hasActiveFacilitiesWithoutMapData,
       loading,
       onChangeSearchText,
       onChangeType,
       searchText,
       selectedType,
+      sessionId,
       unavailableCount,
     ],
   );
@@ -339,9 +372,9 @@ const FacilityListSheet = memo(function FacilityListSheet({
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <View style={styles.sheetTitleGroup}>
-            <AppText variant="h2">Cơ sở y tế gần bạn</AppText>
+            <AppText variant="h2">{isClinicalFlow ? "Cơ sở phù hợp" : "Cơ sở y tế gần bạn"}</AppText>
             <AppText variant="caption" color={colors.subtle}>
-              {facilities.length} địa điểm đang hiển thị trên bản đồ
+              {isClinicalFlow ? `${facilities.length} nơi phù hợp với kết quả tư vấn` : `${facilities.length} địa điểm đang hiển thị trên bản đồ`}
             </AppText>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton}>
@@ -388,6 +421,33 @@ const styles = StyleSheet.create({
     right: spacing.lg,
     bottom: spacing["3xl"],
     gap: spacing.sm,
+  },
+  clinicalContextChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.22)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    padding: spacing.md,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 2,
+  },
+  clinicalChipIcon: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+  },
+  clinicalChipText: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   locateButton: {
     alignSelf: "flex-start",

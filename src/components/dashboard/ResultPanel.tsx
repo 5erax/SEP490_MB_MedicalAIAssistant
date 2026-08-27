@@ -1,5 +1,5 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Building2, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
+import { ArrowRight, Building2, CheckCircle2, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -45,6 +45,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
   const department = getRecommendedDepartment(result);
   const facilities = sortRecommendedFacilities(result, userLocation);
   const confidence = confidencePercent(department?.confidenceScore);
+  const topFacilities = facilities.slice(0, 3);
 
   return (
     <View style={styles.group}>
@@ -70,7 +71,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
         ) : null}
         <AppText color={colors.muted}>
           {department?.departmentName
-            ? "Đây là chuyên khoa được hệ thống đề xuất để bạn tham khảo khi chọn nơi thăm khám."
+            ? "Đây là chuyên khoa phù hợp nhất để bạn tiếp tục tìm nơi khám và chuẩn bị thông tin trước buổi hẹn."
             : "Hệ thống chưa trả về chuyên khoa cụ thể. Bạn vẫn có thể xem các cơ sở y tế được gợi ý bên dưới."}
         </AppText>
         {department?.isEmergencySuggested ? (
@@ -81,9 +82,20 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
             </AppText>
           </View>
         ) : null}
-        <AppText variant="caption" color={colors.subtle}>
-          Gợi ý này giúp định hướng nơi khám. Cơ sở y tế sẽ xác nhận chuyên khoa phù hợp sau khi đánh giá trực tiếp.
-        </AppText>
+        <View style={styles.nextSteps}>
+          {["Xem cơ sở phù hợp", "Chọn nơi khám", "Chuẩn bị trước khám"].map((label, index) => (
+            <View key={label} style={styles.nextStep}>
+              <View style={styles.nextStepDot}>
+                <AppText variant="caption" color={colors.white}>
+                  {index + 1}
+                </AppText>
+              </View>
+              <AppText variant="caption" color={colors.muted} style={styles.nextStepLabel}>
+                {label}
+              </AppText>
+            </View>
+          ))}
+        </View>
       </Card>
 
       <Card variant="hard" style={styles.card}>
@@ -99,8 +111,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           </View>
         </View>
         <AppText color={colors.muted}>
-          Danh sách chỉ gồm các cơ sở được trả về trong kết quả gợi ý. Khoảng cách được bổ sung khi bạn cho phép truy
-          cập vị trí.
+          Danh sách chi tiết sẽ nằm trong bản đồ để bạn dễ xem khoảng cách, chọn cơ sở và mở chỉ đường.
         </AppText>
 
         <View style={styles.locationActions}>
@@ -122,11 +133,11 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
               </View>
             )}
           </Button>
-          <Button size="sm" onPress={onOpenMap}>
+          <Button size="sm" onPress={onOpenMap} style={styles.mapButton}>
             <View style={styles.buttonInline}>
-              <MapPin size={16} color={colors.white} />
+              <ArrowRight size={16} color={colors.white} />
               <AppText variant="bodyStrong" color={colors.white}>
-                Mở bản đồ
+                Tìm cơ sở
               </AppText>
             </View>
           </Button>
@@ -147,7 +158,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           <AppText color={colors.muted}>Hệ thống chưa trả về cơ sở y tế cụ thể. Hãy thử lại với mô tả triệu chứng rõ hơn.</AppText>
         ) : (
           <View style={styles.facilityList}>
-            {facilities.map((facility, index) => (
+            {topFacilities.map((facility, index) => (
               <FacilityRow
                 key={facility.facilityId || facility.facilityName || index}
                 facility={facility}
@@ -156,6 +167,14 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
                 userLocation={userLocation}
               />
             ))}
+            {facilities.length > topFacilities.length ? (
+              <View style={styles.moreFacilities}>
+                <CheckCircle2 size={15} color={colors.teal} />
+                <AppText variant="caption" color={colors.muted} style={styles.moreFacilitiesText}>
+                  Còn {facilities.length - topFacilities.length} cơ sở khác trong bản đồ.
+                </AppText>
+              </View>
+            ) : null}
           </View>
         )}
       </Card>
@@ -237,7 +256,11 @@ const styles = StyleSheet.create({
   },
   locationActions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
+  },
+  mapButton: {
+    flexGrow: 1,
   },
   buttonInline: {
     flexDirection: "row",
@@ -251,6 +274,29 @@ const styles = StyleSheet.create({
   },
   facilityList: {
     gap: spacing.sm,
+  },
+  nextSteps: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+    padding: spacing.sm,
+  },
+  nextStep: {
+    flex: 1,
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  nextStepDot: {
+    width: 26,
+    height: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
+  },
+  nextStepLabel: {
+    textAlign: "center",
   },
   facilityRow: {
     flexDirection: "row",
@@ -272,5 +318,16 @@ const styles = StyleSheet.create({
   facilityText: {
     flex: 1,
     gap: spacing.xs / 2,
+  },
+  moreFacilities: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+    padding: spacing.md,
+  },
+  moreFacilitiesText: {
+    flex: 1,
   },
 });
