@@ -1,9 +1,10 @@
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { ArrowRight, Building2, CheckCircle2, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
-import { ClinicalAnalysisResult, ClinicalFacility } from "@/src/types/symptomAnalysis";
+import { ClinicalAnalysisResult, ClinicalDiagnosis, ClinicalFacility } from "@/src/types/symptomAnalysis";
 import { GeoPoint, getFacilityRankingReason, getRecommendedDepartment, sortRecommendedFacilities } from "@/src/utils/facilityRanking";
 import { LocationStatus } from "@/src/hooks/useUserLocation";
 
@@ -38,6 +39,74 @@ function FacilityRow({ facility, index, department, userLocation }: { facility: 
         </AppText>
       </View>
     </View>
+  );
+}
+
+function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
+  const [openId, setOpenId] = useState("");
+  const visibleDiagnoses = diagnoses.slice(0, 5);
+
+  if (visibleDiagnoses.length === 0) return null;
+
+  return (
+    <Card variant="hard" style={styles.card}>
+      <View style={styles.diagnosisHead}>
+        <View>
+          <AppText variant="caption" color={colors.teal}>
+            Kết quả tham khảo
+          </AppText>
+          <AppText variant="h3">Các chẩn đoán được cân nhắc</AppText>
+        </View>
+        <AppText variant="caption" color={colors.subtle}>
+          Chạm để xem giải thích
+        </AppText>
+      </View>
+
+      <View style={styles.diagnosisList}>
+        {visibleDiagnoses.map((diagnosis, index) => {
+          const key = `${diagnosis.rank || index + 1}-${diagnosis.diseaseName || diagnosis.icd10Code}`;
+          const expanded = openId === key;
+          const percent = confidencePercent(diagnosis.paGivenB);
+
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="button"
+              accessibilityState={{ expanded }}
+              onPress={() => setOpenId((current) => (current === key ? "" : key))}
+              style={({ pressed }) => [styles.diagnosisItem, expanded && styles.diagnosisItemOpen, pressed && styles.pressed]}
+            >
+              <View style={styles.diagnosisTopRow}>
+                <View style={styles.diagnosisTitleWrap}>
+                  <AppText variant="bodyStrong" numberOfLines={1}>
+                    {diagnosis.diseaseName || "Chưa xác định"}
+                  </AppText>
+                  <AppText variant="caption" color={colors.teal}>
+                    {percent > 0 ? `Độ phù hợp: ${percent}%` : "Đang cập nhật độ phù hợp"}
+                  </AppText>
+                </View>
+                <View style={styles.diagnosisChevron}>
+                  {expanded ? <ChevronUp size={17} color={colors.teal} /> : <ChevronDown size={17} color={colors.teal} />}
+                </View>
+              </View>
+
+              {expanded ? (
+                <View style={styles.diagnosisDetail}>
+                  {diagnosis.icd10Code ? (
+                    <AppText variant="caption" color={colors.subtle}>
+                      ICD-10: {diagnosis.icd10Code}
+                    </AppText>
+                  ) : null}
+                  <AppText color={colors.muted}>
+                    {diagnosis.clinicalReasoning || "Hệ thống cân nhắc mục này dựa trên triệu chứng và câu trả lời làm rõ của bạn."}
+                  </AppText>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+    </Card>
   );
 }
 
@@ -97,6 +166,8 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
           ))}
         </View>
       </Card>
+
+      <DiagnosisDropdown diagnoses={result?.diagnoses ?? []} />
 
       <Card variant="hard" style={styles.card}>
         <View style={styles.facilityHead}>
@@ -194,6 +265,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderColor: "rgba(8,127,140,0.16)",
   },
+  pressed: {
+    opacity: 0.86,
+  },
   resultHero: {
     gap: spacing.md,
     borderColor: "rgba(8,127,140,0.2)",
@@ -274,6 +348,50 @@ const styles = StyleSheet.create({
   },
   facilityList: {
     gap: spacing.sm,
+  },
+  diagnosisHead: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  diagnosisList: {
+    gap: spacing.sm,
+  },
+  diagnosisItem: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
+  diagnosisItemOpen: {
+    borderColor: "rgba(8,127,140,0.35)",
+    backgroundColor: colors.mint,
+  },
+  diagnosisTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  diagnosisTitleWrap: {
+    flex: 1,
+    gap: spacing.xs / 2,
+  },
+  diagnosisChevron: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+  },
+  diagnosisDetail: {
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(8,127,140,0.18)",
+    paddingTop: spacing.sm,
   },
   nextSteps: {
     flexDirection: "row",

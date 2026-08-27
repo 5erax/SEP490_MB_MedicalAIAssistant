@@ -1,19 +1,17 @@
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowRight, ChevronDown, ChevronUp, ClipboardCheck, Stethoscope } from "lucide-react-native";
+import { ArrowRight, ClipboardCheck, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { ClinicalStatus } from "@/src/hooks/useClinicalRecommendation";
-import { ClinicalDepartment, ClinicalDiagnosis } from "@/src/types/symptomAnalysis";
+import { ClinicalDepartment } from "@/src/types/symptomAnalysis";
 import { ROUTES } from "@/src/navigation/routes";
 
 type ClinicalSummaryCardProps = {
   status: ClinicalStatus;
   notice: string;
   department: ClinicalDepartment | null;
-  diagnoses: ClinicalDiagnosis[];
   unavailableCount: number;
   recommendedCount: number;
   sessionId?: string;
@@ -25,75 +23,7 @@ function confidencePercent(value: number | undefined) {
   return Math.max(0, Math.min(100, Math.round(numeric <= 1 ? numeric * 100 : numeric)));
 }
 
-function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
-  const [openId, setOpenId] = useState("");
-  const visibleDiagnoses = diagnoses.slice(0, 5);
-
-  if (visibleDiagnoses.length === 0) return null;
-
-  return (
-    <View style={styles.diagnosisSection}>
-      <View style={styles.diagnosisHead}>
-        <View>
-          <AppText variant="caption" color={colors.teal}>
-            Kết quả tham khảo
-          </AppText>
-          <AppText variant="bodyStrong">Các chẩn đoán được cân nhắc</AppText>
-        </View>
-        <AppText variant="caption" color={colors.subtle}>
-          Chạm để xem giải thích
-        </AppText>
-      </View>
-
-      <View style={styles.diagnosisList}>
-        {visibleDiagnoses.map((diagnosis, index) => {
-          const key = `${diagnosis.rank || index + 1}-${diagnosis.diseaseName || diagnosis.icd10Code}`;
-          const expanded = openId === key;
-          const percent = confidencePercent(diagnosis.paGivenB);
-
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityState={{ expanded }}
-              onPress={() => setOpenId((current) => (current === key ? "" : key))}
-              style={({ pressed }) => [styles.diagnosisItem, expanded && styles.diagnosisItemOpen, pressed && styles.pressed]}
-            >
-              <View style={styles.diagnosisTopRow}>
-                <View style={styles.diagnosisTitleWrap}>
-                  <AppText variant="bodyStrong" numberOfLines={1}>
-                    {diagnosis.diseaseName || "Chưa xác định"}
-                  </AppText>
-                  <AppText variant="caption" color={colors.teal}>
-                    {percent > 0 ? `Độ phù hợp: ${percent}%` : "Đang cập nhật độ phù hợp"}
-                  </AppText>
-                </View>
-                <View style={styles.diagnosisChevron}>
-                  {expanded ? <ChevronUp size={17} color={colors.teal} /> : <ChevronDown size={17} color={colors.teal} />}
-                </View>
-              </View>
-
-              {expanded ? (
-                <View style={styles.diagnosisDetail}>
-                  {diagnosis.icd10Code ? (
-                    <AppText variant="caption" color={colors.subtle}>
-                      ICD-10: {diagnosis.icd10Code}
-                    </AppText>
-                  ) : null}
-                  <AppText color={colors.muted}>
-                    {diagnosis.clinicalReasoning || "Hệ thống cân nhắc mục này dựa trên triệu chứng và câu trả lời làm rõ của bạn."}
-                  </AppText>
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-export function ClinicalSummaryCard({ status, notice, department, diagnoses, unavailableCount, recommendedCount, sessionId }: ClinicalSummaryCardProps) {
+export function ClinicalSummaryCard({ status, notice, department, unavailableCount, recommendedCount, sessionId }: ClinicalSummaryCardProps) {
   if (status === "idle") return null;
   const confidence = confidencePercent(department?.confidenceScore);
 
@@ -169,7 +99,6 @@ export function ClinicalSummaryCard({ status, notice, department, diagnoses, una
           {unavailableCount > 0 ? (
             <Badge tone="warning">{unavailableCount} cơ sở gợi ý hiện không còn khả dụng</Badge>
           ) : null}
-          <DiagnosisDropdown diagnoses={diagnoses} />
           <Button
             fullWidth
             onPress={() =>
@@ -207,9 +136,6 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     alignItems: "flex-start",
   },
-  pressed: {
-    opacity: 0.86,
-  },
   readyGroup: {
     gap: spacing.md,
   },
@@ -242,58 +168,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.paper,
     padding: spacing.md,
-  },
-  diagnosisSection: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.2)",
-    borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    padding: spacing.md,
-  },
-  diagnosisHead: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  diagnosisList: {
-    gap: spacing.sm,
-  },
-  diagnosisItem: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    padding: spacing.md,
-  },
-  diagnosisItemOpen: {
-    borderColor: "rgba(8,127,140,0.35)",
-    backgroundColor: colors.mint,
-  },
-  diagnosisTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  diagnosisTitleWrap: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  diagnosisChevron: {
-    width: 30,
-    height: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.white,
-  },
-  diagnosisDetail: {
-    gap: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(8,127,140,0.18)",
-    paddingTop: spacing.sm,
   },
   ctaInline: {
     flexDirection: "row",
