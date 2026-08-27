@@ -93,7 +93,7 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
             </AppText>
           ) : (
             <AppText color={colors.muted}>
-              Chọn một cơ sở bên dưới để xem chi tiết, bác sĩ và chỉ đường. Nội dung dài được giữ trong sheet để bản đồ không bị che.
+              Chọn một cơ sở bên dưới để xem thông tin, bác sĩ đang hoạt động và mở chỉ đường khi cần.
             </AppText>
           )}
           {unavailableCount > 0 ? (
