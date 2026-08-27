@@ -23,10 +23,40 @@ const FEATURE_LIMIT_LABELS: Record<string, (limit: unknown) => string> = {
   clinicalQuestionPerMonth: (limit) => `${limit} bộ câu hỏi lâm sàng mỗi tháng`,
 };
 
+function normalizeQuotaCode(value: unknown) {
+  return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+export function findServiceCreditQuota(plan: unknown) {
+  if (!plan || typeof plan !== "object" || Array.isArray(plan)) return null;
+  const quotas = Array.isArray((plan as { quotas?: unknown[] }).quotas) ? (plan as { quotas: Record<string, unknown>[] }).quotas : [];
+  return quotas.find((quota) => (
+    quota?.isActive !== false
+    && normalizeQuotaCode(quota?.quotaCode ?? quota?.code) === "SERVICECREDIT"
+  )) ?? null;
+}
+
+export function getServiceCreditLimit(plan: unknown) {
+  const quota = findServiceCreditQuota(plan);
+  if (!quota || quota.limitValue === null || quota.limitValue === undefined || quota.limitValue === "") return null;
+  const limit = Number(quota.limitValue);
+  return Number.isFinite(limit) ? Math.max(0, Math.trunc(limit)) : null;
+}
+
+function getQuotaBenefits(plan: unknown) {
+  const limit = getServiceCreditLimit(plan);
+  if (limit === null) return [];
+  return [`${limit.toLocaleString("vi-VN")} lượt dùng chung cho kế hoạch phục hồi, tư vấn trước khám và phân tích xét nghiệm`];
+}
+
 export function getPlanBenefits(value: unknown): string[] {
   if (!value) return [];
 
   try {
+    if (typeof value === "object" && !Array.isArray(value) && "quotas" in value) {
+      return getQuotaBenefits(value);
+    }
+
     const limits = typeof value === "string" ? JSON.parse(value) : value;
     if (!limits || Array.isArray(limits) || typeof limits !== "object") return [];
 

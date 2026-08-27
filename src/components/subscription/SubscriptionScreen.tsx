@@ -13,16 +13,17 @@ import { ROUTES } from "@/src/navigation/routes";
 import {
   formatPrice,
   getPlanBenefits,
-  getPlanCycle,
+  getServiceCreditLimit,
   isActiveSubscription,
 } from "@/src/utils/subscriptionPlanPresentation";
+import { SubscriptionPlan } from "@/src/types/subscription";
 import { CurrentSubscriptionCard } from "./CurrentSubscriptionCard";
 import { FreePlanCard, PaidPlanCard } from "./PlanCard";
 
 const FAQS: [string, string][] = [
   [
-    "Tôi có thể hủy gia hạn không?",
-    "Có. Khi gói đang bật gia hạn tự động, bạn có thể hủy gia hạn trong phần gói hiện tại. Quyền lợi vẫn được hiển thị đến ngày kết thúc mà hệ thống trả về.",
+    "Lượt dùng trong gói có hết hạn không?",
+    "Không. Lượt dùng dịch vụ được cộng vào số dư chung của tài khoản và không hết hạn.",
   ],
   [
     "Phần miễn phí bao gồm gì?",
@@ -30,7 +31,7 @@ const FAQS: [string, string][] = [
   ],
   [
     "Quyền lợi gói đăng ký được xác định thế nào?",
-    "Tên gói, giá, thời hạn và các hạn mức được lấy từ gói đang hoạt động trên hệ thống MediMate.",
+    "Mỗi gói cấp một số lượt dùng chung cho kế hoạch phục hồi, tư vấn trước khám và phân tích xét nghiệm.",
   ],
 ];
 
@@ -44,6 +45,7 @@ export function SubscriptionScreen() {
     subscriptions,
     subscriptionsLoading,
     subscriptionsError,
+    usageList,
     reloadSubscriptions,
     checkoutState,
     checkingPayment,
@@ -53,37 +55,30 @@ export function SubscriptionScreen() {
     cancelSubscription,
   } = useSubscription();
 
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [autoRenew, setAutoRenew] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const isPremium = hasPremiumAccess(session);
-  const paidPlans = useMemo(() => plans.filter((plan) => Number(plan.price) > 0), [plans]);
-  const availableCycles = useMemo(() => new Set(paidPlans.map(getPlanCycle)), [paidPlans]);
-  const selectedCycle = availableCycles.has(billingCycle) ? billingCycle : paidPlans[0] ? getPlanCycle(paidPlans[0]) : billingCycle;
-  const paidPlan = useMemo(() => paidPlans.find((plan) => getPlanCycle(plan) === selectedCycle) ?? paidPlans[0], [paidPlans, selectedCycle]);
+  const paidPlans = useMemo(
+    () => [...plans]
+      .filter((plan) => Number(plan.price) > 0 && Number(getServiceCreditLimit(plan)) > 0)
+      .sort((left, right) => Number(left.price) - Number(right.price)),
+    [plans],
+  );
   const freePlan = useMemo(() => plans.find((plan) => Number(plan.price) === 0), [plans]);
   const activeSubscription = useMemo(() => subscriptions.find(isActiveSubscription) ?? null, [subscriptions]);
-  const paidBenefits = useMemo(() => getPlanBenefits(paidPlan?.featureLimitJson), [paidPlan]);
+  const hasExistingCredits = useMemo(
+    () => usageList.some((item) => Number(item.grantedCount ?? item.limitValue ?? 0) > 0),
+    [usageList],
+  );
   const paidPlanUnavailable = !plansLoading && Boolean(plansError);
-  const currentPrice = Number(paidPlan?.price) || 0;
 
-  const paidPriceLabel = plansLoading
-    ? "Đang tải giá..."
-    : currentPrice
-      ? formatPrice(currentPrice)
-      : plansError
-        ? "Không khả dụng"
-        : "Chưa có gói khả dụng";
-
-  function handleUpgrade() {
+  function handlePurchase(plan: SubscriptionPlan) {
     if (!session) {
       router.push(ROUTES.PUBLIC.LOGIN);
       return;
     }
-    if (activeSubscription || isPremium) return;
-    if (!paidPlan?.id) return;
-    startCheckout(paidPlan.id, autoRenew);
+    if (!plan.id || !getServiceCreditLimit(plan)) return;
+    startCheckout(plan.id, false);
   }
 
   function handleCancel() {
@@ -98,20 +93,7 @@ export function SubscriptionScreen() {
     );
   }
 
-  const upgradeDisabled =
-    ["creating", "pending"].includes(checkoutState.status) || (!paidPlan && !isPremium && !activeSubscription);
-  const upgradeLabel =
-    checkoutState.status === "creating"
-      ? "Đang tạo thanh toán..."
-      : checkoutState.status === "pending"
-        ? "Có giao dịch đang chờ"
-        : !paidPlan && !isPremium && !activeSubscription
-          ? "Tạm thời chưa thể đăng ký"
-          : session
-            ? isPremium || activeSubscription
-              ? "Quản lý gói hiện tại"
-              : "Thanh toán qua PayOS"
-            : "Đăng nhập để nâng cấp";
+  const checkoutBusy = ["creating", "pending"].includes(checkoutState.status);
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -121,32 +103,10 @@ export function SubscriptionScreen() {
         </AppText>
         <AppText variant="h1">Chọn gói phù hợp với cách bạn sử dụng MediMate</AppText>
         <AppText color={colors.muted}>
-          So sánh phần dùng ngay được và quyền lợi có hạn mức của gói đăng ký. Giá và thời hạn được lấy từ cấu hình đang
-          hoạt động.
+          So sánh phần dùng ngay được và quyền lợi có hạn mức của gói đăng ký. Giá và số lượt được lấy từ cấu hình đang
+          hoạt động. Mỗi gói lượt có thể được mua nhiều lần và cộng dồn vào số dư tài khoản.
         </AppText>
       </View>
-
-      {paidPlans.length > 0 ? (
-        <View style={styles.cycleToggle}>
-          {(["monthly", "yearly"] as const).map((cycle) => {
-            const selected = selectedCycle === cycle;
-            const available = availableCycles.has(cycle);
-            return (
-              <Pressable
-                key={cycle}
-                accessibilityRole="button"
-                disabled={!available}
-                onPress={() => setBillingCycle(cycle)}
-                style={[styles.cycleButton, selected && styles.cycleButtonActive, !available && styles.cycleButtonDisabled]}
-              >
-                <AppText variant="bodyStrong" color={selected ? colors.white : colors.subtle}>
-                  {cycle === "monthly" ? "Theo tháng" : "Theo năm"}
-                </AppText>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
 
       {!plansLoading && plansError ? (
         <View style={styles.noticeError}>
@@ -169,30 +129,35 @@ export function SubscriptionScreen() {
       ) : (
         <View style={styles.plansGroup}>
           <FreePlanCard plan={freePlan} onExplore={() => router.replace(ROUTES.PATIENT.HOME)} />
-          <PaidPlanCard
-            plan={paidPlan}
-            benefits={paidBenefits}
-            priceLabel={paidPriceLabel}
-            loading={plansLoading}
-            unavailable={paidPlanUnavailable}
-            actionLabel={upgradeLabel}
-            actionDisabled={upgradeDisabled}
-            actionLoading={checkoutState.status === "creating"}
-            onAction={handleUpgrade}
-            autoRenewControl={
-              session && paidPlan && !isPremium && !activeSubscription ? (
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: autoRenew }} onPress={() => setAutoRenew((c) => !c)} style={styles.autoRenewRow}>
-                  <View style={[styles.checkbox, autoRenew && styles.checkboxChecked]} />
-                  <View style={styles.autoRenewText}>
-                    <AppText variant="bodyStrong">Tự động gia hạn</AppText>
-                    <AppText variant="caption" color={colors.subtle}>
-                      Có thể hủy gia hạn trong phần gói hiện tại.
-                    </AppText>
-                  </View>
-                </Pressable>
-              ) : undefined
-            }
-          />
+          {paidPlans.map((plan) => {
+            const creditLimit = getServiceCreditLimit(plan);
+            const isCurrentCheckout = checkoutState.planId === plan.id;
+            const actionLabel = isCurrentCheckout && checkoutState.status === "creating"
+              ? "Đang tạo thanh toán..."
+              : isCurrentCheckout && checkoutState.status === "pending"
+                ? "Đang chờ hoàn tất thanh toán"
+                : !session
+                  ? "Đăng nhập để mua lượt"
+                  : activeSubscription || isPremium || hasExistingCredits
+                    ? `Mua thêm ${creditLimit} lượt`
+                    : `Mua / nạp thêm ${creditLimit} lượt`;
+
+            return (
+              <PaidPlanCard
+                key={plan.id}
+                plan={plan}
+                creditLimit={creditLimit}
+                benefits={getPlanBenefits(plan)}
+                priceLabel={formatPrice(Number(plan.price) || 0)}
+                loading={plansLoading}
+                unavailable={paidPlanUnavailable}
+                actionLabel={actionLabel}
+                actionDisabled={checkoutBusy}
+                actionLoading={isCurrentCheckout && checkoutState.status === "creating"}
+                onAction={() => handlePurchase(plan)}
+              />
+            );
+          })}
         </View>
       )}
 
@@ -316,25 +281,6 @@ const styles = StyleSheet.create({
   heroGroup: {
     gap: spacing.sm,
   },
-  cycleToggle: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    padding: spacing.xs,
-  },
-  cycleButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-  },
-  cycleButtonActive: {
-    backgroundColor: colors.teal,
-  },
-  cycleButtonDisabled: {
-    opacity: 0.4,
-  },
   noticeError: {
     gap: spacing.xs,
     borderRadius: radius.md,
@@ -405,30 +351,5 @@ const styles = StyleSheet.create({
   },
   assuranceText: {
     flex: 1,
-  },
-  autoRenewRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: colors.lineStrong,
-    backgroundColor: colors.paper,
-  },
-  checkboxChecked: {
-    borderColor: colors.teal,
-    backgroundColor: colors.teal,
-  },
-  autoRenewText: {
-    flex: 1,
-    gap: spacing.xs / 2,
   },
 });

@@ -32,13 +32,13 @@ export function CurrentSubscriptionCard({ loading, error, activeSubscription, on
       ) : error ? (
         <AppText color={colors.muted}>{error} Dữ liệu tài khoản của bạn chưa bị thay đổi.</AppText>
       ) : activeSubscription ? (
-        <AppText color={colors.muted}>
-          Có hiệu lực đến{" "}
-          <AppText variant="bodyStrong">
-            {activeSubscription.endDate ? new Date(activeSubscription.endDate).toLocaleDateString("vi-VN") : "đang cập nhật"}
+        activeSubscription.endDate ? (
+          <AppText color={colors.muted}>
+            Có hiệu lực đến <AppText variant="bodyStrong">{new Date(activeSubscription.endDate).toLocaleDateString("vi-VN")}</AppText>.
           </AppText>
-          . Gia hạn tự động: <AppText variant="bodyStrong">{activeSubscription.autoRenew ? "Bật" : "Tắt"}</AppText>.
-        </AppText>
+        ) : (
+          <AppText color={colors.muted}>Lượt đã mua được cộng vào số dư chung và không hết hạn.</AppText>
+        )
       ) : (
         <AppText color={colors.muted}>Bạn chưa có gói trả phí đang hoạt động.</AppText>
       )}

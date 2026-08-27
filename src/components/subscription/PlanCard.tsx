@@ -4,7 +4,7 @@ import { Check, CircleDollarSign, Sparkles } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, spacing } from "@/src/theme/tokens";
-import { PUBLIC_ACCESS_BENEFITS, getDurationLabel, getPlanDisplayName } from "@/src/utils/subscriptionPlanPresentation";
+import { PUBLIC_ACCESS_BENEFITS, getPlanDisplayName } from "@/src/utils/subscriptionPlanPresentation";
 import { SubscriptionPlan } from "@/src/types/subscription";
 
 export function FreePlanCard({ plan, onExplore }: { plan?: SubscriptionPlan; onExplore: () => void }) {
@@ -52,6 +52,7 @@ type PaidPlanCardProps = {
   actionLoading: boolean;
   onAction: () => void;
   autoRenewControl?: ReactNode;
+  creditLimit?: number | null;
 };
 
 export function PaidPlanCard({
@@ -65,6 +66,7 @@ export function PaidPlanCard({
   actionLoading,
   onAction,
   autoRenewControl,
+  creditLimit,
 }: PaidPlanCardProps) {
   return (
     <Card variant="hard" style={styles.card}>
@@ -72,7 +74,7 @@ export function PaidPlanCard({
         <View style={styles.iconMarkPremium}>
           <CircleDollarSign size={20} color={colors.white} />
         </View>
-        <Badge tone="success">Gói đăng ký</Badge>
+        <Badge tone="success">{creditLimit ? `${creditLimit.toLocaleString("vi-VN")} lượt` : "Gói lượt"}</Badge>
       </View>
       <AppText variant="caption" color={colors.subtle}>
         Quyền lợi có hạn mức
@@ -80,16 +82,11 @@ export function PaidPlanCard({
       <AppText variant="h2">{plan ? getPlanDisplayName(plan.planName) : "MediMate Plus"}</AppText>
       <View style={styles.priceRow}>
         {loading ? <ActivityIndicator color={colors.teal} /> : <AppText variant="h3">{priceLabel}</AppText>}
-        {plan ? (
-          <AppText variant="caption" color={colors.subtle}>
-            / {getDurationLabel(plan.durationInDays)}
-          </AppText>
-        ) : null}
       </View>
       <AppText color={colors.muted}>
         {unavailable
           ? "Giá và hạn mức sẽ hiển thị lại khi kết nối được khôi phục."
-          : "Dành cho người cần sử dụng thường xuyên các tính năng có giới hạn theo gói."}
+          : "Lượt mua được cộng vào số dư hiện có và không hết hạn."}
       </AppText>
 
       <View style={styles.benefitList}>

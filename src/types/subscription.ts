@@ -1,9 +1,19 @@
+export type SubscriptionPlanQuota = {
+  quotaCode?: string;
+  code?: string;
+  quotaName?: string;
+  limitValue?: number;
+  isActive?: boolean;
+  [key: string]: unknown;
+};
+
 export type SubscriptionPlan = {
   id: string;
   planName?: string;
   price?: number;
   durationInDays?: number;
   featureLimitJson?: string | Record<string, unknown>;
+  quotas?: SubscriptionPlanQuota[];
   [key: string]: unknown;
 };
 
@@ -75,4 +85,5 @@ export type CheckoutState = {
   message: string;
   paymentId: string;
   orderCode?: string;
+  planId?: string;
 };

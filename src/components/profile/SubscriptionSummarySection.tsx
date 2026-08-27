@@ -75,6 +75,8 @@ export function SubscriptionSummarySection({
 
       {subscription?.endDate ? (
         <AppText color={colors.muted}>Hiệu lực đến {formatDateTime(subscription.endDate)}</AppText>
+      ) : active ? (
+        <AppText color={colors.muted}>Lượt đã mua được cộng vào số dư chung và không hết hạn.</AppText>
       ) : (
         <AppText color={colors.muted}>Bạn đang dùng các quyền lợi miễn phí của MediMate AI.</AppText>
       )}
@@ -82,7 +84,7 @@ export function SubscriptionSummarySection({
       <Button onPress={() => router.push(ROUTES.PUBLIC.PRICING)}>
         <View style={styles.upgradeInline}>
           <Sparkles size={16} color={colors.ink} />
-          <AppText variant="bodyStrong">Nâng cấp MediMate+</AppText>
+          <AppText variant="bodyStrong">Mua thêm lượt</AppText>
         </View>
       </Button>
 
@@ -97,7 +99,7 @@ export function SubscriptionSummarySection({
                 {item.quotaName || "Hạn mức sử dụng"}
               </AppText>
               <AppText variant="h3">
-                {item.remainingCount ?? "—"}/{item.limitValue ?? "—"}
+                {item.remainingCount ?? "—"}/{item.grantedCount ?? item.limitValue ?? "—"}
               </AppText>
               <AppText variant="caption" color={colors.muted}>
                 Đã dùng {item.usedCount ?? 0}

@@ -9,6 +9,7 @@ export type PendingPaymentCheckout = {
   orderCode?: string;
   paymentUrl: string;
   createdAt: number;
+  planId?: string;
 };
 
 function normalizePendingCheckout(value: unknown): PendingPaymentCheckout | null {
@@ -19,6 +20,7 @@ function normalizePendingCheckout(value: unknown): PendingPaymentCheckout | null
   const paymentUrl = String(checkout.paymentUrl ?? "").trim();
   const orderCode = String(checkout.orderCode ?? "").trim();
   const createdAt = Number(checkout.createdAt);
+  const planId = String(checkout.planId ?? "").trim();
 
   if (!paymentId || !/^https?:\/\//i.test(paymentUrl) || !Number.isFinite(createdAt)) {
     return null;
@@ -31,6 +33,7 @@ function normalizePendingCheckout(value: unknown): PendingPaymentCheckout | null
     paymentUrl,
     orderCode: orderCode || undefined,
     createdAt,
+    planId: planId || undefined,
   };
 }
 

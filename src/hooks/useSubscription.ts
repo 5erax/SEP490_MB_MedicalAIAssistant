@@ -13,7 +13,7 @@ import {
 } from "@/src/services/paymentCheckoutStorage";
 import { paymentsApi, subscriptionPlansApi, userSubscriptionsApi } from "@/src/services/subscriptionService";
 import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
-import { CheckoutState, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
+import { CheckoutState, SubscriptionPlan, SubscriptionUsageQuota, UserSubscription } from "@/src/types/subscription";
 import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscriptionPlanPresentation";
 
 const POLL_INTERVAL_MS = 3000;
@@ -25,6 +25,7 @@ function pendingCheckoutState(checkout: PendingPaymentCheckout, message?: string
     status: "pending",
     paymentId: checkout.paymentId,
     orderCode: checkout.orderCode,
+    planId: checkout.planId,
     message:
       message
       ?? "Đang chờ PayOS xác nhận. Sau khi thanh toán, hãy quay lại ứng dụng để hệ thống tự cập nhật.",
@@ -41,6 +42,7 @@ export function useSubscription() {
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(Boolean(session));
   const [subscriptionsError, setSubscriptionsError] = useState("");
+  const [usageList, setUsageList] = useState<SubscriptionUsageQuota[]>([]);
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({
     status: "idle",
     message: "",
@@ -97,6 +99,23 @@ export function useSubscription() {
     }
   }, []);
 
+  const loadUsage = useCallback(async () => {
+    if (!session) {
+      setUsageList([]);
+      return [] as SubscriptionUsageQuota[];
+    }
+    try {
+      const response = await subscriptionUsageApi.getUsage();
+      const data = response.data;
+      const items = Array.isArray(data) ? data : data ? [data] : [];
+      setUsageList(items);
+      return items;
+    } catch {
+      setUsageList([]);
+      return [] as SubscriptionUsageQuota[];
+    }
+  }, [session]);
+
   const forgetPendingCheckout = useCallback(async () => {
     pendingCheckoutRef.current = null;
     try {
@@ -116,11 +135,11 @@ export function useSubscription() {
       // The subscription endpoint is still refreshed if token refresh is unavailable.
     }
     try {
-      await subscriptionUsageApi.getUsage();
+      await loadUsage();
     } catch {
       // Quota information is supplementary to the checkout result.
     }
-  }, [loadSubscriptions, setSession]);
+  }, [loadSubscriptions, loadUsage, setSession]);
 
   const inspectPayment = useCallback(
     async (checkout: PendingPaymentCheckout, { reconcile = false } = {}) => {
@@ -309,6 +328,7 @@ export function useSubscription() {
         status: "creating",
         message: "Đang tạo liên kết thanh toán PayOS...",
         paymentId: "",
+        planId,
       });
 
       try {
@@ -323,6 +343,7 @@ export function useSubscription() {
           paymentUrl: checkoutResponse.paymentUrl,
           orderCode: String(checkoutResponse.orderCode ?? "").trim() || undefined,
           createdAt: Date.now(),
+          planId,
         };
         pendingCheckoutRef.current = checkout;
         try {
@@ -383,7 +404,8 @@ export function useSubscription() {
 
   useEffect(() => {
     loadSubscriptions();
-  }, [loadSubscriptions]);
+    loadUsage();
+  }, [loadSubscriptions, loadUsage]);
 
   useEffect(() => {
     let active = true;
@@ -430,6 +452,7 @@ export function useSubscription() {
     subscriptions,
     subscriptionsLoading,
     subscriptionsError,
+    usageList,
     reloadSubscriptions: loadSubscriptions,
     checkoutState,
     checkingPayment,
