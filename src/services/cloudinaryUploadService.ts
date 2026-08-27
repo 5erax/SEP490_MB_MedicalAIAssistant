@@ -2,6 +2,7 @@
 // Cloudinary unsigned upload. RN's fetch/FormData accepts a
 // {uri, name, type} object in place of a browser File.
 import { env } from "@/src/config/env";
+import { Platform } from "react-native";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_MEDICAL_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
@@ -9,10 +10,42 @@ const MEDICAL_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/
 
 export type PickedImage = {
   uri: string;
+  file?: Blob | null;
   mimeType?: string | null;
   fileSize?: number | null;
   fileName?: string | null;
 };
+
+async function appendPickedFile(
+  formData: FormData,
+  picked: PickedImage,
+  fallbackName: string,
+  fallbackType: string,
+) {
+  const fileName = picked.fileName || fallbackName;
+  const mimeType = picked.mimeType || fallbackType;
+
+  if (Platform.OS === "web") {
+    let blob = picked.file ?? null;
+    if (!blob) {
+      const fileResponse = await fetch(picked.uri);
+      if (!fileResponse.ok) {
+        throw new Error("Không thể đọc tệp đã chọn trên thiết bị.");
+      }
+      blob = await fileResponse.blob();
+    }
+
+    const uploadBlob = blob.type ? blob : new Blob([blob], { type: mimeType });
+    formData.append("file", uploadBlob, fileName);
+    return;
+  }
+
+  formData.append("file", {
+    uri: picked.uri,
+    name: fileName,
+    type: mimeType,
+  } as unknown as Blob);
+}
 
 export function validateCloudinaryImage(image: PickedImage) {
   if (!image) {
@@ -35,11 +68,7 @@ export async function uploadImageToCloudinary(image: PickedImage) {
   }
 
   const formData = new FormData();
-  formData.append("file", {
-    uri: image.uri,
-    name: image.fileName || `review-${Date.now()}.jpg`,
-    type: image.mimeType || "image/jpeg",
-  } as unknown as Blob);
+  await appendPickedFile(formData, image, `review-${Date.now()}.jpg`, "image/jpeg");
   formData.append("upload_preset", uploadPreset);
   if (folder) formData.append("folder", folder);
 
@@ -58,6 +87,7 @@ export async function uploadImageToCloudinary(image: PickedImage) {
 
 export type PickedDocument = {
   uri: string;
+  file?: Blob | null;
   mimeType?: string | null;
   fileSize?: number | null;
   fileName?: string | null;
@@ -89,11 +119,7 @@ export async function uploadMedicalDocumentToCloudinary(document: PickedDocument
   }
 
   const formData = new FormData();
-  formData.append("file", {
-    uri: document.uri,
-    name: document.fileName || `lab-test-${Date.now()}`,
-    type: document.mimeType || "application/octet-stream",
-  } as unknown as Blob);
+  await appendPickedFile(formData, document, `lab-test-${Date.now()}`, "application/octet-stream");
   formData.append("upload_preset", uploadPreset);
   formData.append("folder", folder ? `${folder}/lab-tests` : "lab-tests");
 
@@ -104,7 +130,8 @@ export async function uploadMedicalDocumentToCloudinary(document: PickedDocument
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok || !payload.secure_url) {
-    throw new Error("Không thể tải phiếu xét nghiệm lên. Vui lòng thử lại.");
+    const cloudinaryMessage = typeof payload?.error?.message === "string" ? payload.error.message : "";
+    throw new Error(cloudinaryMessage ? `Không thể tải phiếu xét nghiệm: ${cloudinaryMessage}` : "Không thể tải phiếu xét nghiệm lên. Vui lòng thử lại.");
   }
 
   return {

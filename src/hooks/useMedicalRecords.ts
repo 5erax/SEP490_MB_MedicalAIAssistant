@@ -190,7 +190,7 @@ export function useMedicalRecords() {
     if (result.canceled || !result.assets?.length) return;
 
     const asset = result.assets[0];
-    acceptDocument({ uri: asset.uri, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name });
+    acceptDocument({ uri: asset.uri, file: asset.file, mimeType: asset.mimeType, fileSize: asset.size, fileName: asset.name });
   }
 
   async function pickImage() {
@@ -203,6 +203,7 @@ export function useMedicalRecords() {
     const asset = result.assets[0];
     acceptDocument({
       uri: asset.uri,
+      file: asset.file,
       mimeType: asset.mimeType || "image/jpeg",
       fileSize: asset.fileSize,
       fileName: asset.fileName || `lab-test-${Date.now()}.jpg`,
@@ -225,6 +226,7 @@ export function useMedicalRecords() {
     const asset = result.assets[0];
     acceptDocument({
       uri: asset.uri,
+      file: asset.file,
       mimeType: asset.mimeType || "image/jpeg",
       fileSize: asset.fileSize,
       fileName: asset.fileName || `lab-test-camera-${Date.now()}.jpg`,
