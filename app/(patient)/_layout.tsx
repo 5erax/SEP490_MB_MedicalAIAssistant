@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { CalendarClock, LayoutGrid, MapPin, Route, UserRound } from "lucide-react-native";
+import { CalendarClock, ClipboardList, LayoutGrid, MapPin, Route, UserRound } from "lucide-react-native";
 
 import { colors } from "@/src/theme/tokens";
 
@@ -35,6 +35,13 @@ export default function PatientLayout() {
         }}
       />
       <Tabs.Screen
+        name="records"
+        options={{
+          title: "Xét nghiệm",
+          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="recovery-plan"
         options={{
           title: "Phục hồi",
@@ -54,7 +61,6 @@ export default function PatientLayout() {
       <Tabs.Screen name="medication" options={{ href: null }} />
       <Tabs.Screen name="my-medications" options={{ href: null }} />
       <Tabs.Screen name="payment-history" options={{ href: null }} />
-      <Tabs.Screen name="records" options={{ href: null }} />
     </Tabs>
   );
 }
