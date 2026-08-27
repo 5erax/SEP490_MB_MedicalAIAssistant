@@ -1,5 +1,4 @@
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { FileText, Image as ImageIcon, Trash2, Upload, X } from "lucide-react-native";
 
 import { AppText, Button } from "@/src/components/ui";
@@ -12,7 +11,6 @@ type SubmissionStatus = "idle" | "uploading" | "analyzing" | "success" | "error"
 type UploadRecordSheetProps = {
   visible: boolean;
   profile: UserProfile | null;
-  testDate: string;
   document: PickedDocument | null;
   formError: string;
   submissionStatus: SubmissionStatus;
@@ -20,7 +18,6 @@ type UploadRecordSheetProps = {
   onClose: () => void;
   onPickDocument: () => void;
   onClearDocument: () => void;
-  onChangeTestDate: (date: string) => void;
   onSubmit: () => void;
 };
 
@@ -28,13 +25,6 @@ function formatDateLabel(value: string) {
   if (!value) return "Chọn ngày";
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
-}
-
-function toIsoDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function submitLabel(status: SubmissionStatus) {
@@ -48,7 +38,6 @@ const GENDER_LABEL: Record<number, string> = { 1: "Nam", 2: "Nữ", 0: "Khác" }
 export function UploadRecordSheet({
   visible,
   profile,
-  testDate,
   document,
   formError,
   submissionStatus,
@@ -56,7 +45,6 @@ export function UploadRecordSheet({
   onClose,
   onPickDocument,
   onClearDocument,
-  onChangeTestDate,
   onSubmit,
 }: UploadRecordSheetProps) {
   const busy = submissionStatus === "uploading" || submissionStatus === "analyzing";
@@ -97,23 +85,6 @@ export function UploadRecordSheet({
 
           <View style={styles.fieldGroup}>
             <AppText variant="caption" color={colors.muted}>
-              Ngày xét nghiệm
-            </AppText>
-            <DateTimePicker
-              value={testDate ? new Date(testDate) : new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              maximumDate={new Date()}
-              onChange={(event, selectedDate) => {
-                if (event.type === "set" && selectedDate) {
-                  onChangeTestDate(toIsoDate(selectedDate));
-                }
-              }}
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <AppText variant="caption" color={colors.muted}>
               Phiếu xét nghiệm
             </AppText>
             {document ? (
@@ -144,7 +115,7 @@ export function UploadRecordSheet({
           ) : null}
 
           <AppText variant="caption" color={colors.subtle}>
-            {submissionMessage || "Không tải tài liệu chứa giấy tờ tùy thân hoặc dữ liệu của người khác."}
+            {submissionMessage || "Ngày của phiên được ghi nhận tự động khi hệ thống tiếp nhận tài liệu. Không tải giấy tờ tùy thân hoặc dữ liệu của người khác."}
           </AppText>
         </ScrollView>
 

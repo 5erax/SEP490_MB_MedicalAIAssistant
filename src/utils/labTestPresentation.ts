@@ -1,7 +1,7 @@
 // Ported from the validation/formatting helpers inline in
 // MedicalRecordPage.jsx (Web) — there is no separate labTestValidation.js
 // file on Web either.
-import { LabResultStatus, LabSessionStatus } from "@/src/types/labTest";
+import { LabResultStatus, LabSessionStatus, LabTestSession } from "@/src/types/labTest";
 
 export function todayInputValue() {
   const now = new Date();
@@ -73,4 +73,17 @@ export function formatDateTime(value: unknown) {
   const date = new Date(value as string);
   if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+export function getLabSessionDate(session: LabTestSession | null | undefined) {
+  return session?.testDate ?? session?.createdAt ?? session?.processedAt ?? session?.uploadedAt ?? session?.createdAtUtc;
+}
+
+export function cleanAiSummary(value: unknown) {
+  return String(value ?? "")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/\[([^\]]+)]\(([^)]+)\)/g, "$1 ($2)")
+    .replace(/[*_`~]/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

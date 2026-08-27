@@ -118,6 +118,10 @@ export const ENDPOINTS = {
     ANALYZE: `${LAB_TESTS_BASE}/analyze`,
     MY_SESSIONS: `${LAB_TESTS_BASE}/my-sessions`,
     BY_SESSION: (sessionId: string) => byId(LAB_TESTS_BASE, sessionId),
+    SUMMARY: (sessionId: string) => `${byId(LAB_TESTS_BASE, sessionId)}/summary`,
+    OCR_EXTRACTS: (sessionId: string) => `${byId(LAB_TESTS_BASE, sessionId)}/ocr-extracts`,
+    TREND_INDICATORS: `${LAB_TESTS_BASE}/analytics/indicators`,
+    INDICATOR_TREND: (indicatorId: string) => `${LAB_TESTS_BASE}/analytics/indicators/${encodeURIComponent(indicatorId)}/trend`,
   },
   SUBSCRIPTION_USAGE: {
     ME: SUBSCRIPTION_USAGE_BASE,

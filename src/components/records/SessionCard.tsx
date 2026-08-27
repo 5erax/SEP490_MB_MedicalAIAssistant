@@ -4,7 +4,7 @@ import { ChevronRight, Clock } from "lucide-react-native";
 import { AppText, Badge } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { LabTestSession } from "@/src/types/labTest";
-import { formatDateOnly, getSessionStatusPresentation } from "@/src/utils/labTestPresentation";
+import { formatDateOnly, formatDateTime, getLabSessionDate, getSessionStatusPresentation } from "@/src/utils/labTestPresentation";
 
 export function SessionCard({ session, onPress }: { session: LabTestSession; onPress: () => void }) {
   const status = getSessionStatusPresentation(session.status);
@@ -15,9 +15,9 @@ export function SessionCard({ session, onPress }: { session: LabTestSession; onP
         <Clock size={18} color={colors.teal} />
       </View>
       <View style={styles.main}>
-        <AppText variant="bodyStrong">{formatDateOnly(session.testDate)}</AppText>
+        <AppText variant="bodyStrong">{formatDateOnly(getLabSessionDate(session))}</AppText>
         <AppText variant="caption" color={colors.subtle}>
-          {session.facilityName || "Chưa rõ cơ sở y tế"}
+          {session.facilityName || formatDateTime(session.processedAt ?? session.createdAt)}
         </AppText>
       </View>
       <Badge tone={status.tone}>{status.label}</Badge>

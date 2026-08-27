@@ -22,8 +22,12 @@ function formatRange(result: LabResult) {
   const min = range?.minValue ?? result.referenceMinUsed;
   const max = range?.maxValue ?? result.referenceMaxUsed;
   const unit = range?.unit ?? result.referenceUnitUsed ?? "";
-  if (min === null || min === undefined) return null;
-  if (max === null || max === undefined) return `≥ ${min} ${unit}`.trim();
+  const comparison = range?.comparisonType ?? result.comparisonTypeUsed;
+  if (comparison === "lessThanOrEqual" && max != null) return `≤ ${max} ${unit}`.trim();
+  if (comparison === "greaterThanOrEqual" && min != null) return `≥ ${min} ${unit}`.trim();
+  if (min == null && max != null) return `≤ ${max} ${unit}`.trim();
+  if (min == null) return null;
+  if (max == null) return `≥ ${min} ${unit}`.trim();
   return `${min} – ${max} ${unit}`.trim();
 }
 
@@ -63,6 +67,16 @@ export function ResultCard({ result }: { result: LabResult }) {
       </View>
 
       {advice?.displayTitle ? <AppText variant="bodyStrong">{advice.displayTitle}</AppText> : null}
+
+      {result.indicator?.description ? (
+        <AppText color={colors.muted}>{result.indicator.description}</AppText>
+      ) : null}
+
+      {advice?.urgencyLevel ? (
+        <View style={styles.urgency}>
+          <AppText variant="caption" color={colors.warning}>Mức độ ưu tiên: {advice.urgencyLevel}</AppText>
+        </View>
+      ) : null}
 
       {hasAdvice ? (
         <>
@@ -121,6 +135,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.line,
     paddingTop: spacing.md,
+  },
+  urgency: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    backgroundColor: colors.warningBg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   adviceRow: {
     gap: spacing.xs / 2,
