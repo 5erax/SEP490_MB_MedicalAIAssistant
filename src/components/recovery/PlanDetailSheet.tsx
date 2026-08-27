@@ -135,6 +135,47 @@ export function PlanDetailSheet({ visible, plan, state, starting, cancelling, on
             <LoadingState title="Đang tải chi tiết kế hoạch..." />
           ) : plan ? (
             <>
+              {plan.status === "completed" ? (
+                <View style={styles.feedbackCard}>
+                  <View style={styles.feedbackHeader}>
+                    <CalendarDays size={18} color={colors.teal} />
+                    <View style={styles.feedbackHeaderText}>
+                      <AppText variant="caption" color={colors.subtle}>
+                        HOÀN TẤT KẾ HOẠCH
+                      </AppText>
+                      <AppText variant="bodyStrong">Kế hoạch đã hoàn thành</AppText>
+                    </View>
+                  </View>
+                  {plan.feedbackSubmittedAt ? (
+                    <View style={styles.feedbackSubmittedRow}>
+                      <StarRatingDisplay value={plan.feedbackRating ?? 0} size={16} />
+                      <AppText variant="caption" color={colors.subtle}>
+                        Đã đánh giá {formatDateOnly(plan.feedbackSubmittedAt)}
+                      </AppText>
+                      {plan.feedbackNote ? <AppText color={colors.muted}>{plan.feedbackNote}</AppText> : null}
+                    </View>
+                  ) : (
+                    <View style={styles.feedbackPromptRow}>
+                      <View style={styles.feedbackPromptText}>
+                        <AppText variant="bodyStrong">Bạn chưa đánh giá kế hoạch này.</AppText>
+                        <AppText variant="caption" color={colors.subtle}>
+                          Chia sẻ mức độ hài lòng sau khi hoàn thành để phản hồi trải nghiệm của bạn.
+                        </AppText>
+                      </View>
+                      <Button variant="secondary" size="sm" leftIcon={<Star size={15} color={colors.amber} />} onPress={onFeedback}>
+                        Đánh giá kế hoạch
+                      </Button>
+                    </View>
+                  )}
+                  <View style={styles.feedbackCompletedRow}>
+                    <AppText variant="caption" color={colors.subtle}>
+                      Hoàn thành
+                    </AppText>
+                    <AppText variant="bodyStrong">{formatDateOnly(plan.completedAt || plan.endDate)}</AppText>
+                  </View>
+                </View>
+              ) : null}
+
               <View style={styles.hero}>
                 <View style={styles.heroTop}>
                   <View style={styles.heroIcon}>
@@ -214,47 +255,6 @@ export function PlanDetailSheet({ visible, plan, state, starting, cancelling, on
                   <AppText color={colors.muted} style={styles.recheckText}>
                     {plan.recheckInstruction}
                   </AppText>
-                </View>
-              ) : null}
-
-              {plan.status === "completed" ? (
-                <View style={styles.feedbackCard}>
-                  <View style={styles.feedbackHeader}>
-                    <CalendarDays size={18} color={colors.teal} />
-                    <View style={styles.feedbackHeaderText}>
-                      <AppText variant="caption" color={colors.subtle}>
-                        HOÀN TẤT KẾ HOẠCH
-                      </AppText>
-                      <AppText variant="bodyStrong">Kế hoạch đã hoàn thành</AppText>
-                    </View>
-                  </View>
-                  <View style={styles.feedbackCompletedRow}>
-                    <AppText variant="caption" color={colors.subtle}>
-                      Hoàn thành
-                    </AppText>
-                    <AppText variant="bodyStrong">{formatDateOnly(plan.completedAt || plan.endDate)}</AppText>
-                  </View>
-                  {plan.feedbackSubmittedAt ? (
-                    <View style={styles.feedbackSubmittedRow}>
-                      <StarRatingDisplay value={plan.feedbackRating ?? 0} size={16} />
-                      <AppText variant="caption" color={colors.subtle}>
-                        Đã đánh giá {formatDateOnly(plan.feedbackSubmittedAt)}
-                      </AppText>
-                      {plan.feedbackNote ? <AppText color={colors.muted}>{plan.feedbackNote}</AppText> : null}
-                    </View>
-                  ) : (
-                    <View style={styles.feedbackPromptRow}>
-                      <View style={styles.feedbackPromptText}>
-                        <AppText variant="bodyStrong">Bạn chưa đánh giá kế hoạch này.</AppText>
-                        <AppText variant="caption" color={colors.subtle}>
-                          Chia sẻ mức độ hài lòng sau khi hoàn thành để phản hồi trải nghiệm của bạn.
-                        </AppText>
-                      </View>
-                      <Button variant="secondary" size="sm" leftIcon={<Star size={15} color={colors.amber} />} onPress={onFeedback}>
-                        Đánh giá kế hoạch
-                      </Button>
-                    </View>
-                  )}
                 </View>
               ) : null}
 
