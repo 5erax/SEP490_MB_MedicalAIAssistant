@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, AppState, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ClipboardList, HeartPulse, Plus, Route, Sparkles } from "lucide-react-native";
 
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
@@ -13,6 +14,7 @@ import { RecoveryPlanFeedbackDialog } from "./RecoveryPlanFeedbackDialog";
 import { QuotaCard } from "./QuotaCard";
 import { RequestCard } from "./RequestCard";
 import { RequestDetailSheet } from "./RequestDetailSheet";
+import { isRecoveryPushNotification, subscribePushNotificationData } from "@/src/services/pushNotificationEvents";
 
 const palette = {
   bg: colors.bg,
@@ -287,6 +289,9 @@ function RecoveryTimelineCard({
 export function RecoveryPlanScreen() {
   const { showToast } = useToast();
   const recovery = useRecoveryPlan();
+  const { reloadAll, selectPlanById } = recovery;
+  const { planId } = useLocalSearchParams<{ planId?: string }>();
+  const openedPushPlanRef = useRef<string | null>(null);
   const [createVisible, setCreateVisible] = useState(false);
   const [requestDetailVisible, setRequestDetailVisible] = useState(false);
   const [planDetailVisible, setPlanDetailVisible] = useState(false);
@@ -333,6 +338,53 @@ export function RecoveryPlanScreen() {
             ],
           }
         : null;
+
+  const refreshRecovery = useCallback(async () => {
+    await reloadAll();
+  }, [reloadAll]);
+
+  useEffect(() => {
+    const unsubscribe = subscribePushNotificationData((data) => {
+      if (isRecoveryPushNotification(data)) {
+        refreshRecovery();
+      }
+    });
+
+    return unsubscribe;
+  }, [refreshRecovery]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        refreshRecovery();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [refreshRecovery]);
+
+  useEffect(() => {
+    if (!primaryRequest) return;
+
+    const timer = setInterval(() => {
+      refreshRecovery();
+    }, 8000);
+
+    return () => clearInterval(timer);
+  }, [primaryRequest, refreshRecovery]);
+
+  useEffect(() => {
+    if (typeof planId !== "string" || !planId || openedPushPlanRef.current === planId) return;
+
+    openedPushPlanRef.current = planId;
+    selectPlanById(planId).then((opened) => {
+      if (opened) {
+        setPlanDetailVisible(true);
+      } else {
+        showToast({ type: "error", message: "Không tìm thấy kế hoạch phục hồi này." });
+      }
+    });
+  }, [planId, selectPlanById, showToast]);
 
   async function handleCreateSubmit() {
     const result = await recovery.submitCreateRequest();
@@ -415,8 +467,11 @@ export function RecoveryPlanScreen() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    recovery.reloadAll();
-    setRefreshing(false);
+    try {
+      await refreshRecovery();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   return (

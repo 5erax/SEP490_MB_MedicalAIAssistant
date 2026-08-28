@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "612944828446",
+    "project_id": "sep490-medimateai",
+    "storage_bucket": "sep490-medimateai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:612944828446:android:ad62d355914b6c8016b60f",
+        "android_client_info": {
+          "package_name": "com.medimate.medicalaiassistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPnDSGrO-4zH46GT1SlXzCw3Ar-IZWLdY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

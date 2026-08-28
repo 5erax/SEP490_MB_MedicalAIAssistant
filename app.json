@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SEP490_MB_MedicalAIAssistant",
+    "name": "MediMate AI",
     "slug": "SEP490_MB_MedicalAIAssistant",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -32,7 +32,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.medimate.medicalaiassistant"
+      "package": "com.medimate.medicalaiassistant",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -40,6 +41,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "medimate-notifications"
+        }
+      ],
       [
         "expo-splash-screen",
         {

@@ -110,11 +110,7 @@ export function useRecoveryPlan() {
       const nextPage = response.data ?? EMPTY_PAGE;
       setRequests(nextPage);
       const inProgressRequest = nextPage.items.find(isInProgressRequest) ?? null;
-      if (inProgressRequest) {
-        setPinnedRequest(inProgressRequest);
-      } else if (nextPage.totalCount === 0) {
-        setPinnedRequest(null);
-      }
+      setPinnedRequest(inProgressRequest);
       setRequestsState("ready");
     } catch (error) {
       setRequestsState("error");
@@ -135,10 +131,8 @@ export function useRecoveryPlan() {
     }
   }, []);
 
-  const reloadAll = useCallback(() => {
-    loadQuota();
-    loadRequests(requestsPage);
-    loadPlans(plansPage);
+  const reloadAll = useCallback(async () => {
+    await Promise.allSettled([loadQuota(), loadRequests(requestsPage), loadPlans(plansPage)]);
   }, [loadQuota, loadRequests, loadPlans, requestsPage, plansPage]);
 
   useEffect(() => {
@@ -211,6 +205,24 @@ export function useRecoveryPlan() {
       })
       .catch(() => setPlanDetailState("error"));
   }
+
+  const selectPlanById = useCallback(async (planId: string) => {
+    setPlanDetailState("loading");
+    try {
+      const response = await recoveryPlansApi.get(planId);
+      if (!response.data) {
+        setPlanDetailState("error");
+        return false;
+      }
+
+      setSelectedPlan(response.data);
+      setPlanDetailState("ready");
+      return true;
+    } catch {
+      setPlanDetailState("error");
+      return false;
+    }
+  }, []);
 
   function clearSelectedPlan() {
     setSelectedPlan(null);
@@ -484,6 +496,7 @@ export function useRecoveryPlan() {
     selectedPlan,
     planDetailState,
     selectPlan,
+    selectPlanById,
     clearSelectedPlan,
 
     feedbackVisible,

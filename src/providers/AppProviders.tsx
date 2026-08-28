@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppThemeProvider } from "@/src/theme/ThemeProvider";
 import { PendingPaymentRedirect } from "@/src/components/payment/PendingPaymentRedirect";
 import { AuthProvider } from "./AuthProvider";
+import { PushNotificationProvider } from "./PushNotificationProvider";
 import { ToastProvider } from "./ToastProvider";
 
 type AppProvidersProps = {
@@ -18,10 +19,12 @@ export function AppProviders({ children, colorScheme }: AppProvidersProps) {
       <SafeAreaProvider>
         <AppThemeProvider colorScheme={colorScheme}>
           <AuthProvider>
-            <ToastProvider>
-              {children}
-              <PendingPaymentRedirect />
-            </ToastProvider>
+            <PushNotificationProvider>
+              <ToastProvider>
+                {children}
+                <PendingPaymentRedirect />
+              </ToastProvider>
+            </PushNotificationProvider>
           </AuthProvider>
         </AppThemeProvider>
       </SafeAreaProvider>

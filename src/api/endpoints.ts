@@ -22,6 +22,7 @@ const RECOVERY_PLAN_REQUESTS_BASE = "/api/recovery-plan-requests";
 const RECOVERY_PLANS_BASE = "/api/recovery-plans";
 const CONSULTATION_SESSIONS_BASE = "/api/consultation-sessions";
 const CHECKLIST_ITEMS_BASE = "/api/checklist-items";
+const PUSH_DEVICES_BASE = "/api/notifications/push-devices";
 
 export const ENDPOINTS = {
   AUTH: {
@@ -152,6 +153,10 @@ export const ENDPOINTS = {
   },
   CHECKLIST_ITEMS: {
     BY_DEPARTMENT: (departmentId: string) => `${CHECKLIST_ITEMS_BASE}/by-department/${encodeURIComponent(departmentId)}`,
+  },
+  PUSH_DEVICES: {
+    BASE: PUSH_DEVICES_BASE,
+    BY_INSTALLATION: (installationId: string) => `${PUSH_DEVICES_BASE}/${encodeURIComponent(installationId)}`,
   },
 } as const;
 
