@@ -16,6 +16,7 @@ export const ROUTES = {
   PATIENT: {
     HOME: "/(patient)/home",
     TABS: "/(patient)/home",
+    MORE: "/(patient)/more",
     MAP: "/(patient)/map",
     CHAT: "/(patient)/chat",
     RECORDS: "/(patient)/records",
@@ -26,6 +27,7 @@ export const ROUTES = {
     FACILITY_DETAIL: "/(patient)/facilities/[id]",
     MEDICATION: "/(patient)/medication",
     MY_MEDICATIONS: "/(patient)/my-medications",
+    PRICING: "/(patient)/pricing",
     PAYMENT_HISTORY: "/(patient)/payment-history",
     RECOVERY_PLAN: "/(patient)/recovery-plan",
     SETTINGS: "/(patient)/settings",

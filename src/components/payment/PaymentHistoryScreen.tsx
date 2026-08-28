@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
+import { MoreBackHeader } from "@/src/components/more";
 import { paymentsApi } from "@/src/services/subscriptionService";
 import { clearPendingPaymentCheckout, getPendingPaymentCheckout } from "@/src/services/paymentCheckoutStorage";
 import { useToast } from "@/src/hooks";
@@ -76,7 +77,7 @@ function PaymentRow({
   );
 }
 
-export function PaymentHistoryScreen() {
+export function PaymentHistoryScreen({ showBackHeader = true }: { showBackHeader?: boolean }) {
   const { showToast } = useToast();
   const [pageNumber, setPageNumber] = useState(1);
   const [page, setPage] = useState<NormalizedPaymentPage>(EMPTY_PAGE);
@@ -137,6 +138,12 @@ export function PaymentHistoryScreen() {
 
   return (
     <Screen padded={false} style={styles.screen}>
+      {showBackHeader ? (
+        <View style={styles.backHeader}>
+          <MoreBackHeader title="Lịch sử giao dịch" />
+        </View>
+      ) : null}
+
       <View style={styles.header}>
         <AppText variant="h2">Lịch sử thanh toán</AppText>
         <AppText variant="caption" color={colors.subtle}>
@@ -224,6 +231,10 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.xs,
     padding: spacing.lg,
+  },
+  backHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
   padded: {
     padding: spacing.lg,
