@@ -8,6 +8,7 @@ import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useToast, useUserMedications } from "@/src/hooks";
 import { UserMedication } from "@/src/types/medication";
 import { formatMedicationDateRange } from "@/src/utils/medicationValidation";
+import { MoreBackHeader } from "@/src/components/more";
 import { MedicationCard } from "./MedicationCard";
 import { MedicationFormSheet } from "./MedicationFormSheet";
 
@@ -215,13 +216,16 @@ export function UserMedicationsScreen() {
   }
 
   const header = (
-    <MedicationHeader
-      medications={medications}
-      loading={loading || refreshing}
-      listError={listError}
-      onReload={reload}
-      onCreate={openCreateForm}
-    />
+    <>
+      <MoreBackHeader title="Thuốc & lịch nhắc" />
+      <MedicationHeader
+        medications={medications}
+        loading={loading || refreshing}
+        listError={listError}
+        onReload={reload}
+        onCreate={openCreateForm}
+      />
+    </>
   );
 
   return (

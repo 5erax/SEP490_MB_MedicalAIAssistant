@@ -6,6 +6,7 @@ import { CheckCircle2, CreditCard, ExternalLink, History, RefreshCw, ShieldCheck
 
 import { AppText, Button, Card, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
+import { MoreBackHeader } from "@/src/components/more";
 import { useSubscription } from "@/src/hooks/useSubscription";
 import { useAuth } from "@/src/providers";
 import { hasPremiumAccess } from "@/src/utils/premium";
@@ -34,7 +35,7 @@ const FAQS: [string, string][] = [
   ],
 ];
 
-export function SubscriptionScreen() {
+export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?: boolean }) {
   const { session } = useAuth();
   const {
     plans,
@@ -115,6 +116,8 @@ export function SubscriptionScreen() {
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
+      {showBackHeader ? <MoreBackHeader title="Gói dịch vụ" /> : null}
+
       <View style={styles.heroGroup}>
         <AppText variant="eyebrow" color={colors.teal}>
           Bảng giá MediMate

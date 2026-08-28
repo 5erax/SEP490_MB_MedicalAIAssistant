@@ -33,7 +33,7 @@ const ITEMS: MoreItem[] = [
   {
     title: "Gói dịch vụ",
     description: "Xem quyền lợi và nâng cấp gói.",
-    route: ROUTES.PUBLIC.PRICING,
+    route: ROUTES.PATIENT.PRICING,
     icon: CreditCard,
     tone: "amber",
   },

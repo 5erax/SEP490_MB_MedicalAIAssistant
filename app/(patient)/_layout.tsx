@@ -57,6 +57,7 @@ export default function PatientLayout() {
       />
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="my-medications" options={{ href: null }} />
+      <Tabs.Screen name="pricing" options={{ href: null }} />
       <Tabs.Screen name="payment-history" options={{ href: null }} />
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ href: null }} />

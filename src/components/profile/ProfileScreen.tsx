@@ -12,6 +12,7 @@ import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useLogout, useProfile } from "@/src/hooks";
 import { useAuth } from "@/src/providers";
 import { PaymentHistoryScreen } from "@/src/components/payment";
+import { MoreBackHeader } from "@/src/components/more";
 import { MedicalProfileSection } from "./MedicalProfileSection";
 import { PersonalInfoSection } from "./PersonalInfoSection";
 import { ProfileTabId, ProfileTabs } from "./ProfileTabs";
@@ -39,6 +40,10 @@ export function ProfileScreen() {
 
   return (
     <Screen padded={false} style={styles.screen}>
+      <View style={styles.backHeader}>
+        <MoreBackHeader title="Hồ sơ" />
+      </View>
+
       <View style={styles.header}>
         <View style={styles.identity}>
           <View style={styles.avatarRing}>
@@ -71,7 +76,7 @@ export function ProfileScreen() {
       <ProfileTabs activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "transactions" ? (
-        <PaymentHistoryScreen />
+        <PaymentHistoryScreen showBackHeader={false} />
       ) : (
         <ScrollView style={styles.tabScroll} contentContainerStyle={styles.tabBody} keyboardShouldPersistTaps="handled">
           {activeTab === "info" ? (
@@ -136,6 +141,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.md,
     padding: spacing.lg,
+  },
+  backHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
   },
   identity: {
     flex: 1,
