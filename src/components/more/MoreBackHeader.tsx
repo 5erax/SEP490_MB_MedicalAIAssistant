@@ -9,22 +9,18 @@ import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 type MoreBackHeaderProps = {
   title: string;
   eyebrow?: string;
-  fallbackRoute?: string;
+  backRoute?: string;
   style?: ViewStyle;
 };
 
 export function MoreBackHeader({
   title,
   eyebrow = "Mở rộng",
-  fallbackRoute = ROUTES.PATIENT.MORE,
+  backRoute = ROUTES.PATIENT.MORE,
   style,
 }: MoreBackHeaderProps) {
   function handleBack() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace(fallbackRoute as never);
+    router.replace(backRoute as never);
   }
 
   return (
