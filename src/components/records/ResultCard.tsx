@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { ChevronDown, ChevronUp } from "lucide-react-native";
+import { ArrowDown, ArrowUp, CheckCircle2, ChevronDown, ChevronUp, HelpCircle } from "lucide-react-native";
 
 import { AppText, Badge, Card } from "@/src/components/ui";
 import { colors, spacing } from "@/src/theme/tokens";
@@ -37,23 +37,32 @@ export function ResultCard({ result }: { result: LabResult }) {
   const range = formatRange(result);
   const advice = result.advice;
   const hasAdvice = Boolean(advice && ADVICE_FIELDS.some(({ key }) => advice[key]));
+  const isHigh = result.status === "high" || result.status === "criticalHigh";
+  const isLow = result.status === "low" || result.status === "criticalLow";
+  const isNormal = result.status === "normal";
+  const accentColor = isNormal ? colors.success : result.status === "unknown" ? colors.subtle : colors.warning;
+  const statusIcon = isHigh
+    ? <ArrowUp size={16} color={accentColor} />
+    : isLow
+      ? <ArrowDown size={16} color={accentColor} />
+      : isNormal
+        ? <CheckCircle2 size={16} color={accentColor} />
+        : <HelpCircle size={16} color={accentColor} />;
 
   return (
-    <Card variant="soft" style={styles.card}>
+    <Card variant="soft" style={[styles.card, { borderLeftColor: accentColor }] }>
       <View style={styles.headerRow}>
         <View style={styles.headerText}>
-          <AppText variant="bodyStrong">{result.indicator?.fullName || result.rawExtractedName || "Chỉ số"}</AppText>
           {result.indicator?.symbol ? (
-            <AppText variant="caption" color={colors.subtle}>
-              {result.indicator.symbol}
-            </AppText>
+            <AppText variant="eyebrow" color={colors.teal}>{result.indicator.symbol}</AppText>
           ) : null}
+          <AppText variant="bodyStrong">{result.indicator?.fullName || result.rawExtractedName || "Chỉ số"}</AppText>
         </View>
-        <Badge tone={status.tone}>{status.label}</Badge>
+        <View style={styles.statusGroup}>{statusIcon}<Badge tone={status.tone}>{status.label}</Badge></View>
       </View>
 
       <View style={styles.valueRow}>
-        <AppText variant="h2">
+        <AppText variant="h2" color={isNormal ? colors.teal : colors.ink}>
           {result.userValue ?? result.rawExtractedValue ?? "—"}
           {result.referenceRangeUsed?.unit || result.referenceUnitUsed ? (
             <AppText color={colors.subtle}> {result.referenceRangeUsed?.unit ?? result.referenceUnitUsed}</AppText>
@@ -66,13 +75,7 @@ export function ResultCard({ result }: { result: LabResult }) {
         ) : null}
       </View>
 
-      {advice?.displayTitle ? <AppText variant="bodyStrong">{advice.displayTitle}</AppText> : null}
-
-      {result.indicator?.description ? (
-        <AppText color={colors.muted}>{result.indicator.description}</AppText>
-      ) : null}
-
-      {advice?.urgencyLevel ? (
+      {!isNormal && advice?.urgencyLevel ? (
         <View style={styles.urgency}>
           <AppText variant="caption" color={colors.warning}>Mức độ ưu tiên: {advice.urgencyLevel}</AppText>
         </View>
@@ -89,6 +92,8 @@ export function ResultCard({ result }: { result: LabResult }) {
 
           {expanded ? (
             <View style={styles.adviceGroup}>
+              {advice?.displayTitle ? <AppText variant="bodyStrong">{advice.displayTitle}</AppText> : null}
+              {result.indicator?.description ? <AppText color={colors.muted}>{result.indicator.description}</AppText> : null}
               {ADVICE_FIELDS.map(({ key, label }) =>
                 advice?.[key] ? (
                   <View key={key} style={styles.adviceRow}>
@@ -109,7 +114,8 @@ export function ResultCard({ result }: { result: LabResult }) {
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.md,
+    gap: spacing.sm,
+    borderLeftWidth: 4,
   },
   headerRow: {
     flexDirection: "row",
@@ -121,14 +127,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs / 2,
   },
+  statusGroup: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   valueRow: {
-    gap: spacing.xs / 2,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
   toggle: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
-    alignSelf: "flex-start",
+    justifyContent: "space-between",
+    alignSelf: "stretch",
+    minHeight: 38,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    paddingTop: spacing.sm,
   },
   adviceGroup: {
     gap: spacing.md,

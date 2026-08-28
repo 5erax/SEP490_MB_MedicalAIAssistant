@@ -6,10 +6,10 @@
 // pattern (PaymentDetailSheet, MedicationFormSheet).
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw } from "lucide-react-native";
+import { Camera, ChevronLeft, ChevronRight, FileSearch, Plus, RefreshCw } from "lucide-react-native";
 
-import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
-import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
+import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useMedicalRecords } from "@/src/hooks";
 import { LabSessionStatus } from "@/src/types/labTest";
 import { SessionCard } from "./SessionCard";
@@ -85,27 +85,50 @@ export function RecordsScreen() {
     <Screen padded={false} style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <View style={styles.headerCopy}>
-            <AppText variant="eyebrow" color={colors.teal}>Phân tích xét nghiệm</AppText>
-            <AppText variant="h1">Đọc phiếu xét nghiệm rõ ràng hơn</AppText>
+          <View style={styles.heroIcon}>
+            <FileSearch size={24} color={colors.teal} />
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Tải lại lịch sử" onPress={handleRefresh} style={styles.refreshButton}>
             <RefreshCw size={18} color={colors.teal} />
           </Pressable>
         </View>
-        <AppText color={colors.muted}>Tải phiếu lên, xem tổng quan AI, chỉ số cần chú ý và theo dõi thay đổi qua các lần xét nghiệm.</AppText>
+        <View style={styles.headerCopy}>
+          <AppText variant="eyebrow" color={colors.teal}>Phân tích xét nghiệm</AppText>
+          <AppText variant="h1" style={styles.heroTitle}>Hiểu phiếu xét nghiệm dễ dàng hơn</AppText>
+          <AppText color={colors.muted}>Chụp hoặc tải phiếu lên để xem tổng quan, chỉ số cần chú ý và hướng theo dõi.</AppText>
+        </View>
+        <Button
+          fullWidth
+          leftIcon={<Camera size={19} color={colors.white} />}
+          onPress={() => setUploadVisible(true)}
+        >
+          Phân tích phiếu mới
+        </Button>
+        <View style={styles.stepsRow}>
+          <QuickStep number="1" label="Chọn phiếu" />
+          <View style={styles.stepLine} />
+          <QuickStep number="2" label="AI phân tích" />
+          <View style={styles.stepLine} />
+          <QuickStep number="3" label="Xem kết quả" />
+        </View>
       </View>
 
       <View style={styles.trends}>
         <LabTrendsPanel onOpenSession={(sessionId) => openSession({ sessionId, status: "completed" })} />
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterRow}
-      >
+      <View style={styles.historyHeader}>
+        <View style={styles.historyTitle}>
+          <AppText variant="h3">Lịch sử phân tích</AppText>
+          <AppText variant="caption" color={colors.subtle}>{historyInfo.totalCount} phiên đã lưu</AppText>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => setUploadVisible(true)} style={styles.compactAddButton}>
+          <Plus size={16} color={colors.teal} />
+          <AppText variant="caption" color={colors.teal}>Tạo mới</AppText>
+        </Pressable>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
         {FILTERS.map(({ value, label }) => {
           const selected = historyFilter === value;
           return (
@@ -119,9 +142,7 @@ export function RecordsScreen() {
               }}
               style={[styles.filterChip, selected && styles.filterChipSelected]}
             >
-              <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>
-                {label}
-              </AppText>
+              <AppText variant="caption" color={selected ? colors.white : colors.muted}>{label}</AppText>
             </Pressable>
           );
         })}
@@ -166,10 +187,6 @@ export function RecordsScreen() {
         </View>
       ) : null}
 
-      <Pressable accessibilityRole="button" accessibilityLabel="Phân tích phiếu xét nghiệm mới" onPress={() => setUploadVisible(true)} style={styles.fab}>
-        <Plus size={24} color={colors.white} />
-      </Pressable>
-
       <UploadRecordSheet
         visible={uploadVisible}
         profile={profile}
@@ -205,18 +222,42 @@ export function RecordsScreen() {
   );
 }
 
+function QuickStep({ number, label }: { number: string; label: string }) {
+  return (
+    <View style={styles.quickStep}>
+      <View style={styles.stepNumber}><AppText variant="caption" color={colors.teal}>{number}</AppText></View>
+      <AppText variant="caption" color={colors.muted}>{label}</AppText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
   header: {
-    gap: spacing.sm,
+    gap: spacing.md,
     padding: spacing.lg,
+    margin: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
   },
-  headerTop: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md },
+  heroIcon: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: radius.lg, backgroundColor: colors.mint },
   headerCopy: { flex: 1, gap: spacing.sm },
+  heroTitle: { fontSize: 31, lineHeight: 35 },
   refreshButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper },
+  stepsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  quickStep: { alignItems: "center", gap: spacing.xs },
+  stepNumber: { width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, backgroundColor: colors.mint },
+  stepLine: { flex: 1, height: 1, marginHorizontal: spacing.sm, backgroundColor: colors.line },
   trends: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
+  historyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  historyTitle: { gap: spacing.xs / 2 },
+  compactAddButton: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 38, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.lineStrong, borderRadius: radius.pill, backgroundColor: colors.paper },
   filterScroll: {
     flexGrow: 0,
     flexShrink: 0,
@@ -229,7 +270,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   filterChip: {
-    minHeight: 40,
+    minHeight: 36,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -248,7 +289,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing["4xl"],
+    paddingBottom: spacing.xl,
     gap: spacing.md,
   },
   pagination: {
@@ -260,16 +301,4 @@ const styles = StyleSheet.create({
   },
   pageButton: { width: 38, height: 38, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper },
   pageButtonDisabled: { opacity: 0.35 },
-  fab: {
-    position: "absolute",
-    right: spacing.lg,
-    bottom: spacing.lg,
-    width: 56,
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.teal,
-    ...shadows.soft,
-  },
 });
