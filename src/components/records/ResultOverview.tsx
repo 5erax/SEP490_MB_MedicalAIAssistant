@@ -59,7 +59,7 @@ export function ResultOverview({
   const unknownCount = results.filter((result) => result.status === "unknown").length;
   const cleanedSummary = cleanAiSummary(summary);
   const preview = fallbackSummary(results);
-  const priorityResults = results.filter(isAttention).slice(0, 3);
+  const priorityResults = results.filter(isAttention).slice(0, 2);
 
   return (
     <Card variant="soft" style={styles.card}>
@@ -83,7 +83,7 @@ export function ResultOverview({
       </View>
 
       <View style={styles.summaryBox}>
-        <AppText variant="caption" color={colors.subtle}>NHẬN ĐỊNH CHUNG</AppText>
+        <AppText variant="caption" color={colors.warning}>ĐIỀU QUAN TRỌNG NHẤT</AppText>
         <AppText>{preview}</AppText>
         {summaryState === "loading" ? (
           <View style={styles.summaryState}>
@@ -103,7 +103,7 @@ export function ResultOverview({
         <View style={styles.priorityGroup}>
           <View style={styles.sectionTitle}>
             <AlertTriangle size={17} color={colors.warning} />
-            <AppText variant="bodyStrong">Nên xem trước</AppText>
+            <AppText variant="bodyStrong">Chỉ số nên xem trước</AppText>
           </View>
           {priorityResults.map((result, index) => (
             <View key={result.resultDetailId || `${resultName(result)}-${index}`} style={styles.priorityRow}>
@@ -144,20 +144,21 @@ function Metric({ label, value, tone }: { label: string; value: number; tone: "d
   return (
     <View style={styles.metric}>
       <AppText variant="h3" color={toneColor}>{value}</AppText>
-      <AppText variant="caption" color={colors.muted}>{label}</AppText>
+      <AppText variant="caption" color={colors.muted} center numberOfLines={2} style={styles.metricLabel}>{label}</AppText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.lg, borderTopWidth: 3, borderTopColor: colors.teal },
+  card: { gap: spacing.md, borderTopWidth: 3, borderTopColor: colors.teal },
   headingRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   iconBox: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.md },
   iconWarning: { backgroundColor: colors.warningBg },
   iconDanger: { backgroundColor: colors.dangerBg },
   headingText: { flex: 1, gap: spacing.xs / 2 },
-  metrics: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  metric: { minWidth: "47%", flexGrow: 1, gap: spacing.xs / 2, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper, padding: spacing.md },
+  metrics: { flexDirection: "row", gap: spacing.xs },
+  metric: { flex: 1, minWidth: 0, minHeight: 92, alignItems: "center", justifyContent: "center", gap: spacing.xs / 2, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper, paddingHorizontal: spacing.xs, paddingVertical: spacing.sm },
+  metricLabel: { minHeight: 34, textAlignVertical: "top" },
   summaryBox: { gap: spacing.sm, borderLeftWidth: 3, borderLeftColor: colors.warning, borderRadius: radius.sm, backgroundColor: colors.warningBg, padding: spacing.md },
   summaryState: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   summaryError: { gap: spacing.sm, alignItems: "flex-start" },

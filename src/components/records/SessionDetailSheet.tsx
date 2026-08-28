@@ -10,7 +10,7 @@ import { ResultCard } from "./ResultCard";
 import { ResultOverview } from "./ResultOverview";
 
 const GENDER_LABEL: Record<string, string> = { male: "Nam", female: "Nữ" };
-const INITIAL_RESULT_LIMIT = 8;
+const INITIAL_RESULT_LIMIT = 6;
 type ResultFilter = "attention" | "normal" | "unknown" | "all";
 
 type SessionDetailSheetProps = {
@@ -51,6 +51,7 @@ function resultMatchesFilter(result: LabResult, filter: ResultFilter) {
 
 export function SessionDetailSheet({ visible, session, ocrExtracts, state, error, summary, summaryState, summaryError, onClose, onRetry, onRetrySummary }: SessionDetailSheetProps) {
   const [showRawText, setShowRawText] = useState(false);
+  const [showOcrExtracts, setShowOcrExtracts] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [visibleLimit, setVisibleLimit] = useState(INITIAL_RESULT_LIMIT);
@@ -67,6 +68,7 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
 
   useEffect(() => {
     setShowRawText(false);
+    setShowOcrExtracts(false);
     setShowFullSummary(false);
     setVisibleLimit(INITIAL_RESULT_LIMIT);
     setResultFilter(results.some(isAttention) ? "attention" : "all");
@@ -82,7 +84,10 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
       <View style={styles.root}>
         <View style={styles.header}>
           <View style={styles.headerText}>
-            <AppText variant="caption" color={colors.subtle}>Chi tiết phân tích</AppText>
+            <View style={styles.headerMeta}>
+              <AppText variant="caption" color={colors.teal}>CHI TIẾT PHÂN TÍCH</AppText>
+              {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
+            </View>
             <AppText variant="h3">{session ? `Kết quả ngày ${formatDateOnly(getLabSessionDate(session))}` : "Kết quả xét nghiệm"}</AppText>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
@@ -90,7 +95,7 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           {state === "loading" ? (
             <LoadingState title="Đang tải chi tiết phân tích..." />
           ) : state === "error" ? (
@@ -106,7 +111,6 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
               </View>
 
               <View style={styles.metaCard}>
-                {status ? <Badge tone={status.tone}>{status.label}</Badge> : null}
                 <View style={styles.metaGrid}>
                   <View style={styles.metaItem}><AppText variant="caption" color={colors.subtle}>Giới tính</AppText><AppText variant="bodyStrong">{GENDER_LABEL[session.patientGenderAtTest || ""] || "—"}</AppText></View>
                   <View style={styles.metaItem}><AppText variant="caption" color={colors.subtle}>Tuổi</AppText><AppText variant="bodyStrong">{session.patientAgeAtTest ?? "—"}</AppText></View>
@@ -125,9 +129,13 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
               {results.length ? (
                 <View style={styles.resultsSection}>
                   <View style={styles.resultsHeading}>
-                    <View style={styles.resultsHeadingCopy}><AppText variant="eyebrow" color={colors.teal}>Phiếu xét nghiệm</AppText><AppText variant="h3">Các chỉ số được nhận diện</AppText></View>
+                    <View style={styles.resultsHeadingCopy}>
+                      <AppText variant="eyebrow" color={colors.teal}>Phiếu xét nghiệm</AppText>
+                      <AppText variant="h3">{resultFilter === "attention" ? "Chỉ số cần chú ý" : resultFilter === "normal" ? "Chỉ số bình thường" : resultFilter === "unknown" ? "Chỉ số chưa xác định" : "Tất cả chỉ số"}</AppText>
+                    </View>
                     <AppText variant="caption" color={colors.subtle}>{filteredResults.length}/{results.length}</AppText>
                   </View>
+                  <AppText variant="caption" color={colors.muted}>Ưu tiên xem mục cần chú ý; các chỉ số bình thường được thu gọn để giảm thao tác cuộn.</AppText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
                     {counts.attention ? <FilterChip label={`Cần chú ý ${counts.attention}`} selected={resultFilter === "attention"} tone="warning" onPress={() => changeFilter("attention")} /> : null}
                     {counts.normal ? <FilterChip label={`Bình thường ${counts.normal}`} selected={resultFilter === "normal"} tone="success" onPress={() => changeFilter("normal")} /> : null}
@@ -141,9 +149,16 @@ export function SessionDetailSheet({ visible, session, ocrExtracts, state, error
 
               {ocrExtracts.length ? (
                 <View style={styles.rawTextGroup}>
-                  <View style={styles.sectionTitle}><FileSearch size={18} color={colors.teal} /><AppText variant="h3">Dữ liệu OCR cần đối chiếu</AppText></View>
-                  <AppText variant="caption" color={colors.muted}>Đối chiếu với phiếu gốc vì OCR có thể đọc sai tên, giá trị, đơn vị hoặc khoảng tham chiếu.</AppText>
-                  {ocrExtracts.map((extract) => <View key={extract.ocrExtractId} style={styles.extractRow}><AppText variant="bodyStrong">{extract.extractedTestName || `Dòng ${extract.rowIndex + 1}`}</AppText><AppText color={colors.muted}>{[extract.extractedValue, extract.extractedUnit, extract.extractedReferenceText].filter(Boolean).join(" · ") || "Không đọc được giá trị"}</AppText></View>)}
+                  <Pressable accessibilityRole="button" accessibilityState={{ expanded: showOcrExtracts }} onPress={() => setShowOcrExtracts((current) => !current)} style={styles.ocrToggle}>
+                    <View style={styles.sectionTitle}><FileSearch size={18} color={colors.teal} /><View style={styles.ocrTitleCopy}><AppText variant="bodyStrong">Dữ liệu OCR cần đối chiếu</AppText><AppText variant="caption" color={colors.muted}>{ocrExtracts.length} dòng trích xuất từ phiếu gốc</AppText></View></View>
+                    {showOcrExtracts ? <ChevronUp size={17} color={colors.teal} /> : <ChevronDown size={17} color={colors.teal} />}
+                  </Pressable>
+                  {showOcrExtracts ? (
+                    <>
+                      <AppText variant="caption" color={colors.muted}>Đối chiếu với phiếu gốc vì OCR có thể đọc sai tên, giá trị, đơn vị hoặc khoảng tham chiếu.</AppText>
+                      {ocrExtracts.map((extract) => <View key={extract.ocrExtractId} style={styles.extractRow}><AppText variant="bodyStrong">{extract.extractedTestName || `Dòng ${extract.rowIndex + 1}`}</AppText><AppText color={colors.muted}>{[extract.extractedValue, extract.extractedUnit, extract.extractedReferenceText].filter(Boolean).join(" · ") || "Không đọc được giá trị"}</AppText></View>)}
+                    </>
+                  ) : null}
                 </View>
               ) : null}
 
@@ -172,11 +187,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.line },
   headerText: { flex: 1, gap: spacing.xs / 2 },
+  headerMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
   closeButton: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: radius.pill, backgroundColor: colors.paperSoft },
   content: { padding: spacing.lg, paddingBottom: spacing["4xl"], gap: spacing.lg },
   errorGroup: { gap: spacing.md, alignItems: "flex-start" },
   safetyNote: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, borderLeftWidth: 3, borderLeftColor: colors.teal, backgroundColor: colors.mint, padding: spacing.md },
-  metaCard: { gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, backgroundColor: colors.paper, padding: spacing.lg },
+  metaCard: { gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, backgroundColor: colors.paper, padding: spacing.md },
   metaGrid: { flexDirection: "row", gap: spacing.sm },
   metaItem: { flex: 1, gap: spacing.xs / 2 },
   infoBanner: { flexDirection: "row", alignItems: "center", gap: spacing.sm, borderRadius: radius.md, backgroundColor: colors.mint, padding: spacing.md },
@@ -189,6 +205,8 @@ const styles = StyleSheet.create({
   filterChip: { borderWidth: 1, borderColor: colors.line, borderRadius: radius.pill, backgroundColor: colors.paper, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   rawTextGroup: { gap: spacing.sm },
   sectionTitle: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  ocrToggle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md, minHeight: 56, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paper, padding: spacing.md },
+  ocrTitleCopy: { gap: spacing.xs / 2 },
   toggle: { flexDirection: "row", alignItems: "center", gap: spacing.xs, alignSelf: "flex-start" },
   rawText: { borderRadius: radius.md, backgroundColor: colors.paperSoft, padding: spacing.md },
   extractRow: { gap: spacing.xs, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.paperSoft, padding: spacing.md },
