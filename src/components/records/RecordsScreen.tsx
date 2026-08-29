@@ -81,111 +81,121 @@ export function RecordsScreen() {
     setRefreshing(false);
   }
 
+  const historyEmptyState = historyState === "loading" ? (
+    <View style={styles.padded}>
+      <SkeletonGroup lines={5} />
+    </View>
+  ) : historyState === "error" ? (
+    <View style={styles.padded}>
+      <EmptyState title="Không tải được lịch sử phân tích" description={historyError} />
+    </View>
+  ) : (
+    <View style={styles.padded}>
+      <EmptyState
+        title="Chưa có phiên phân tích nào"
+        description="Bấm nút + để tải phiếu xét nghiệm đầu tiên và nhận giải thích chỉ số."
+      />
+    </View>
+  );
+
   return (
     <Screen padded={false} style={styles.screen}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.heroIcon}>
-            <FileSearch size={24} color={colors.teal} />
+      <FlatList
+        style={styles.historyList}
+        data={sessions}
+        keyExtractor={(session) => session.sessionId}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        renderItem={({ item }) => (
+          <View style={styles.sessionItem}>
+            <SessionCard session={item} onPress={() => openSession(item)} />
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Tải lại lịch sử" onPress={handleRefresh} style={styles.refreshButton}>
-            <RefreshCw size={18} color={colors.teal} />
-          </Pressable>
-        </View>
-        <View style={styles.headerCopy}>
-          <AppText variant="eyebrow" color={colors.teal}>Phân tích xét nghiệm</AppText>
-          <AppText variant="h1" style={styles.heroTitle}>Hiểu phiếu xét nghiệm dễ dàng hơn</AppText>
-          <AppText color={colors.muted}>Chụp hoặc tải phiếu lên để xem tổng quan, chỉ số cần chú ý và hướng theo dõi.</AppText>
-        </View>
-        <Button
-          fullWidth
-          leftIcon={<Camera size={19} color={colors.white} />}
-          onPress={() => setUploadVisible(true)}
-        >
-          Phân tích phiếu mới
-        </Button>
-        <View style={styles.stepsRow}>
-          <QuickStep number="1" label="Chọn phiếu" />
-          <View style={styles.stepLine} />
-          <QuickStep number="2" label="AI phân tích" />
-          <View style={styles.stepLine} />
-          <QuickStep number="3" label="Xem kết quả" />
-        </View>
-      </View>
+        )}
+        ItemSeparatorComponent={() => <View style={styles.sessionSeparator} />}
+        ListHeaderComponent={(
+          <>
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <View style={styles.heroIcon}>
+                  <FileSearch size={24} color={colors.teal} />
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel="Tải lại lịch sử" onPress={handleRefresh} style={styles.refreshButton}>
+                  <RefreshCw size={18} color={colors.teal} />
+                </Pressable>
+              </View>
+              <View style={styles.headerCopy}>
+                <AppText variant="eyebrow" color={colors.teal}>Phân tích xét nghiệm</AppText>
+                <AppText variant="h1" style={styles.heroTitle}>Hiểu phiếu xét nghiệm dễ dàng hơn</AppText>
+                <AppText color={colors.muted}>Chụp hoặc tải phiếu lên để xem tổng quan, chỉ số cần chú ý và hướng theo dõi.</AppText>
+              </View>
+              <Button
+                fullWidth
+                leftIcon={<Camera size={19} color={colors.white} />}
+                onPress={() => setUploadVisible(true)}
+              >
+                Phân tích phiếu mới
+              </Button>
+              <View style={styles.stepsRow}>
+                <QuickStep number="1" label="Chọn phiếu" />
+                <View style={styles.stepLine} />
+                <QuickStep number="2" label="AI phân tích" />
+                <View style={styles.stepLine} />
+                <QuickStep number="3" label="Xem kết quả" />
+              </View>
+            </View>
 
-      <View style={styles.trends}>
-        <LabTrendsPanel onOpenSession={(sessionId) => openSession({ sessionId, status: "completed" })} />
-      </View>
+            <View style={styles.trends}>
+              <LabTrendsPanel onOpenSession={(sessionId) => openSession({ sessionId, status: "completed" })} />
+            </View>
 
-      <View style={styles.historyHeader}>
-        <View style={styles.historyTitle}>
-          <AppText variant="h3">Lịch sử phân tích</AppText>
-          <AppText variant="caption" color={colors.subtle}>{historyInfo.totalCount} phiên đã lưu</AppText>
-        </View>
-        <Pressable accessibilityRole="button" onPress={() => setUploadVisible(true)} style={styles.compactAddButton}>
-          <Plus size={16} color={colors.teal} />
-          <AppText variant="caption" color={colors.teal}>Tạo mới</AppText>
-        </Pressable>
-      </View>
+            <View style={styles.historyHeader}>
+              <View style={styles.historyTitle}>
+                <AppText variant="h3">Lịch sử phân tích</AppText>
+                <AppText variant="caption" color={colors.subtle}>{historyInfo.totalCount} phiên đã lưu</AppText>
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => setUploadVisible(true)} style={styles.compactAddButton}>
+                <Plus size={16} color={colors.teal} />
+                <AppText variant="caption" color={colors.teal}>Tạo mới</AppText>
+              </Pressable>
+            </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
-        {FILTERS.map(({ value, label }) => {
-          const selected = historyFilter === value;
-          return (
-            <Pressable
-              key={value || "all"}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() => {
-                setHistoryFilter(value);
-                setHistoryPage(1);
-              }}
-              style={[styles.filterChip, selected && styles.filterChipSelected]}
-            >
-              <AppText variant="caption" color={selected ? colors.white : colors.muted}>{label}</AppText>
+            <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
+              {FILTERS.map(({ value, label }) => {
+                const selected = historyFilter === value;
+                return (
+                  <Pressable
+                    key={value || "all"}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => {
+                      setHistoryFilter(value);
+                      setHistoryPage(1);
+                    }}
+                    style={[styles.filterChip, selected && styles.filterChipSelected]}
+                  >
+                    <AppText variant="caption" color={selected ? colors.white : colors.muted}>{label}</AppText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+        ListEmptyComponent={historyEmptyState}
+        ListFooterComponent={historyInfo.totalPages > 1 ? (
+          <View style={styles.pagination}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Trang trước" disabled={historyPage <= 1} onPress={() => setHistoryPage((current) => current - 1)} style={[styles.pageButton, historyPage <= 1 && styles.pageButtonDisabled]}>
+              <ChevronLeft size={18} color={colors.ink} />
             </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {historyState === "loading" && sessions.length === 0 ? (
-        <View style={styles.padded}>
-          <SkeletonGroup lines={5} />
-        </View>
-      ) : historyState === "error" ? (
-        <View style={styles.padded}>
-          <EmptyState title="Không tải được lịch sử phân tích" description={historyError} />
-        </View>
-      ) : sessions.length === 0 ? (
-        <View style={styles.padded}>
-          <EmptyState
-            title="Chưa có phiên phân tích nào"
-            description="Bấm nút + để tải phiếu xét nghiệm đầu tiên và nhận giải thích chỉ số."
-          />
-        </View>
-      ) : (
-        <FlatList
-          data={sessions}
-          keyExtractor={(session) => session.sessionId}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          renderItem={({ item }) => <SessionCard session={item} onPress={() => openSession(item)} />}
-        />
-      )}
-
-      {historyInfo.totalPages > 1 ? (
-        <View style={styles.pagination}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Trang trước" disabled={historyPage <= 1} onPress={() => setHistoryPage((current) => current - 1)} style={[styles.pageButton, historyPage <= 1 && styles.pageButtonDisabled]}>
-            <ChevronLeft size={18} color={colors.ink} />
-          </Pressable>
-          <AppText variant="caption" color={colors.subtle}>
-            Trang {historyPage}/{historyInfo.totalPages} · {historyInfo.totalCount} phiên
-          </AppText>
-          <Pressable accessibilityRole="button" accessibilityLabel="Trang sau" disabled={historyPage >= historyInfo.totalPages} onPress={() => setHistoryPage((current) => current + 1)} style={[styles.pageButton, historyPage >= historyInfo.totalPages && styles.pageButtonDisabled]}>
-            <ChevronRight size={18} color={colors.ink} />
-          </Pressable>
-        </View>
-      ) : null}
+            <AppText variant="caption" color={colors.subtle}>
+              Trang {historyPage}/{historyInfo.totalPages} · {historyInfo.totalCount} phiên
+            </AppText>
+            <Pressable accessibilityRole="button" accessibilityLabel="Trang sau" disabled={historyPage >= historyInfo.totalPages} onPress={() => setHistoryPage((current) => current + 1)} style={[styles.pageButton, historyPage >= historyInfo.totalPages && styles.pageButtonDisabled]}>
+              <ChevronRight size={18} color={colors.ink} />
+            </Pressable>
+          </View>
+        ) : null}
+      />
 
       <UploadRecordSheet
         visible={uploadVisible}
@@ -234,6 +244,12 @@ function QuickStep({ number, label }: { number: string; label: string }) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  historyList: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing["4xl"],
   },
   header: {
     gap: spacing.md,
@@ -287,10 +303,11 @@ const styles = StyleSheet.create({
   padded: {
     padding: spacing.lg,
   },
-  listContent: {
+  sessionItem: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
+  },
+  sessionSeparator: {
+    height: spacing.md,
   },
   pagination: {
     flexDirection: "row",
