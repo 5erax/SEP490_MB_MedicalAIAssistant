@@ -1,11 +1,12 @@
 // Ported from MedicationFormDialog in Web's UserMedicationsPage.jsx.
 import { useState } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Plus, X } from "lucide-react-native";
+import { BellRing, CalendarDays, Clock3, Pill, Plus, ShieldCheck, X } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, TextField } from "@/src/components/ui";
-import { colors, radius, spacing } from "@/src/theme/tokens";
+import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { MEDICATION_DISCLAIMER_TEXT, MedicationFormErrors, MedicationFormState } from "@/src/utils/medicationValidation";
 
 type MedicationFormSheetProps = {
@@ -21,6 +22,8 @@ type MedicationFormSheetProps = {
   onSubmit: () => void;
 };
 
+type ScheduleTone = "active" | "future" | "expired" | "off" | "incomplete";
+
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -32,6 +35,96 @@ function toTimeLabel(date: Date) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function formatDateLabel(value: string) {
+  if (!value) return "Chọn ngày";
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" }).format(date);
+}
+
+function getScheduleState(form: MedicationFormState): { label: string; tone: ScheduleTone; description: string } {
+  if (!form.isReminderEnabled) {
+    return {
+      label: "Chưa bật nhắc",
+      tone: "off",
+      description: "Bật nhắc để MediMate theo dõi các mốc giờ uống thuốc.",
+    };
+  }
+
+  if (!form.startDate || !form.endDate || form.reminderTimes.length === 0) {
+    return {
+      label: "Thiếu lịch nhắc",
+      tone: "incomplete",
+      description: "Cần ngày bắt đầu, ngày kết thúc và ít nhất một giờ nhắc.",
+    };
+  }
+
+  const today = toIsoDate(new Date());
+  if (today < form.startDate) {
+    return {
+      label: "Sắp bắt đầu",
+      tone: "future",
+      description: "Lịch nhắc sẽ bắt đầu khi đến ngày dùng thuốc.",
+    };
+  }
+
+  if (today > form.endDate) {
+    return {
+      label: "Đã hết hạn",
+      tone: "expired",
+      description: "Ngày kết thúc đã qua. Bạn có thể sửa ngày nếu vẫn cần nhắc.",
+    };
+  }
+
+  return {
+    label: "Đang nhắc",
+    tone: "active",
+    description: "Lịch nhắc đang nằm trong thời gian dùng thuốc.",
+  };
+}
+
+function DatePickerButton({
+  label,
+  value,
+  error,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  error?: string;
+  onPress: () => void;
+}) {
+  return (
+    <View style={styles.dateField}>
+      <AppText variant="caption" color={error ? colors.danger : colors.muted}>
+        {label}
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [styles.dateInput, error && styles.dateInputError, pressed && styles.pressed]}
+      >
+        <CalendarDays size={17} color={value ? colors.teal : colors.subtle} />
+        <View style={styles.dateCopy}>
+          <AppText variant="bodyStrong" color={value ? colors.ink : colors.subtle} numberOfLines={1}>
+            {formatDateLabel(value)}
+          </AppText>
+          {value ? (
+            <AppText variant="caption" color={colors.subtle}>
+              {value}
+            </AppText>
+          ) : null}
+        </View>
+      </Pressable>
+      {error ? (
+        <AppText variant="caption" color={colors.danger}>
+          {error}
+        </AppText>
+      ) : null}
+    </View>
+  );
 }
 
 export function MedicationFormSheet({
@@ -47,172 +140,213 @@ export function MedicationFormSheet({
   onSubmit,
 }: MedicationFormSheetProps) {
   const [activePicker, setActivePicker] = useState<"startDate" | "endDate" | "reminderTime" | null>(null);
+  const scheduleState = getScheduleState(form);
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.root}>
-        <View style={styles.header}>
-          <AppText variant="h3">{isEditing ? "Chỉnh sửa thuốc" : "Thêm thuốc"}</AppText>
-          <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
-            <X size={20} color={colors.ink} />
-          </Pressable>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TextField
-            label="Tên thuốc"
-            placeholder="Ví dụ: Paracetamol 500mg"
-            value={form.medicineName}
-            onChangeText={(value) => onSetField("medicineName", value)}
-            error={errors.medicineName}
-          />
-
-          <TextField
-            label="Hướng dẫn dùng thuốc (tuỳ chọn)"
-            placeholder="Ví dụ: Uống sau ăn, 1 viên/lần"
-            value={form.dosageInstruction}
-            onChangeText={(value) => onSetField("dosageInstruction", value)}
-            error={errors.dosageInstruction}
-            multiline
-            numberOfLines={3}
-            style={styles.multiline}
-          />
-
-          <View style={styles.dateRow}>
-            <View style={styles.dateField}>
-              <AppText variant="caption" color={errors.startDate ? colors.danger : colors.muted}>
-                Ngày bắt đầu
-              </AppText>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setActivePicker("startDate")}
-                style={[styles.dateInput, errors.startDate && styles.dateInputError]}
-              >
-                <AppText color={form.startDate ? colors.ink : colors.subtle}>{form.startDate || "Chọn ngày"}</AppText>
-              </Pressable>
-              {errors.startDate ? (
-                <AppText variant="caption" color={colors.danger}>
-                  {errors.startDate}
-                </AppText>
-              ) : null}
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView style={styles.keyboardRoot} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={styles.header}>
+            <View style={styles.headerIcon}>
+              <Pill size={20} color={colors.teal} />
             </View>
-
-            <View style={styles.dateField}>
-              <AppText variant="caption" color={errors.endDate ? colors.danger : colors.muted}>
-                Ngày kết thúc
+            <View style={styles.headerCopy}>
+              <AppText variant="caption" color={colors.teal}>
+                Thuốc & lịch nhắc
               </AppText>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setActivePicker("endDate")}
-                style={[styles.dateInput, errors.endDate && styles.dateInputError]}
-              >
-                <AppText color={form.endDate ? colors.ink : colors.subtle}>{form.endDate || "Chọn ngày"}</AppText>
-              </Pressable>
-              {errors.endDate ? (
-                <AppText variant="caption" color={colors.danger}>
-                  {errors.endDate}
-                </AppText>
-              ) : null}
+              <AppText variant="h3">{isEditing ? "Chỉnh sửa thuốc" : "Thêm thuốc mới"}</AppText>
             </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton} hitSlop={8}>
+              <X size={20} color={colors.ink} />
+            </Pressable>
           </View>
 
-          <View style={styles.reminderToggleRow}>
-            <View style={styles.reminderToggleText}>
-              <AppText variant="bodyStrong">Bật nhắc nhở</AppText>
-              <AppText variant="caption" color={colors.subtle}>
-                Ứng dụng sẽ nhắc bạn vào các giờ đã chọn bên dưới.
-              </AppText>
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <View style={styles.statusCard}>
+              <View style={[styles.statusIcon, styles[`${scheduleState.tone}Icon`]]}>
+                <BellRing size={20} color={scheduleState.tone === "expired" ? colors.danger : colors.teal} />
+              </View>
+              <View style={styles.statusCopy}>
+                <AppText variant="bodyStrong">{scheduleState.label}</AppText>
+                <AppText variant="caption" color={colors.muted}>
+                  {scheduleState.description}
+                </AppText>
+              </View>
             </View>
-            <Switch
-              value={form.isReminderEnabled}
-              onValueChange={(value) => onSetField("isReminderEnabled", value)}
-              trackColor={{ false: colors.line, true: colors.teal }}
-              thumbColor={colors.paper}
-            />
-          </View>
 
-          <View style={styles.reminderTimesGroup}>
-            <AppText variant="caption" color={errors.reminderTimes ? colors.danger : colors.muted}>
-              Giờ nhắc
-            </AppText>
-            <View style={styles.chipRow}>
-              {form.reminderTimes.map((time) => (
-                <View key={time} style={styles.chip}>
-                  <AppText variant="bodyStrong">{time}</AppText>
-                  <Pressable accessibilityRole="button" accessibilityLabel={`Xoá giờ ${time}`} onPress={() => onRemoveReminderTime(time)} hitSlop={6}>
-                    <X size={14} color={colors.ink} />
-                  </Pressable>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHead}>
+                <View style={styles.sectionNumber}>
+                  <AppText variant="caption" color={colors.teal}>
+                    1
+                  </AppText>
                 </View>
-              ))}
-              <Pressable accessibilityRole="button" onPress={() => setActivePicker("reminderTime")} style={styles.addChip}>
-                <Plus size={14} color={colors.ink} />
-                <AppText variant="bodyStrong">Thêm giờ</AppText>
-              </Pressable>
+                <View style={styles.sectionTitle}>
+                  <AppText variant="bodyStrong">Thông tin thuốc</AppText>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Ghi tên thuốc và hướng dẫn dùng để dễ nhận diện.
+                  </AppText>
+                </View>
+              </View>
+
+              <TextField
+                label="Tên thuốc"
+                placeholder="Ví dụ: Paracetamol 500mg"
+                value={form.medicineName}
+                onChangeText={(value) => onSetField("medicineName", value)}
+                error={errors.medicineName}
+              />
+
+              <TextField
+                label="Hướng dẫn dùng thuốc (tuỳ chọn)"
+                placeholder="Ví dụ: Uống sau ăn, 1 viên/lần"
+                value={form.dosageInstruction}
+                onChangeText={(value) => onSetField("dosageInstruction", value)}
+                error={errors.dosageInstruction}
+                multiline
+                numberOfLines={3}
+                style={styles.multiline}
+              />
             </View>
-            {errors.reminderTimes ? (
-              <AppText variant="caption" color={colors.danger}>
-                {errors.reminderTimes}
+
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHead}>
+                <View style={styles.sectionNumber}>
+                  <AppText variant="caption" color={colors.teal}>
+                    2
+                  </AppText>
+                </View>
+                <View style={styles.sectionTitle}>
+                  <AppText variant="bodyStrong">Thời gian dùng</AppText>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Ngày kết thúc quyết định lịch nhắc còn hiệu lực hay không.
+                  </AppText>
+                </View>
+              </View>
+
+              <View style={styles.dateRow}>
+                <DatePickerButton
+                  label="Ngày bắt đầu"
+                  value={form.startDate}
+                  error={errors.startDate}
+                  onPress={() => setActivePicker("startDate")}
+                />
+                <DatePickerButton
+                  label="Ngày kết thúc"
+                  value={form.endDate}
+                  error={errors.endDate}
+                  onPress={() => setActivePicker("endDate")}
+                />
+              </View>
+            </View>
+
+            <View style={styles.reminderCard}>
+              <View style={styles.reminderTop}>
+                <View style={styles.reminderTitleRow}>
+                  <View style={styles.reminderIcon}>
+                    <Clock3 size={18} color={colors.teal} />
+                  </View>
+                  <View style={styles.reminderTitleCopy}>
+                    <AppText variant="bodyStrong">Lịch nhắc uống thuốc</AppText>
+                    <AppText variant="caption" color={colors.muted}>
+                      Chọn các mốc giờ MediMate cần nhắc trong ngày.
+                    </AppText>
+                  </View>
+                </View>
+                <Switch
+                  value={form.isReminderEnabled}
+                  onValueChange={(value) => onSetField("isReminderEnabled", value)}
+                  trackColor={{ false: colors.lineStrong, true: colors.teal }}
+                  thumbColor={colors.paper}
+                />
+              </View>
+
+              <View style={styles.chipRow}>
+                {form.reminderTimes.map((time) => (
+                  <View key={time} style={styles.chip}>
+                    <Clock3 size={14} color={colors.teal} />
+                    <AppText variant="bodyStrong">{time}</AppText>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Xoá giờ ${time}`} onPress={() => onRemoveReminderTime(time)} hitSlop={6}>
+                      <X size={14} color={colors.ink} />
+                    </Pressable>
+                  </View>
+                ))}
+                <Pressable accessibilityRole="button" onPress={() => setActivePicker("reminderTime")} style={styles.addChip}>
+                  <Plus size={14} color={colors.teal} />
+                  <AppText variant="bodyStrong" color={colors.teal}>
+                    Thêm giờ
+                  </AppText>
+                </Pressable>
+              </View>
+
+              {errors.reminderTimes ? (
+                <AppText variant="caption" color={colors.danger}>
+                  {errors.reminderTimes}
+                </AppText>
+              ) : null}
+            </View>
+
+            <View style={styles.notice}>
+              <ShieldCheck size={17} color={colors.teal} />
+              <AppText variant="caption" color={colors.muted} style={styles.noticeText}>
+                {MEDICATION_DISCLAIMER_TEXT}
               </AppText>
+            </View>
+
+            {activePicker === "startDate" ? (
+              <DateTimePicker
+                value={form.startDate ? new Date(`${form.startDate}T00:00:00`) : new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={(event, selectedDate) => {
+                  setActivePicker(Platform.OS === "ios" ? "startDate" : null);
+                  if (event.type === "set" && selectedDate) {
+                    onSetField("startDate", toIsoDate(selectedDate));
+                  }
+                }}
+              />
             ) : null}
+
+            {activePicker === "endDate" ? (
+              <DateTimePicker
+                value={form.endDate ? new Date(`${form.endDate}T00:00:00`) : new Date()}
+                mode="date"
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={(event, selectedDate) => {
+                  setActivePicker(Platform.OS === "ios" ? "endDate" : null);
+                  if (event.type === "set" && selectedDate) {
+                    onSetField("endDate", toIsoDate(selectedDate));
+                  }
+                }}
+              />
+            ) : null}
+
+            {activePicker === "reminderTime" ? (
+              <DateTimePicker
+                value={new Date()}
+                mode="time"
+                is24Hour
+                display={Platform.OS === "ios" ? "spinner" : "default"}
+                onChange={(event, selectedDate) => {
+                  setActivePicker(Platform.OS === "ios" ? "reminderTime" : null);
+                  if (event.type === "set" && selectedDate) {
+                    onAddReminderTime(toTimeLabel(selectedDate));
+                  }
+                }}
+              />
+            ) : null}
+          </ScrollView>
+
+          <View style={styles.footer}>
+            <Button variant="secondary" onPress={onClose} disabled={submitting} style={styles.footerButton}>
+              Hủy
+            </Button>
+            <Button onPress={onSubmit} disabled={submitting} style={styles.footerButton}>
+              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+            </Button>
           </View>
-
-          <AppText variant="caption" color={colors.subtle}>
-            {MEDICATION_DISCLAIMER_TEXT}
-          </AppText>
-
-          {activePicker === "startDate" ? (
-            <DateTimePicker
-              value={form.startDate ? new Date(form.startDate) : new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={(event, selectedDate) => {
-                setActivePicker(Platform.OS === "ios" ? "startDate" : null);
-                if (event.type === "set" && selectedDate) {
-                  onSetField("startDate", toIsoDate(selectedDate));
-                }
-              }}
-            />
-          ) : null}
-
-          {activePicker === "endDate" ? (
-            <DateTimePicker
-              value={form.endDate ? new Date(form.endDate) : new Date()}
-              mode="date"
-              display={Platform.OS === "ios" ? "inline" : "default"}
-              onChange={(event, selectedDate) => {
-                setActivePicker(Platform.OS === "ios" ? "endDate" : null);
-                if (event.type === "set" && selectedDate) {
-                  onSetField("endDate", toIsoDate(selectedDate));
-                }
-              }}
-            />
-          ) : null}
-
-          {activePicker === "reminderTime" ? (
-            <DateTimePicker
-              value={new Date()}
-              mode="time"
-              is24Hour
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={(event, selectedDate) => {
-                setActivePicker(Platform.OS === "ios" ? "reminderTime" : null);
-                if (event.type === "set" && selectedDate) {
-                  onAddReminderTime(toTimeLabel(selectedDate));
-                }
-              }}
-            />
-          ) : null}
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <Button variant="secondary" onPress={onClose} disabled={submitting} style={styles.footerButton}>
-            Huỷ
-          </Button>
-          <Button onPress={onSubmit} disabled={submitting} style={styles.footerButton}>
-            {submitting ? "Đang lưu..." : "Lưu"}
-          </Button>
-        </View>
-      </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -222,31 +356,115 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
   },
+  keyboardRoot: {
+    flex: 1,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
+    backgroundColor: colors.bg,
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+  },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   closeButton: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paper,
+  },
+  content: {
+    gap: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: spacing["3xl"],
+  },
+  statusCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.xl,
+    backgroundColor: colors.mint,
+    padding: spacing.md,
+  },
+  statusIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+  },
+  activeIcon: {
+    backgroundColor: colors.paper,
+  },
+  futureIcon: {
+    backgroundColor: colors.paper,
+  },
+  expiredIcon: {
+    backgroundColor: colors.dangerBg,
+  },
+  offIcon: {
+    backgroundColor: colors.paper,
+  },
+  incompleteIcon: {
+    backgroundColor: colors.warningBg,
+  },
+  statusCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  sectionCard: {
+    gap: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    padding: spacing.lg,
+    ...shadows.soft,
+  },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  sectionNumber: {
+    width: 30,
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: colors.mint,
   },
-  content: {
-    padding: spacing.lg,
-    gap: spacing.lg,
+  sectionTitle: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   multiline: {
-    minHeight: 88,
+    minHeight: 104,
     textAlignVertical: "top",
     paddingTop: spacing.md,
   },
@@ -256,33 +474,62 @@ const styles = StyleSheet.create({
   },
   dateField: {
     flex: 1,
+    minWidth: 0,
     gap: spacing.sm,
   },
   dateInput: {
-    minHeight: 48,
-    justifyContent: "center",
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
     borderWidth: 1.5,
     borderColor: colors.lineStrong,
-    borderRadius: radius.sm,
-    backgroundColor: colors.paper,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paperSoft,
     paddingHorizontal: spacing.md,
   },
   dateInputError: {
     borderColor: colors.danger,
     backgroundColor: colors.dangerBg,
   },
-  reminderToggleRow: {
+  dateCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 1,
+  },
+  reminderCard: {
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.24)",
+    borderRadius: radius.xl,
+    backgroundColor: colors.mint,
+    padding: spacing.lg,
+  },
+  reminderTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
   },
-  reminderToggleText: {
+  reminderTitleRow: {
     flex: 1,
-    gap: spacing.xs / 2,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
   },
-  reminderTimesGroup: {
-    gap: spacing.sm,
+  reminderIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+  },
+  reminderTitleCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   chipRow: {
     flexDirection: "row",
@@ -290,35 +537,58 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.lineStrong,
+    borderColor: "rgba(8,127,140,0.24)",
     borderRadius: radius.pill,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
   },
   addChip: {
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: colors.lineStrong,
+    borderColor: colors.teal,
     borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.6)",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  },
+  notice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  noticeText: {
+    flex: 1,
   },
   footer: {
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.line,
+    backgroundColor: colors.paper,
+    ...shadows.soft,
   },
   footerButton: {
     flex: 1,
+    borderRadius: radius.lg,
+  },
+  pressed: {
+    opacity: 0.86,
+    transform: [{ translateY: 1 }],
   },
 });
