@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 
 import { useToast } from "@/src/hooks/useToast";
@@ -19,6 +19,7 @@ import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscription
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 100;
 const BLOCKING_PAYMENT_STATUSES = new Set([400, 403, 404, 409]);
+const handledTerminalPaymentIds = new Set<string>();
 
 type UseSubscriptionOptions = {
   autoResumePending?: boolean;
@@ -39,6 +40,21 @@ function pendingCheckoutState(checkout: PendingPaymentCheckout, message?: string
       message
       ?? "Đang chờ PayOS xác nhận. Sau khi thanh toán, hãy quay lại ứng dụng để hệ thống tự cập nhật.",
   };
+}
+
+function claimTerminalPayment(paymentId: string) {
+  if (handledTerminalPaymentIds.has(paymentId)) return false;
+  handledTerminalPaymentIds.add(paymentId);
+  return true;
+}
+
+async function openCheckoutUrl(paymentUrl: string) {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.location.assign(paymentUrl);
+    return;
+  }
+
+  await WebBrowser.openBrowserAsync(paymentUrl);
 }
 
 export function useSubscription({ autoResumePending = true }: UseSubscriptionOptions = {}) {
@@ -151,6 +167,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
               const wasFailed = statuses.some((status) => ["failed", "expired", "refunded"].includes(status));
 
               if (reconciled.isPaid === true && reconciled.isActive === true) {
+                const shouldAnnounce = claimTerminalPayment(checkout.paymentId);
                 stopPolling();
                 await forgetPendingCheckout();
                 setCheckoutState({
@@ -159,16 +176,19 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
                   orderCode: checkout.orderCode,
                   message: "Thanh toán thành công. Gói dịch vụ và số lượt của bạn đã được cập nhật.",
                 });
-                await refreshEntitlements();
-                showToast({
-                  type: "success",
-                  title: "Thanh toán thành công",
-                  message: "Gói dịch vụ và số lượt của bạn đã được cập nhật.",
-                });
+                if (shouldAnnounce) {
+                  await refreshEntitlements();
+                  showToast({
+                    type: "success",
+                    title: "Thanh toán thành công",
+                    message: "Gói dịch vụ và số lượt của bạn đã được cập nhật.",
+                  });
+                }
                 return "success" as const;
               }
 
               if (wasCancelled || wasFailed) {
+                const shouldAnnounce = claimTerminalPayment(checkout.paymentId);
                 stopPolling();
                 await forgetPendingCheckout();
                 setCheckoutState({
@@ -179,13 +199,15 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
                     ? "Giao dịch không được hoàn tất và gói mới chưa được kích hoạt."
                     : reconciled.message || "PayOS xác nhận giao dịch không thành công.",
                 });
-                showToast({
-                  type: wasCancelled ? "info" : "error",
-                  title: wasCancelled ? "Thanh toán đã hủy" : "Thanh toán không thành công",
-                  message: wasCancelled
-                    ? "Giao dịch không được hoàn tất."
-                    : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
-                });
+                if (shouldAnnounce) {
+                  showToast({
+                    type: wasCancelled ? "info" : "error",
+                    title: wasCancelled ? "Thanh toán đã hủy" : "Thanh toán không thành công",
+                    message: wasCancelled
+                      ? "Giao dịch không được hoàn tất."
+                      : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
+                  });
+                }
                 return "terminal" as const;
               }
 
@@ -228,6 +250,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
         const payment = response.data;
 
         if (isSuccessfulPayment(payment)) {
+          const shouldAnnounce = claimTerminalPayment(checkout.paymentId);
           stopPolling();
           await forgetPendingCheckout();
           setCheckoutState({
@@ -236,18 +259,21 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
             orderCode: checkout.orderCode,
             message: "Thanh toán thành công. Quyền lợi MediMate Plus đã được cập nhật.",
           });
-          await refreshEntitlements();
-          showToast({
-            type: "success",
-            title: "Thanh toán thành công",
-            message: "Quyền lợi MediMate Plus đã được kích hoạt.",
-          });
+          if (shouldAnnounce) {
+            await refreshEntitlements();
+            showToast({
+              type: "success",
+              title: "Thanh toán thành công",
+              message: "Quyền lợi MediMate Plus đã được kích hoạt.",
+            });
+          }
           return "success" as const;
         }
 
         if (isTerminalPayment(payment)) {
           const normalizedStatus = String(payment?.statusName ?? "").toLowerCase();
           const wasCancelled = ["cancelled", "canceled"].includes(normalizedStatus);
+          const shouldAnnounce = claimTerminalPayment(checkout.paymentId);
           stopPolling();
           await forgetPendingCheckout();
           setCheckoutState({
@@ -258,13 +284,15 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
               ? "Bạn đã hủy thanh toán. Không có khoản tiền nào được ghi nhận."
               : `Giao dịch ${payment?.statusName || "không thành công"}.`,
           });
-          showToast({
-            type: wasCancelled ? "info" : "error",
-            title: wasCancelled ? "Đã hủy thanh toán" : "Thanh toán không thành công",
-            message: wasCancelled
-              ? "Bạn đã quay lại MediMate và có thể chọn gói khác."
-              : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
-          });
+          if (shouldAnnounce) {
+            showToast({
+              type: wasCancelled ? "info" : "error",
+              title: wasCancelled ? "Đã hủy thanh toán" : "Thanh toán không thành công",
+              message: wasCancelled
+                ? "Bạn đã quay lại MediMate và có thể chọn gói khác."
+                : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
+            });
+          }
           return "terminal" as const;
         }
 
@@ -428,7 +456,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
     pendingCheckoutRef.current = checkout;
     setCheckoutState(pendingCheckoutState(checkout, "PayOS đang được mở. Sau khi hoàn tất, hãy quay lại MediMate."));
     try {
-      await WebBrowser.openBrowserAsync(checkout.paymentUrl);
+      await openCheckoutUrl(checkout.paymentUrl);
     } finally {
       if (pendingCheckoutRef.current?.paymentId === checkout.paymentId) {
         void pollPayment(checkout);
@@ -459,6 +487,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
           orderCode: String(checkoutResponse.orderCode ?? "").trim() || undefined,
           createdAt: Date.now(),
         };
+        handledTerminalPaymentIds.delete(checkout.paymentId);
         pendingCheckoutRef.current = checkout;
         try {
           await setPendingPaymentCheckout(checkout);
@@ -470,7 +499,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
         void pollPayment(checkout);
 
         try {
-          await WebBrowser.openBrowserAsync(checkout.paymentUrl);
+          await openCheckoutUrl(checkout.paymentUrl);
         } finally {
           if (pendingCheckoutRef.current?.paymentId === checkout.paymentId) {
             void pollPayment(checkout);
