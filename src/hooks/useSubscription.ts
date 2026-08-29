@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
+import { router } from "expo-router";
 
 import { useToast } from "@/src/hooks/useToast";
+import { ROUTES } from "@/src/navigation/routes";
 import { useAuth } from "@/src/providers";
 import { authService, normalizeAuthSession } from "@/src/services/authService";
 import {
@@ -58,7 +60,7 @@ async function openCheckoutUrl(paymentUrl: string) {
 }
 
 export function useSubscription({ autoResumePending = true }: UseSubscriptionOptions = {}) {
-  const { session, setSession } = useAuth();
+  const { clearSession, session, setSession } = useAuth();
   const { showToast } = useToast();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -102,8 +104,14 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
       const items = Array.isArray(response.data) ? response.data : [];
       setSubscriptions(items);
       return items;
-    } catch {
+    } catch (error) {
       setSubscriptions([]);
+      if ((error as { status?: number })?.status === 401) {
+        setSubscriptionsError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        await clearSession();
+        return [] as UserSubscription[];
+      }
+
       setSubscriptionsError("Chưa thể kiểm tra gói hiện tại.");
       showToast({
         type: "error",
@@ -114,7 +122,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
     } finally {
       setSubscriptionsLoading(false);
     }
-  }, [session, showToast]);
+  }, [clearSession, session, showToast]);
 
   const stopPolling = useCallback(() => {
     if (pollTimer.current) {
@@ -505,17 +513,38 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
             void pollPayment(checkout);
           }
         }
-      } catch {
-        if (!pendingCheckoutRef.current) {
+      } catch (error) {
+        const status = (error as { status?: number })?.status;
+        if (status === 401) {
+          stopPolling();
+          await clearSession();
           setCheckoutState({
             status: "error",
             paymentId: "",
-            message: "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau.",
+            message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục thanh toán.",
+          });
+          showToast({
+            type: "warning",
+            title: "Cần đăng nhập lại",
+            message: "Phiên của bạn đã hết hạn nên chưa có giao dịch nào được tạo.",
+          });
+          router.push(ROUTES.PUBLIC.LOGIN);
+          return;
+        }
+
+        if (!pendingCheckoutRef.current) {
+          const apiMessage = error instanceof Error ? error.message.trim() : "";
+          setCheckoutState({
+            status: "error",
+            paymentId: "",
+            message: status === 409 && apiMessage
+              ? apiMessage
+              : "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau.",
           });
         }
       }
     },
-    [pollPayment, stopPolling],
+    [clearSession, pollPayment, showToast, stopPolling],
   );
 
   const cancelSubscription = useCallback(

@@ -1,4 +1,6 @@
 // Ported 1:1 from src/utils/subscriptionPlanPresentation.js (Web).
+import { SubscriptionPlanQuota } from "@/src/types/subscription";
+
 export const PUBLIC_ACCESS_BENEFITS = [
   "Phân tích triệu chứng qua câu hỏi lâm sàng tham khảo",
   "Tìm cơ sở y tế trên bản đồ công khai",
@@ -23,20 +25,35 @@ const FEATURE_LIMIT_LABELS: Record<string, (limit: unknown) => string> = {
   clinicalQuestionPerMonth: (limit) => `${limit} bộ câu hỏi lâm sàng mỗi tháng`,
 };
 
-export function getPlanBenefits(value: unknown): string[] {
-  if (!value) return [];
+export function getPlanBenefits(value: unknown, quotas: SubscriptionPlanQuota[] = []): string[] {
+  const quotaBenefits = quotas.flatMap((quota) => {
+    if (quota.isActive === false) return [];
+    const limit = Number(quota.limitValue);
+    if (!Number.isFinite(limit) || limit <= 0) return [];
+
+    const code = String(quota.quotaCode ?? "").trim().toUpperCase();
+    if (code === "SERVICE_CREDIT") {
+      return [`${limit.toLocaleString("vi-VN")} lượt sử dụng dịch vụ MediMate trong mỗi chu kỳ`];
+    }
+
+    const name = String(quota.quotaName ?? "quyền lợi").trim();
+    return [`${limit.toLocaleString("vi-VN")} ${name} trong mỗi chu kỳ`];
+  });
+
+  if (!value) return quotaBenefits;
 
   try {
     const limits = typeof value === "string" ? JSON.parse(value) : value;
-    if (!limits || Array.isArray(limits) || typeof limits !== "object") return [];
+    if (!limits || Array.isArray(limits) || typeof limits !== "object") return quotaBenefits;
 
-    return Object.entries(limits as Record<string, unknown>).flatMap(([key, limit]) => {
+    const featureBenefits = Object.entries(limits as Record<string, unknown>).flatMap(([key, limit]) => {
       const formatLabel = FEATURE_LIMIT_LABELS[key];
       if (!formatLabel || limit === null || limit === undefined || limit === "") return [];
       return [formatLabel(limit)];
     });
+    return [...quotaBenefits, ...featureBenefits];
   } catch {
-    return [];
+    return quotaBenefits;
   }
 }
 

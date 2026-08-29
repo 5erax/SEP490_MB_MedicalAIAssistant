@@ -11,6 +11,7 @@ import { useSubscription } from "@/src/hooks/useSubscription";
 import { useAuth } from "@/src/providers";
 import { hasPremiumAccess } from "@/src/utils/premium";
 import { ROUTES } from "@/src/navigation/routes";
+import { SubscriptionPlan } from "@/src/types/subscription";
 import {
   formatPrice,
   getPlanBenefits,
@@ -56,6 +57,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
 
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [autoRenew, setAutoRenew] = useState(false);
+  const [checkoutPlanId, setCheckoutPlanId] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   const currentSubscriptionY = useRef(0);
@@ -64,29 +66,27 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
   const paidPlans = useMemo(() => plans.filter((plan) => Number(plan.price) > 0), [plans]);
   const availableCycles = useMemo(() => new Set(paidPlans.map(getPlanCycle)), [paidPlans]);
   const selectedCycle = availableCycles.has(billingCycle) ? billingCycle : paidPlans[0] ? getPlanCycle(paidPlans[0]) : billingCycle;
-  const paidPlan = useMemo(() => paidPlans.find((plan) => getPlanCycle(plan) === selectedCycle) ?? paidPlans[0], [paidPlans, selectedCycle]);
+  const visiblePaidPlans = useMemo(
+    () => paidPlans.filter((plan) => getPlanCycle(plan) === selectedCycle),
+    [paidPlans, selectedCycle],
+  );
   const freePlan = useMemo(() => plans.find((plan) => Number(plan.price) === 0), [plans]);
   const activeSubscription = useMemo(() => subscriptions.find(isActiveSubscription) ?? null, [subscriptions]);
   const canManageSubscription = Boolean(session && (activeSubscription || isPremium));
-  const paidBenefits = useMemo(() => getPlanBenefits(paidPlan?.featureLimitJson), [paidPlan]);
   const paidPlanUnavailable = !plansLoading && Boolean(plansError);
-  const currentPrice = Number(paidPlan?.price) || 0;
 
-  const paidPriceLabel = plansLoading
-    ? "Đang tải giá..."
-    : currentPrice
-      ? formatPrice(currentPrice)
-      : plansError
-        ? "Không khả dụng"
-        : "Chưa có gói khả dụng";
-
-  function handleUpgrade() {
+  async function handleUpgrade(plan: SubscriptionPlan) {
     if (!session) {
       router.push(ROUTES.PUBLIC.LOGIN);
       return;
     }
-    if (!paidPlan?.id) return;
-    startCheckout(paidPlan.id, autoRenew);
+    if (!plan.id) return;
+    setCheckoutPlanId(plan.id);
+    try {
+      await startCheckout(plan.id, autoRenew);
+    } finally {
+      setCheckoutPlanId("");
+    }
   }
 
   function handleManageSubscription() {
@@ -108,19 +108,17 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
     );
   }
 
-  const upgradeDisabled = ["creating", "pending"].includes(checkoutState.status) || !paidPlan;
-  const upgradeLabel =
-    checkoutState.status === "creating"
+  const checkoutBusy = ["creating", "pending"].includes(checkoutState.status);
+  const upgradeLabel = (plan: SubscriptionPlan) =>
+    checkoutState.status === "creating" && checkoutPlanId === plan.id
       ? "Đang tạo thanh toán..."
       : checkoutState.status === "pending"
         ? "Có giao dịch đang chờ"
-        : !paidPlan
-          ? "Tạm thời chưa thể đăng ký"
-          : session
-            ? canManageSubscription
-              ? "Mua thêm lượt qua PayOS"
-              : "Thanh toán qua PayOS"
-            : "Đăng nhập để nâng cấp";
+        : session
+          ? canManageSubscription
+            ? "Mua thêm lượt qua PayOS"
+            : "Thanh toán qua PayOS"
+          : "Đăng nhập để nâng cấp";
 
   return (
     <Screen scroll scrollRef={scrollRef} contentContainerStyle={styles.content}>
@@ -137,7 +135,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
         </AppText>
       </View>
 
-      {paidPlans.length > 0 ? (
+      {availableCycles.size > 1 ? (
         <View style={styles.cycleToggle}>
           {(["monthly", "yearly"] as const).map((cycle) => {
             const selected = selectedCycle === cycle;
@@ -180,32 +178,36 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
       ) : (
         <View style={styles.plansGroup}>
           <FreePlanCard plan={freePlan} onExplore={() => router.replace(ROUTES.PATIENT.HOME)} />
-          <PaidPlanCard
-            plan={paidPlan}
-            benefits={paidBenefits}
-            priceLabel={paidPriceLabel}
-            loading={plansLoading}
-            unavailable={paidPlanUnavailable}
-            actionLabel={upgradeLabel}
-            actionDisabled={upgradeDisabled}
-            actionLoading={checkoutState.status === "creating"}
-            onAction={handleUpgrade}
-            secondaryActionLabel={canManageSubscription ? "Quản lý gói hiện tại" : undefined}
-            onSecondaryAction={canManageSubscription ? handleManageSubscription : undefined}
-            autoRenewControl={
-              session && paidPlan && !isPremium && !activeSubscription ? (
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: autoRenew }} onPress={() => setAutoRenew((c) => !c)} style={styles.autoRenewRow}>
-                  <View style={[styles.checkbox, autoRenew && styles.checkboxChecked]} />
-                  <View style={styles.autoRenewText}>
-                    <AppText variant="bodyStrong">Tự động gia hạn</AppText>
-                    <AppText variant="caption" color={colors.subtle}>
-                      Có thể hủy gia hạn trong phần gói hiện tại.
-                    </AppText>
-                  </View>
-                </Pressable>
-              ) : undefined
-            }
-          />
+          {session && visiblePaidPlans.length > 0 && !isPremium && !activeSubscription ? (
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: autoRenew }} onPress={() => setAutoRenew((current) => !current)} style={styles.autoRenewRow}>
+              <View style={[styles.checkbox, autoRenew && styles.checkboxChecked]} />
+              <View style={styles.autoRenewText}>
+                <AppText variant="bodyStrong">Tự động gia hạn</AppText>
+                <AppText variant="caption" color={colors.subtle}>
+                  Áp dụng cho gói bạn chọn và có thể hủy trong phần gói hiện tại.
+                </AppText>
+              </View>
+            </Pressable>
+          ) : null}
+          {visiblePaidPlans.map((plan) => (
+            <PaidPlanCard
+              key={plan.id}
+              plan={plan}
+              benefits={getPlanBenefits(plan.featureLimitJson, plan.quotas)}
+              priceLabel={Number(plan.price) > 0 ? formatPrice(Number(plan.price)) : "Không khả dụng"}
+              loading={plansLoading}
+              unavailable={paidPlanUnavailable}
+              actionLabel={upgradeLabel(plan)}
+              actionDisabled={checkoutBusy}
+              actionLoading={checkoutState.status === "creating" && checkoutPlanId === plan.id}
+              onAction={() => void handleUpgrade(plan)}
+            />
+          ))}
+          {canManageSubscription ? (
+            <Button variant="secondary" fullWidth onPress={handleManageSubscription}>
+              Quản lý gói hiện tại
+            </Button>
+          ) : null}
         </View>
       )}
 
