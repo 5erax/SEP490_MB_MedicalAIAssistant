@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,6 +20,7 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const DEFAULT_DURATION = 3200;
+const EXIT_DURATION = 180;
 
 const HAPTIC_BY_TONE: Partial<Record<ToastTone, () => void>> = {
   success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
@@ -33,23 +34,36 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   const [toasts, setToasts] = useState<InternalToast[]>([]);
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const activeToastKeys = useRef<Map<string, string>>(new Map());
 
-  const dismissToast = useCallback((id: string) => {
+  const removeToast = useCallback((id: string) => {
     const timer = timers.current.get(id);
     if (timer) {
       clearTimeout(timer);
       timers.current.delete(id);
     }
-    setToasts((current) => current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)));
-  }, []);
 
-  const removeToast = useCallback((id: string) => {
+    for (const [key, toastId] of activeToastKeys.current.entries()) {
+      if (toastId === id) activeToastKeys.current.delete(key);
+    }
     setToasts((current) => current.filter((toast) => toast.id !== id));
   }, []);
 
+  const dismissToast = useCallback((id: string) => {
+    const timer = timers.current.get(id);
+    if (timer) clearTimeout(timer);
+
+    setToasts((current) => current.map((toast) => (toast.id === id ? { ...toast, leaving: true } : toast)));
+    timers.current.set(id, setTimeout(() => removeToast(id), EXIT_DURATION + 80));
+  }, [removeToast]);
+
   const showToast = useCallback(
     ({ type = "info", title, message, duration = DEFAULT_DURATION }: ShowToastInput) => {
+      const toastKey = JSON.stringify([type, title ?? "", message]);
+      if (activeToastKeys.current.has(toastKey)) return;
+
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      activeToastKeys.current.set(toastKey, id);
       setToasts((current) => [...current, { id, type, title, message, leaving: false }]);
       HAPTIC_BY_TONE[type]?.();
 
@@ -57,6 +71,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       timers.current.set(id, timer);
     },
     [dismissToast],
+  );
+
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      timers.current.clear();
+      activeToastKeys.current.clear();
+    },
+    [],
   );
 
   const value = useMemo<ToastContextValue>(() => ({ showToast }), [showToast]);
