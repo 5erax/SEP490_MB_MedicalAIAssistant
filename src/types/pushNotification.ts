@@ -2,7 +2,8 @@ export type PushNotificationType =
   | "RecoveryPlanReady"
   | "RecoveryPlanCompleted"
   | "RecoveryPlanCancelled"
-  | "MedicationReminder";
+  | "MedicationReminder"
+  | "ConsultationReminder";
 
 export type PushNotificationData = {
   notificationId?: string;

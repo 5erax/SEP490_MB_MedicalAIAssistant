@@ -15,6 +15,11 @@ export function routeForPushNotification(data: PushNotificationData) {
         pathname: ROUTES.PATIENT.MY_MEDICATIONS,
         params: undefined,
       };
+    case "ConsultationReminder":
+      return {
+        pathname: ROUTES.PATIENT.PRE_CONSULTATION,
+        params: undefined,
+      };
     default:
       return null;
   }
