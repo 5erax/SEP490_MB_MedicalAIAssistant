@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  ListChecks,
   Pencil,
   Pill,
   Plus,
@@ -62,7 +63,7 @@ function getTodayReminderTimes(medications: UserMedication[]) {
       })),
     )
     .sort((left, right) => left.time.localeCompare(right.time))
-    .slice(0, 3);
+    .slice(0, 4);
 }
 
 function MedicationHeader({
@@ -91,6 +92,8 @@ function MedicationHeader({
   }, 0);
   const nextReminder = getNextReminder(medications);
   const todayReminderTimes = getTodayReminderTimes(medications);
+  const displayedPage = Math.max(1, pageNumber);
+  const displayedPages = Math.max(1, totalPages || 1);
 
   return (
     <View style={styles.headerWrap}>
@@ -119,7 +122,7 @@ function MedicationHeader({
         <View style={styles.heroSummary}>
           <View style={styles.summaryMain}>
             <AppText variant="caption" color="rgba(255,255,255,0.74)">
-              Nhắc gần nhất
+              Lần nhắc tiếp theo
             </AppText>
             <AppText variant="h3" color={colors.white} numberOfLines={1}>
               {nextReminder ? nextReminder.medication.medicineName : "Chưa có lịch nhắc"}
@@ -129,6 +132,35 @@ function MedicationHeader({
             <Clock3 size={15} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
               {nextReminder ? nextReminder.time : "--:--"}
+            </AppText>
+          </View>
+        </View>
+
+        <View style={styles.heroStatRow}>
+          <View style={styles.heroStatItem}>
+            <AppText variant="h3" color={colors.ink}>
+              {totalCount}
+            </AppText>
+            <AppText variant="caption" color={colors.muted}>
+              Tổng thuốc
+            </AppText>
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroStatItem}>
+            <AppText variant="h3" color={colors.ink}>
+              {currentActiveCount}
+            </AppText>
+            <AppText variant="caption" color={colors.muted}>
+              Đang nhắc
+            </AppText>
+          </View>
+          <View style={styles.heroDivider} />
+          <View style={styles.heroStatItem}>
+            <AppText variant="h3" color={colors.ink}>
+              {reminderCount}
+            </AppText>
+            <AppText variant="caption" color={colors.muted}>
+              Mốc giờ
             </AppText>
           </View>
         </View>
@@ -150,34 +182,6 @@ function MedicationHeader({
         </Button>
       </View>
 
-      <View style={styles.statGrid}>
-        <View style={styles.statTile}>
-          <AppText variant="h3">{totalCount}</AppText>
-          <AppText variant="caption" color={colors.muted}>
-            Tổng thuốc
-          </AppText>
-        </View>
-        <View style={styles.statTile}>
-          <AppText variant="h3">{currentActiveCount}</AppText>
-          <AppText variant="caption" color={colors.muted}>
-            Đang nhắc
-          </AppText>
-        </View>
-        <View style={styles.statTile}>
-          <AppText variant="h3">{reminderCount}</AppText>
-          <AppText variant="caption" color={colors.muted}>
-            Mốc giờ
-          </AppText>
-        </View>
-      </View>
-
-      <View style={styles.notice}>
-        <ShieldCheck size={17} color={colors.teal} />
-        <AppText variant="caption" color={colors.muted} style={styles.noticeText}>
-          Lịch nhắc dựa trên thông tin bạn đã cung cấp. MediMate không kê đơn hoặc xác minh chỉ định dùng thuốc.
-        </AppText>
-      </View>
-
       <View style={styles.todayCard}>
         <View style={styles.sectionTitleRow}>
           <View style={styles.sectionIcon}>
@@ -195,7 +199,6 @@ function MedicationHeader({
           <View style={styles.timeline}>
             {todayReminderTimes.map((item) => (
               <View key={item.id} style={styles.timelineItem}>
-                <View style={styles.timelineDot} />
                 <AppText variant="bodyStrong">{item.time}</AppText>
                 <AppText variant="caption" color={colors.muted} numberOfLines={1} style={styles.timelineName}>
                   {item.name}
@@ -206,15 +209,25 @@ function MedicationHeader({
         ) : null}
       </View>
 
+      <View style={styles.notice}>
+        <ShieldCheck size={17} color={colors.teal} />
+        <AppText variant="caption" color={colors.muted} style={styles.noticeText}>
+          Lịch nhắc dựa trên thông tin bạn đã cung cấp. MediMate không kê đơn hoặc xác minh chỉ định dùng thuốc.
+        </AppText>
+      </View>
+
       <View style={styles.listHeadCard}>
-        <View>
+        <View style={styles.listHeadIcon}>
+          <ListChecks size={18} color={colors.teal} />
+        </View>
+        <View style={styles.listHeadCopy}>
           <AppText variant="h3">Danh sách thuốc</AppText>
           <AppText variant="caption" color={colors.subtle}>
             {listError ? "Kiểm tra kết nối rồi tải lại danh sách." : "Mỗi trang hiển thị tối đa 5 thuốc để dễ quản lý."}
           </AppText>
         </View>
         <Badge tone="info">
-          Trang {Math.max(1, pageNumber)}/{Math.max(1, totalPages || 1)}
+          {displayedPage}/{displayedPages}
         </Badge>
       </View>
     </View>
@@ -235,9 +248,11 @@ function MedicationListItem({
   const state = getMedicationReminderStatus(medication);
   const reminderTimes = getMedicationReminderTimes(medication);
   const visibleTimes = state.active ? reminderTimes.slice(0, 3) : [];
+  const accentStyle =
+    state.key === "active" ? styles.medicationRowActive : state.key === "expired" ? styles.medicationRowExpired : styles.medicationRowIdle;
 
   return (
-    <View style={styles.medicationRow}>
+    <View style={[styles.medicationRow, accentStyle]}>
       <View style={styles.medicationIcon}>
         <Pill size={19} color={colors.teal} />
       </View>
@@ -258,7 +273,7 @@ function MedicationListItem({
         </View>
 
         {medication.dosageInstruction ? (
-          <AppText variant="caption" color={colors.muted} numberOfLines={1}>
+          <AppText variant="caption" color={colors.muted} numberOfLines={2} style={styles.dosageText}>
             {medication.dosageInstruction}
           </AppText>
         ) : null}
@@ -503,17 +518,17 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing["4xl"],
   },
   headerWrap: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   hero: {
     gap: spacing.md,
     borderRadius: radius.xl,
     backgroundColor: colors.limeDark,
-    padding: spacing.lg,
+    padding: spacing.md,
     ...shadows.soft,
   },
   heroTop: {
@@ -523,15 +538,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   heroIcon: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.16)",
   },
   heroBadge: {
-    minHeight: 31,
+    minHeight: 30,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -540,7 +555,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   heroCopyWrap: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   heroTitle: {
     maxWidth: 300,
@@ -549,13 +564,13 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   heroSummary: {
-    minHeight: 62,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.13)",
-    padding: spacing.md,
+    padding: spacing.sm,
   },
   summaryMain: {
     flex: 1,
@@ -563,8 +578,8 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   summaryTime: {
-    minWidth: 76,
-    minHeight: 38,
+    minWidth: 74,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -574,6 +589,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.14)",
     paddingHorizontal: spacing.md,
+  },
+  heroStatRow: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    overflow: "hidden",
+  },
+  heroStatItem: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 1,
+    paddingHorizontal: spacing.md,
+  },
+  heroDivider: {
+    width: 1,
+    marginVertical: spacing.sm,
+    backgroundColor: "rgba(8,127,140,0.14)",
   },
   actionRow: {
     flexDirection: "row",
@@ -585,21 +619,6 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1.25,
     borderRadius: radius.pill,
-  },
-  statGrid: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  statTile: {
-    flex: 1,
-    minHeight: 68,
-    justifyContent: "center",
-    gap: spacing.xs / 2,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.lg,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
   },
   notice: {
     flexDirection: "row",
@@ -615,7 +634,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   todayCard: {
-    gap: spacing.md,
+    gap: spacing.sm,
     borderWidth: 1,
     borderColor: "rgba(8,127,140,0.2)",
     borderRadius: radius.xl,
@@ -628,8 +647,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   sectionIcon: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
@@ -644,7 +663,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   timelineItem: {
-    minHeight: 40,
+    minHeight: 38,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
@@ -652,18 +671,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.78)",
     paddingHorizontal: spacing.md,
   },
-  timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.teal,
-  },
   timelineName: {
     flex: 1,
     textAlign: "right",
   },
   listHeadCard: {
-    minHeight: 70,
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -673,6 +686,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     backgroundColor: colors.paper,
     padding: spacing.md,
+  },
+  listHeadIcon: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+  },
+  listHeadCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   medicationRow: {
     flexDirection: "row",
@@ -684,6 +709,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     padding: spacing.md,
     ...shadows.soft,
+  },
+  medicationRowActive: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.teal,
+  },
+  medicationRowExpired: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.coral,
+  },
+  medicationRowIdle: {
+    borderLeftWidth: 4,
+    borderLeftColor: colors.lineStrong,
   },
   medicationIcon: {
     width: 48,
@@ -714,6 +751,9 @@ const styles = StyleSheet.create({
   },
   metaText: {
     flex: 1,
+  },
+  dosageText: {
+    paddingTop: 1,
   },
   rowBottom: {
     flexDirection: "row",

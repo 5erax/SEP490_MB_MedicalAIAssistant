@@ -1,13 +1,13 @@
 // Ported from MedicationFormDialog in Web's UserMedicationsPage.jsx.
 import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { BellRing, CalendarDays, Clock3, Pill, Plus, ShieldCheck, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText, Button, TextField } from "@/src/components/ui";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
-import { MEDICATION_DISCLAIMER_TEXT, MedicationFormErrors, MedicationFormState } from "@/src/utils/medicationValidation";
+import { MAX_REMINDER_TIMES, MEDICATION_DISCLAIMER_TEXT, MedicationFormErrors, MedicationFormState } from "@/src/utils/medicationValidation";
 
 type MedicationFormSheetProps = {
   visible: boolean;
@@ -31,17 +31,37 @@ function toIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function toTimeLabel(date: Date) {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
-}
-
 function formatDateLabel(value: string) {
   if (!value) return "Chọn ngày";
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" }).format(date);
+}
+
+function formatTimeDraft(value: string) {
+  const cleaned = value.replace(/[^\d:]/g, "");
+  if (cleaned.includes(":")) {
+    const [hours = "", minutes = ""] = cleaned.split(":");
+    return `${hours.slice(0, 2)}${cleaned.endsWith(":") ? ":" : minutes ? ":" : ""}${minutes.slice(0, 2)}`;
+  }
+  if (cleaned.length <= 2) return cleaned;
+  return `${cleaned.slice(0, 2)}:${cleaned.slice(2, 4)}`;
+}
+
+function normalizeTypedTime(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const match = trimmed.match(/^(\d{1,2})(?::?(\d{1,2}))?$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] ?? "0");
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function getScheduleState(form: MedicationFormState): { label: string; tone: ScheduleTone; description: string } {
@@ -139,8 +159,35 @@ export function MedicationFormSheet({
   onRemoveReminderTime,
   onSubmit,
 }: MedicationFormSheetProps) {
-  const [activePicker, setActivePicker] = useState<"startDate" | "endDate" | "reminderTime" | null>(null);
+  const [activePicker, setActivePicker] = useState<"startDate" | "endDate" | null>(null);
+  const [timeDraft, setTimeDraft] = useState("");
+  const [timeDraftError, setTimeDraftError] = useState("");
   const scheduleState = getScheduleState(form);
+
+  function handleTimeDraftChange(value: string) {
+    setTimeDraft(formatTimeDraft(value));
+    setTimeDraftError("");
+  }
+
+  function handleAddTypedTime() {
+    const nextTime = normalizeTypedTime(timeDraft);
+    if (!nextTime) {
+      setTimeDraftError("Nhập giờ theo dạng HH:mm, ví dụ 07:30 hoặc 17:48.");
+      return;
+    }
+    if (form.reminderTimes.includes(nextTime)) {
+      setTimeDraftError("Giờ này đã có trong danh sách.");
+      return;
+    }
+    if (form.reminderTimes.length >= MAX_REMINDER_TIMES) {
+      setTimeDraftError(`Tối đa ${MAX_REMINDER_TIMES} giờ nhắc.`);
+      return;
+    }
+
+    onAddReminderTime(nextTime);
+    setTimeDraft("");
+    setTimeDraftError("");
+  }
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -271,12 +318,41 @@ export function MedicationFormSheet({
                     </Pressable>
                   </View>
                 ))}
-                <Pressable accessibilityRole="button" onPress={() => setActivePicker("reminderTime")} style={styles.addChip}>
-                  <Plus size={14} color={colors.teal} />
-                  <AppText variant="bodyStrong" color={colors.teal}>
-                    Thêm giờ
+              </View>
+
+              <View style={styles.timeInputPanel}>
+                <View style={styles.timeInputCopy}>
+                  <AppText variant="caption" color={colors.teal}>
+                    Nhập giờ nhắc
                   </AppText>
-                </Pressable>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Gõ nhanh 1748 hoặc 17:48 rồi bấm thêm.
+                  </AppText>
+                </View>
+                <View style={styles.timeInputRow}>
+                  <TextInput
+                    accessibilityLabel="Nhập giờ nhắc"
+                    value={timeDraft}
+                    onChangeText={handleTimeDraftChange}
+                    onSubmitEditing={handleAddTypedTime}
+                    placeholder="HH:mm"
+                    placeholderTextColor={colors.subtle}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                    style={[styles.timeInput, timeDraftError && styles.timeInputError]}
+                  />
+                  <Pressable accessibilityRole="button" onPress={handleAddTypedTime} style={styles.addTimeButton}>
+                    <Plus size={15} color={colors.white} />
+                    <AppText variant="bodyStrong" color={colors.white}>
+                      Thêm
+                    </AppText>
+                  </Pressable>
+                </View>
+                {timeDraftError ? (
+                  <AppText variant="caption" color={colors.danger}>
+                    {timeDraftError}
+                  </AppText>
+                ) : null}
               </View>
 
               {errors.reminderTimes ? (
@@ -321,20 +397,6 @@ export function MedicationFormSheet({
               />
             ) : null}
 
-            {activePicker === "reminderTime" ? (
-              <DateTimePicker
-                value={new Date()}
-                mode="time"
-                is24Hour
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                onChange={(event, selectedDate) => {
-                  setActivePicker(Platform.OS === "ios" ? "reminderTime" : null);
-                  if (event.type === "set" && selectedDate) {
-                    onAddReminderTime(toTimeLabel(selectedDate));
-                  }
-                }}
-              />
-            ) : null}
           </ScrollView>
 
           <View style={styles.footer}>
@@ -558,6 +620,49 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.6)",
     paddingHorizontal: spacing.md,
+  },
+  timeInputPanel: {
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.74)",
+    padding: spacing.md,
+  },
+  timeInputCopy: {
+    gap: 2,
+  },
+  timeInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  timeInput: {
+    flex: 1,
+    minHeight: 46,
+    borderWidth: 1.5,
+    borderColor: colors.lineStrong,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+    color: colors.ink,
+    paddingHorizontal: spacing.md,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0,
+  },
+  timeInputError: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerBg,
+  },
+  addTimeButton: {
+    minWidth: 92,
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
   },
   notice: {
     flexDirection: "row",
