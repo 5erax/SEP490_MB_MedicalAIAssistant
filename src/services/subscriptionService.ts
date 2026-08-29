@@ -5,7 +5,6 @@ import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
 import { PayOsCheckout, PayOsReconcileResult, Payment, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
 import { ApiResponse } from "@/src/types/api";
-import { Platform } from "react-native";
 
 function withQuery(path: string, params: Record<string, string | number | undefined> = {}) {
   const search = new URLSearchParams();
@@ -26,7 +25,9 @@ export const userSubscriptionsApi = {
   checkout(planId: string, autoRenew = false) {
     return apiRequest<PayOsCheckout>(ENDPOINTS.USER_SUBSCRIPTIONS.CHECKOUT, {
       method: "POST",
-      data: { planId, autoRenew, clientType: Platform.OS === "web" ? "web" : "mobile" },
+      // This repository is the mobile client even when Expo Web is used as a
+      // UI preview. The mobile callback lets PayOS reopen the installed app.
+      data: { planId, autoRenew, clientType: "mobile" },
       requiresAuth: true,
     });
   },
