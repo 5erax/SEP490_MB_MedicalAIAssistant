@@ -5,6 +5,7 @@ import { AppText, Badge } from "@/src/components/ui";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { UserMedication } from "@/src/types/medication";
 import { formatMedicationDateRange } from "@/src/utils/medicationValidation";
+import { getMedicationReminderStatus, getMedicationReminderTimes } from "@/src/utils/medicationReminderStatus";
 
 type MedicationCardProps = {
   medication: UserMedication;
@@ -13,16 +14,9 @@ type MedicationCardProps = {
   onRemove: () => void;
 };
 
-function getReminderTimes(medication: UserMedication) {
-  return (medication.reminderTimes ?? [])
-    .map((entry) => (entry?.timeOfDay ? String(entry.timeOfDay).slice(0, 5) : ""))
-    .filter(Boolean)
-    .sort();
-}
-
 export function MedicationCard({ medication, removing, onEdit, onRemove }: MedicationCardProps) {
-  const reminderTimes = getReminderTimes(medication);
-  const hasReminder = medication.isReminderEnabled && reminderTimes.length > 0;
+  const reminderStatus = getMedicationReminderStatus(medication);
+  const reminderTimes = getMedicationReminderTimes(medication);
 
   return (
     <View style={styles.card}>
@@ -37,7 +31,7 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
             <AppText variant="h3" numberOfLines={2} style={styles.name}>
               {medication.medicineName}
             </AppText>
-            <Badge tone={hasReminder ? "success" : "neutral"}>{hasReminder ? "Đang nhắc" : "Không nhắc"}</Badge>
+            <Badge tone={reminderStatus.tone}>{reminderStatus.label}</Badge>
           </View>
           <View style={styles.metaRow}>
             <CalendarDays size={14} color={colors.subtle} />
@@ -57,24 +51,26 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
         </View>
       ) : null}
 
-      <View style={[styles.reminderPanel, !hasReminder && styles.reminderPanelMuted]}>
+      <View style={[styles.reminderPanel, !reminderStatus.active && styles.reminderPanelMuted]}>
         <View style={styles.reminderHead}>
-          <View style={[styles.reminderIcon, hasReminder && styles.reminderIconActive]}>
-            <Bell size={15} color={hasReminder ? colors.white : colors.subtle} />
+          <View style={[styles.reminderIcon, reminderStatus.active && styles.reminderIconActive]}>
+            <Bell size={15} color={reminderStatus.active ? colors.white : colors.subtle} />
           </View>
           <View style={styles.reminderCopy}>
-            <AppText variant="bodyStrong" color={hasReminder ? colors.ink : colors.subtle}>
-              {hasReminder ? "Giờ nhắc trong ngày" : "Chưa bật lịch nhắc"}
+            <AppText variant="bodyStrong" color={reminderStatus.active ? colors.ink : colors.subtle}>
+              {reminderStatus.active ? "Giờ nhắc trong ngày" : reminderStatus.emptyText}
             </AppText>
-            {!hasReminder ? (
+            {!reminderStatus.active ? (
               <AppText variant="caption" color={colors.subtle}>
-                Bấm Sửa để chọn ngày dùng thuốc và giờ nhắc.
+                {reminderStatus.key === "expired"
+                  ? "Bấm Sửa để gia hạn nếu bạn vẫn cần theo dõi."
+                  : "Bấm Sửa để chọn ngày dùng thuốc và giờ nhắc."}
               </AppText>
             ) : null}
           </View>
         </View>
 
-        {hasReminder ? (
+        {reminderStatus.active ? (
           <View style={styles.timeRow}>
             {reminderTimes.map((time) => (
               <View key={time} style={styles.timeChip}>

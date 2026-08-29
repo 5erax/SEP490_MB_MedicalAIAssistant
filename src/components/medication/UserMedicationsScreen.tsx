@@ -20,15 +20,8 @@ import { MoreBackHeader } from "@/src/components/more";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useToast, useUserMedications } from "@/src/hooks";
 import { UserMedication } from "@/src/types/medication";
+import { getMedicationReminderStatus, getMedicationReminderTimes } from "@/src/utils/medicationReminderStatus";
 import { MedicationFormSheet } from "./MedicationFormSheet";
-
-function todayIsoDate() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function formatDate(value?: string | null) {
   if (!value) return "?";
@@ -37,38 +30,13 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "numeric", year: "2-digit" }).format(date);
 }
 
-function getReminderTimes(medication: UserMedication) {
-  return (medication.reminderTimes ?? [])
-    .filter((entry) => (entry as { isActive?: boolean })?.isActive !== false)
-    .map((entry) => (entry?.timeOfDay ? String(entry.timeOfDay).slice(0, 5) : ""))
-    .filter(Boolean)
-    .sort();
-}
-
-function getReminderState(medication: UserMedication): { label: string; tone: "success" | "warning" | "danger" | "neutral"; active: boolean } {
-  const times = getReminderTimes(medication);
-  if (!medication.isReminderEnabled || times.length === 0) {
-    return { label: "Không nhắc", tone: "neutral", active: false };
-  }
-
-  const today = todayIsoDate();
-  const startDate = medication.startDate ? String(medication.startDate).slice(0, 10) : "";
-  const endDate = medication.endDate ? String(medication.endDate).slice(0, 10) : "";
-
-  if (!startDate || !endDate) return { label: "Thiếu lịch", tone: "warning", active: false };
-  if (today < startDate) return { label: "Sắp nhắc", tone: "warning", active: false };
-  if (today > endDate) return { label: "Đã hết hạn", tone: "danger", active: false };
-
-  return { label: "Đang nhắc", tone: "success", active: true };
-}
-
 function getNextReminder(medications: UserMedication[]) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const candidates = medications
-    .filter((medication) => getReminderState(medication).active)
+    .filter((medication) => getMedicationReminderStatus(medication).active)
     .flatMap((medication) =>
-      getReminderTimes(medication).map((time) => {
+      getMedicationReminderTimes(medication).map((time) => {
         const [hours = "0", minutes = "0"] = time.split(":");
         const totalMinutes = Number(hours) * 60 + Number(minutes);
         return {
@@ -85,9 +53,9 @@ function getNextReminder(medications: UserMedication[]) {
 
 function getTodayReminderTimes(medications: UserMedication[]) {
   return medications
-    .filter((medication) => getReminderState(medication).active)
+    .filter((medication) => getMedicationReminderStatus(medication).active)
     .flatMap((medication) =>
-      getReminderTimes(medication).map((time) => ({
+      getMedicationReminderTimes(medication).map((time) => ({
         id: `${medication.id}-${time}`,
         time,
         name: medication.medicineName,
@@ -116,8 +84,11 @@ function MedicationHeader({
   onReload: () => void;
   onCreate: () => void;
 }) {
-  const currentActiveCount = medications.filter((medication) => getReminderState(medication).active).length;
-  const reminderCount = medications.reduce((total, medication) => total + getReminderTimes(medication).length, 0);
+  const currentActiveCount = medications.filter((medication) => getMedicationReminderStatus(medication).active).length;
+  const reminderCount = medications.reduce((total, medication) => {
+    if (!getMedicationReminderStatus(medication).active) return total;
+    return total + getMedicationReminderTimes(medication).length;
+  }, 0);
   const nextReminder = getNextReminder(medications);
   const todayReminderTimes = getTodayReminderTimes(medications);
 
@@ -261,9 +232,9 @@ function MedicationListItem({
   onEdit: () => void;
   onRemove: () => void;
 }) {
-  const state = getReminderState(medication);
-  const reminderTimes = getReminderTimes(medication);
-  const visibleTimes = reminderTimes.slice(0, 3);
+  const state = getMedicationReminderStatus(medication);
+  const reminderTimes = getMedicationReminderTimes(medication);
+  const visibleTimes = state.active ? reminderTimes.slice(0, 3) : [];
 
   return (
     <View style={styles.medicationRow}>
@@ -306,11 +277,11 @@ function MedicationListItem({
             ) : (
               <View style={styles.timePillMuted}>
                 <AppText variant="caption" color={colors.subtle}>
-                  Chưa có giờ
+                  {state.emptyText}
                 </AppText>
               </View>
             )}
-            {reminderTimes.length > visibleTimes.length ? (
+            {state.active && reminderTimes.length > visibleTimes.length ? (
               <View style={styles.timePillMuted}>
                 <AppText variant="caption" color={colors.subtle}>
                   +{reminderTimes.length - visibleTimes.length}
