@@ -25,7 +25,7 @@ export const userSubscriptionsApi = {
   checkout(planId: string, autoRenew = false) {
     return apiRequest<PayOsCheckout>(ENDPOINTS.USER_SUBSCRIPTIONS.CHECKOUT, {
       method: "POST",
-      data: { planId, autoRenew },
+      data: { planId, autoRenew, clientType: "mobile" },
       requiresAuth: true,
     });
   },
