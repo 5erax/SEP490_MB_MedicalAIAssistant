@@ -17,10 +17,15 @@ export function PendingPaymentRedirect() {
   }, [pathname]);
 
   const openPendingCheckoutStatus = useCallback(async () => {
-    if (!session || isRestoring || pathnameRef.current.endsWith("/pricing")) return;
+    if (
+      !session
+      || isRestoring
+      || pathnameRef.current.endsWith("/pricing")
+      || pathnameRef.current.endsWith("/payment-result")
+    ) return;
     const checkout = await getPendingPaymentCheckout();
     if (!checkout) return;
-    router.replace(ROUTES.PUBLIC.PRICING);
+    router.replace(ROUTES.PATIENT.PRICING);
   }, [isRestoring, session]);
 
   useEffect(() => {

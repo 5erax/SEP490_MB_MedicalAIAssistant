@@ -28,6 +28,7 @@ export default function RootLayout() {
           <Stack.Screen name="(doctor)" options={{ headerShown: false }} />
           <Stack.Screen name="(staff)" options={{ headerShown: false }} />
           <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+          <Stack.Screen name="payment-result" options={{ headerShown: false }} />
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />

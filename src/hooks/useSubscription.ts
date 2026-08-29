@@ -13,12 +13,22 @@ import {
 } from "@/src/services/paymentCheckoutStorage";
 import { paymentsApi, subscriptionPlansApi, userSubscriptionsApi } from "@/src/services/subscriptionService";
 import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
-import { CheckoutState, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
+import { CheckoutState, PayOsReconcileResult, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
 import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscriptionPlanPresentation";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 100;
-const FATAL_PAYMENT_STATUSES = new Set([400, 401, 403, 404, 409]);
+const BLOCKING_PAYMENT_STATUSES = new Set([400, 403, 404, 409]);
+
+type UseSubscriptionOptions = {
+  autoResumePending?: boolean;
+};
+
+function reconcileStatuses(result: PayOsReconcileResult) {
+  return [result.paymentStatus, result.providerStatus, result.subscriptionStatus]
+    .map((value) => String(value ?? "").trim().toLowerCase())
+    .filter(Boolean);
+}
 
 function pendingCheckoutState(checkout: PendingPaymentCheckout, message?: string): CheckoutState {
   return {
@@ -31,7 +41,7 @@ function pendingCheckoutState(checkout: PendingPaymentCheckout, message?: string
   };
 }
 
-export function useSubscription() {
+export function useSubscription({ autoResumePending = true }: UseSubscriptionOptions = {}) {
   const { session, setSession } = useAuth();
   const { showToast } = useToast();
 
@@ -131,22 +141,85 @@ export function useSubscription() {
       try {
         if (reconcile && checkout.orderCode) {
           try {
-            await paymentsApi.reconcilePayOs(checkout.orderCode);
+            const response = await paymentsApi.reconcilePayOs(checkout.orderCode);
+            const reconciled = response.data;
+
+            if (reconciled) {
+              const statuses = reconcileStatuses(reconciled);
+              const wasCancelled = reconciled.isCancelled === true
+                || statuses.some((status) => ["cancelled", "canceled"].includes(status));
+              const wasFailed = statuses.some((status) => ["failed", "expired", "refunded"].includes(status));
+
+              if (reconciled.isPaid === true && reconciled.isActive === true) {
+                stopPolling();
+                await forgetPendingCheckout();
+                setCheckoutState({
+                  status: "success",
+                  paymentId: checkout.paymentId,
+                  orderCode: checkout.orderCode,
+                  message: "Thanh toán thành công. Gói dịch vụ và số lượt của bạn đã được cập nhật.",
+                });
+                await refreshEntitlements();
+                showToast({
+                  type: "success",
+                  title: "Thanh toán thành công",
+                  message: "Gói dịch vụ và số lượt của bạn đã được cập nhật.",
+                });
+                return "success" as const;
+              }
+
+              if (wasCancelled || wasFailed) {
+                stopPolling();
+                await forgetPendingCheckout();
+                setCheckoutState({
+                  status: wasCancelled ? "cancelled" : "error",
+                  paymentId: checkout.paymentId,
+                  orderCode: checkout.orderCode,
+                  message: wasCancelled
+                    ? "Giao dịch không được hoàn tất và gói mới chưa được kích hoạt."
+                    : reconciled.message || "PayOS xác nhận giao dịch không thành công.",
+                });
+                showToast({
+                  type: wasCancelled ? "info" : "error",
+                  title: wasCancelled ? "Thanh toán đã hủy" : "Thanh toán không thành công",
+                  message: wasCancelled
+                    ? "Giao dịch không được hoàn tất."
+                    : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
+                });
+                return "terminal" as const;
+              }
+
+              setCheckoutState(
+                pendingCheckoutState(
+                  checkout,
+                  reconciled.isPaid
+                    ? "Thanh toán đã được ghi nhận. MediMate đang kích hoạt quyền lợi của bạn."
+                    : reconciled.message || "PayOS chưa hoàn tất xử lý giao dịch. Hệ thống sẽ tiếp tục kiểm tra.",
+                ),
+              );
+              return "pending" as const;
+            }
           } catch (error) {
             const status = (error as { status?: number })?.status;
-            if (status && FATAL_PAYMENT_STATUSES.has(status)) {
+            if (status === 401) {
               stopPolling();
-              await forgetPendingCheckout();
               setCheckoutState({
                 status: "error",
                 paymentId: checkout.paymentId,
                 orderCode: checkout.orderCode,
-                message:
-                  status === 401
-                    ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để kiểm tra giao dịch."
-                    : "Giao dịch không hợp lệ hoặc không thuộc tài khoản hiện tại.",
+                message: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để kiểm tra giao dịch.",
               });
-              return "terminal" as const;
+              return "blocked" as const;
+            }
+            if (status && BLOCKING_PAYMENT_STATUSES.has(status)) {
+              stopPolling();
+              setCheckoutState({
+                status: "error",
+                paymentId: checkout.paymentId,
+                orderCode: checkout.orderCode,
+                message: "Giao dịch không hợp lệ, không thuộc tài khoản hiện tại hoặc đang xung đột.",
+              });
+              return "blocked" as const;
             }
           }
         }
@@ -173,13 +246,24 @@ export function useSubscription() {
         }
 
         if (isTerminalPayment(payment)) {
+          const normalizedStatus = String(payment?.statusName ?? "").toLowerCase();
+          const wasCancelled = ["cancelled", "canceled"].includes(normalizedStatus);
           stopPolling();
           await forgetPendingCheckout();
           setCheckoutState({
-            status: "error",
+            status: wasCancelled ? "cancelled" : "error",
             paymentId: checkout.paymentId,
             orderCode: checkout.orderCode,
-            message: `Giao dịch ${payment?.statusName || "không thành công"}.`,
+            message: wasCancelled
+              ? "Bạn đã hủy thanh toán. Không có khoản tiền nào được ghi nhận."
+              : `Giao dịch ${payment?.statusName || "không thành công"}.`,
+          });
+          showToast({
+            type: wasCancelled ? "info" : "error",
+            title: wasCancelled ? "Đã hủy thanh toán" : "Thanh toán không thành công",
+            message: wasCancelled
+              ? "Bạn đã quay lại MediMate và có thể chọn gói khác."
+              : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
           });
           return "terminal" as const;
         }
@@ -190,7 +274,6 @@ export function useSubscription() {
         const status = (error as { status?: number })?.status;
         if (status && [401, 403, 404].includes(status)) {
           stopPolling();
-          await forgetPendingCheckout();
           setCheckoutState({
             status: "error",
             paymentId: checkout.paymentId,
@@ -200,7 +283,7 @@ export function useSubscription() {
                 ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
                 : "Không tìm thấy giao dịch thuộc tài khoản hiện tại.",
           });
-          return "terminal" as const;
+          return "blocked" as const;
         }
 
         setCheckoutState(
@@ -228,7 +311,7 @@ export function useSubscription() {
         const result = await inspectPayment(checkout, {
           reconcile: pollAttempts.current === 1 || pollAttempts.current % 4 === 0,
         });
-        if (result === "success" || result === "terminal") return true;
+        if (["success", "terminal", "blocked"].includes(result)) return true;
 
         if (pollAttempts.current >= MAX_POLL_ATTEMPTS) {
           setCheckoutState(
@@ -278,6 +361,58 @@ export function useSubscription() {
       });
     }
   }, [inspectPayment, resolvePendingCheckout, showToast]);
+
+  const checkPaymentResult = useCallback(
+    async (orderCode: string) => {
+      const normalizedOrderCode = String(orderCode ?? "").trim();
+      if (!/^\d+$/.test(normalizedOrderCode) || Number(normalizedOrderCode) <= 0) {
+        stopPolling();
+        setCheckoutState({
+          status: "error",
+          paymentId: "",
+          orderCode: normalizedOrderCode || undefined,
+          message: "Không thể xác định giao dịch từ liên kết thanh toán.",
+        });
+        return "invalid" as const;
+      }
+
+      const pending = await getPendingPaymentCheckout();
+      if (!pending) {
+        stopPolling();
+        setCheckoutState({
+          status: "error",
+          paymentId: "",
+          orderCode: normalizedOrderCode,
+          message: "Không tìm thấy giao dịch đang chờ trên thiết bị này.",
+        });
+        return "missing" as const;
+      }
+
+      if (pending.orderCode && pending.orderCode !== normalizedOrderCode) {
+        stopPolling();
+        setCheckoutState({
+          status: "error",
+          paymentId: pending.paymentId,
+          orderCode: normalizedOrderCode,
+          message: "Mã giao dịch không khớp với thanh toán đang chờ trên thiết bị.",
+        });
+        return "mismatch" as const;
+      }
+
+      const checkout = { ...pending, orderCode: normalizedOrderCode };
+      pendingCheckoutRef.current = checkout;
+      setCheckoutState(
+        pendingCheckoutState(checkout, "MediMate đang kiểm tra trạng thái giao dịch với PayOS."),
+      );
+
+      const result = await inspectPayment(checkout, { reconcile: true });
+      if (["pending", "retry"].includes(result)) {
+        void pollPayment(checkout);
+      }
+      return result;
+    },
+    [inspectPayment, pollPayment, stopPolling],
+  );
 
   const reopenCheckout = useCallback(async () => {
     const checkout = await resolvePendingCheckout();
@@ -387,7 +522,7 @@ export function useSubscription() {
 
   useEffect(() => {
     let active = true;
-    if (!session) {
+    if (!session || !autoResumePending) {
       stopPolling();
       pendingCheckoutRef.current = null;
       return () => {
@@ -405,7 +540,7 @@ export function useSubscription() {
     return () => {
       active = false;
     };
-  }, [pollPayment, session, stopPolling]);
+  }, [autoResumePending, pollPayment, session, stopPolling]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -435,6 +570,7 @@ export function useSubscription() {
     checkingPayment,
     startCheckout,
     checkPendingPayment,
+    checkPaymentResult,
     reopenCheckout,
     cancelSubscription,
   };

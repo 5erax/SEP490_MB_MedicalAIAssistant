@@ -1,6 +1,6 @@
 // Ported from src/pages/PricingPage.jsx (Web).
-import { useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { CheckCircle2, CreditCard, ExternalLink, History, RefreshCw, ShieldCheck, XCircle } from "lucide-react-native";
 
@@ -57,6 +57,8 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [autoRenew, setAutoRenew] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const currentSubscriptionY = useRef(0);
 
   const isPremium = hasPremiumAccess(session);
   const paidPlans = useMemo(() => plans.filter((plan) => Number(plan.price) > 0), [plans]);
@@ -65,6 +67,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
   const paidPlan = useMemo(() => paidPlans.find((plan) => getPlanCycle(plan) === selectedCycle) ?? paidPlans[0], [paidPlans, selectedCycle]);
   const freePlan = useMemo(() => plans.find((plan) => Number(plan.price) === 0), [plans]);
   const activeSubscription = useMemo(() => subscriptions.find(isActiveSubscription) ?? null, [subscriptions]);
+  const canManageSubscription = Boolean(session && (activeSubscription || isPremium));
   const paidBenefits = useMemo(() => getPlanBenefits(paidPlan?.featureLimitJson), [paidPlan]);
   const paidPlanUnavailable = !plansLoading && Boolean(plansError);
   const currentPrice = Number(paidPlan?.price) || 0;
@@ -82,9 +85,15 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
       router.push(ROUTES.PUBLIC.LOGIN);
       return;
     }
-    if (activeSubscription || isPremium) return;
     if (!paidPlan?.id) return;
     startCheckout(paidPlan.id, autoRenew);
+  }
+
+  function handleManageSubscription() {
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, currentSubscriptionY.current - spacing.md),
+      animated: true,
+    });
   }
 
   function handleCancel() {
@@ -99,23 +108,22 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
     );
   }
 
-  const upgradeDisabled =
-    ["creating", "pending"].includes(checkoutState.status) || (!paidPlan && !isPremium && !activeSubscription);
+  const upgradeDisabled = ["creating", "pending"].includes(checkoutState.status) || !paidPlan;
   const upgradeLabel =
     checkoutState.status === "creating"
       ? "Đang tạo thanh toán..."
       : checkoutState.status === "pending"
         ? "Có giao dịch đang chờ"
-        : !paidPlan && !isPremium && !activeSubscription
+        : !paidPlan
           ? "Tạm thời chưa thể đăng ký"
           : session
-            ? isPremium || activeSubscription
-              ? "Quản lý gói hiện tại"
+            ? canManageSubscription
+              ? "Mua thêm lượt qua PayOS"
               : "Thanh toán qua PayOS"
             : "Đăng nhập để nâng cấp";
 
   return (
-    <Screen scroll contentContainerStyle={styles.content}>
+    <Screen scroll scrollRef={scrollRef} contentContainerStyle={styles.content}>
       {showBackHeader ? <MoreBackHeader title="Gói dịch vụ" /> : null}
 
       <View style={styles.heroGroup}>
@@ -182,6 +190,8 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
             actionDisabled={upgradeDisabled}
             actionLoading={checkoutState.status === "creating"}
             onAction={handleUpgrade}
+            secondaryActionLabel={canManageSubscription ? "Quản lý gói hiện tại" : undefined}
+            onSecondaryAction={canManageSubscription ? handleManageSubscription : undefined}
             autoRenewControl={
               session && paidPlan && !isPremium && !activeSubscription ? (
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: autoRenew }} onPress={() => setAutoRenew((c) => !c)} style={styles.autoRenewRow}>
@@ -213,11 +223,14 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
         <Card variant="soft" style={styles.checkoutCard}>
           {["creating", "pending"].includes(checkoutState.status) ? <ActivityIndicator color={colors.teal} /> : null}
           {checkoutState.status === "success" ? <CheckCircle2 size={22} color={colors.success} /> : null}
+          {checkoutState.status === "cancelled" ? <XCircle size={22} color={colors.warning} /> : null}
           {checkoutState.status === "error" ? <XCircle size={22} color={colors.danger} /> : null}
           <View style={styles.checkoutText}>
             <AppText variant="bodyStrong">
               {checkoutState.status === "success"
                 ? "Thanh toán thành công"
+                : checkoutState.status === "cancelled"
+                  ? "Đã hủy thanh toán"
                 : checkoutState.status === "error"
                   ? "Chưa thể hoàn tất thanh toán"
                   : checkingPayment
@@ -251,7 +264,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
                 </Button>
               </View>
             ) : null}
-            {session && ["pending", "success", "error"].includes(checkoutState.status) ? (
+            {session && ["pending", "success", "cancelled", "error"].includes(checkoutState.status) ? (
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.push(ROUTES.PATIENT.PAYMENT_HISTORY)}
@@ -266,13 +279,15 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
       ) : null}
 
       {session ? (
-        <CurrentSubscriptionCard
-          loading={subscriptionsLoading}
-          error={subscriptionsError}
-          activeSubscription={activeSubscription}
-          onRetry={reloadSubscriptions}
-          onCancel={handleCancel}
-        />
+        <View onLayout={(event) => { currentSubscriptionY.current = event.nativeEvent.layout.y; }}>
+          <CurrentSubscriptionCard
+            loading={subscriptionsLoading}
+            error={subscriptionsError}
+            activeSubscription={activeSubscription}
+            onRetry={reloadSubscriptions}
+            onCancel={handleCancel}
+          />
+        </View>
       ) : null}
 
       <View style={styles.faqGroup}>

@@ -51,6 +51,8 @@ type PaidPlanCardProps = {
   actionDisabled: boolean;
   actionLoading: boolean;
   onAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   autoRenewControl?: ReactNode;
 };
 
@@ -64,6 +66,8 @@ export function PaidPlanCard({
   actionDisabled,
   actionLoading,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
   autoRenewControl,
 }: PaidPlanCardProps) {
   return (
@@ -121,6 +125,11 @@ export function PaidPlanCard({
           actionLabel
         )}
       </Button>
+      {secondaryActionLabel && onSecondaryAction ? (
+        <Button variant="secondary" fullWidth onPress={onSecondaryAction}>
+          {secondaryActionLabel}
+        </Button>
+      ) : null}
     </Card>
   );
 }

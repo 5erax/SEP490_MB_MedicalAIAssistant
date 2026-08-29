@@ -35,9 +35,18 @@ export type Payment = {
 };
 
 export type PayOsCheckout = {
+  subscriptionId?: string;
   paymentId: string;
+  transactionId?: string;
   paymentUrl: string;
   orderCode?: string;
+  paymentProvider?: string;
+  originalPrice?: number;
+  finalPrice?: number;
+  discountAmount?: number;
+  baseCredit?: number;
+  bonusCredit?: number;
+  grantedCredit?: number;
   [key: string]: unknown;
 };
 
@@ -59,8 +68,13 @@ export type SubscriptionUsageQuota = {
 };
 
 export type PayOsReconcileResult = {
+  orderCode?: string;
+  paymentId?: string;
+  subscriptionId?: string;
   providerStatus?: string;
   paymentStatus?: string;
+  subscriptionStatus?: string;
+  amountPaid?: number;
   isPaid?: boolean;
   isActive?: boolean;
   isCancelled?: boolean;
@@ -68,7 +82,7 @@ export type PayOsReconcileResult = {
   message?: string;
 };
 
-export type CheckoutStatus = "idle" | "creating" | "pending" | "success" | "error";
+export type CheckoutStatus = "idle" | "creating" | "pending" | "success" | "cancelled" | "error";
 
 export type CheckoutState = {
   status: CheckoutStatus;
