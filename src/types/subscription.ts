@@ -4,7 +4,18 @@ export type SubscriptionPlan = {
   price?: number;
   durationInDays?: number;
   featureLimitJson?: string | Record<string, unknown>;
+  quotas?: SubscriptionPlanQuota[];
   [key: string]: unknown;
+};
+
+export type SubscriptionPlanQuota = {
+  quotaCode?: string;
+  quotaName?: string;
+  quotaDescription?: string;
+  unit?: string;
+  limitValue?: number;
+  resetPeriod?: string;
+  isActive?: boolean;
 };
 
 export type UserSubscription = {
