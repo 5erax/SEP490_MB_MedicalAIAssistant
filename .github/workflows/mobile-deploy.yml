@@ -62,38 +62,6 @@ jobs:
       - name: Check project
         run: npm run check
 
-  preview:
-    name: Build Android preview APK
-    if: github.event_name == 'push'
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: npm
-
-      - name: Require Expo token
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: test -n "$EXPO_TOKEN" || (echo "::error::Add EXPO_TOKEN to the repository Actions secrets." && exit 1)
-
-      - name: Setup Expo and EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Trigger EAS preview build
-        run: eas build --platform android --profile preview --non-interactive
-
   release:
     name: Build and submit production apps
     if: github.event_name == 'release'
