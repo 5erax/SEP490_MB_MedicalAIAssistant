@@ -1,28 +1,72 @@
 // Mobile version of Web's UserMedicationsPage: CRUD is backed by
 // /api/user-medications, while reminder notifications are delivered by BE push.
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
-import { BellRing, CalendarDays, Clock3, Pill, Plus, RefreshCw, ShieldCheck } from "lucide-react-native";
+import {
+  BellRing,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Pencil,
+  Pill,
+  Plus,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react-native";
 
-import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { AppText, Badge, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { MoreBackHeader } from "@/src/components/more";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useToast, useUserMedications } from "@/src/hooks";
 import { UserMedication } from "@/src/types/medication";
-import { MedicationCard } from "./MedicationCard";
 import { MedicationFormSheet } from "./MedicationFormSheet";
+
+function todayIsoDate() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "?";
+  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 10);
+  return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "numeric", year: "2-digit" }).format(date);
+}
 
 function getReminderTimes(medication: UserMedication) {
   return (medication.reminderTimes ?? [])
+    .filter((entry) => (entry as { isActive?: boolean })?.isActive !== false)
     .map((entry) => (entry?.timeOfDay ? String(entry.timeOfDay).slice(0, 5) : ""))
     .filter(Boolean)
     .sort();
+}
+
+function getReminderState(medication: UserMedication): { label: string; tone: "success" | "warning" | "danger" | "neutral"; active: boolean } {
+  const times = getReminderTimes(medication);
+  if (!medication.isReminderEnabled || times.length === 0) {
+    return { label: "Không nhắc", tone: "neutral", active: false };
+  }
+
+  const today = todayIsoDate();
+  const startDate = medication.startDate ? String(medication.startDate).slice(0, 10) : "";
+  const endDate = medication.endDate ? String(medication.endDate).slice(0, 10) : "";
+
+  if (!startDate || !endDate) return { label: "Thiếu lịch", tone: "warning", active: false };
+  if (today < startDate) return { label: "Sắp nhắc", tone: "warning", active: false };
+  if (today > endDate) return { label: "Đã hết hạn", tone: "danger", active: false };
+
+  return { label: "Đang nhắc", tone: "success", active: true };
 }
 
 function getNextReminder(medications: UserMedication[]) {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   const candidates = medications
-    .filter((medication) => medication.isReminderEnabled)
+    .filter((medication) => getReminderState(medication).active)
     .flatMap((medication) =>
       getReminderTimes(medication).map((time) => {
         const [hours = "0", minutes = "0"] = time.split(":");
@@ -41,7 +85,7 @@ function getNextReminder(medications: UserMedication[]) {
 
 function getTodayReminderTimes(medications: UserMedication[]) {
   return medications
-    .filter((medication) => medication.isReminderEnabled)
+    .filter((medication) => getReminderState(medication).active)
     .flatMap((medication) =>
       getReminderTimes(medication).map((time) => ({
         id: `${medication.id}-${time}`,
@@ -50,23 +94,29 @@ function getTodayReminderTimes(medications: UserMedication[]) {
       })),
     )
     .sort((left, right) => left.time.localeCompare(right.time))
-    .slice(0, 4);
+    .slice(0, 3);
 }
 
 function MedicationHeader({
   medications,
+  totalCount,
+  pageNumber,
+  totalPages,
   loading,
   listError,
   onReload,
   onCreate,
 }: {
   medications: UserMedication[];
+  totalCount: number;
+  pageNumber: number;
+  totalPages: number;
   loading: boolean;
   listError: string;
   onReload: () => void;
   onCreate: () => void;
 }) {
-  const enabledCount = medications.filter((medication) => medication.isReminderEnabled).length;
+  const currentActiveCount = medications.filter((medication) => getReminderState(medication).active).length;
   const reminderCount = medications.reduce((total, medication) => total + getReminderTimes(medication).length, 0);
   const nextReminder = getNextReminder(medications);
   const todayReminderTimes = getTodayReminderTimes(medications);
@@ -76,7 +126,7 @@ function MedicationHeader({
       <View style={styles.hero}>
         <View style={styles.heroTop}>
           <View style={styles.heroIcon}>
-            <Pill size={22} color={colors.white} />
+            <Pill size={21} color={colors.white} />
           </View>
           <View style={styles.heroBadge}>
             <BellRing size={13} color={colors.white} />
@@ -131,13 +181,13 @@ function MedicationHeader({
 
       <View style={styles.statGrid}>
         <View style={styles.statTile}>
-          <AppText variant="h3">{medications.length}</AppText>
+          <AppText variant="h3">{totalCount}</AppText>
           <AppText variant="caption" color={colors.muted}>
-            Thuốc
+            Tổng thuốc
           </AppText>
         </View>
         <View style={styles.statTile}>
-          <AppText variant="h3">{enabledCount}</AppText>
+          <AppText variant="h3">{currentActiveCount}</AppText>
           <AppText variant="caption" color={colors.muted}>
             Đang nhắc
           </AppText>
@@ -165,7 +215,7 @@ function MedicationHeader({
           <View style={styles.sectionCopy}>
             <AppText variant="bodyStrong">Lịch uống hôm nay</AppText>
             <AppText variant="caption" color={colors.subtle}>
-              {todayReminderTimes.length ? "Các mốc nhắc đang bật" : "Bật nhắc trong form thuốc để hiện lịch hôm nay"}
+              {todayReminderTimes.length ? "Các mốc nhắc còn hiệu lực" : "Không có mốc nhắc trong trang này"}
             </AppText>
           </View>
         </View>
@@ -175,24 +225,168 @@ function MedicationHeader({
             {todayReminderTimes.map((item) => (
               <View key={item.id} style={styles.timelineItem}>
                 <View style={styles.timelineDot} />
-                <View style={styles.timelineCopy}>
-                  <AppText variant="bodyStrong">{item.time}</AppText>
-                  <AppText variant="caption" color={colors.muted} numberOfLines={1}>
-                    {item.name}
-                  </AppText>
-                </View>
+                <AppText variant="bodyStrong">{item.time}</AppText>
+                <AppText variant="caption" color={colors.muted} numberOfLines={1} style={styles.timelineName}>
+                  {item.name}
+                </AppText>
               </View>
             ))}
           </View>
         ) : null}
       </View>
 
-      <View style={styles.listHead}>
-        <AppText variant="h3">Thuốc đang dùng</AppText>
+      <View style={styles.listHeadCard}>
+        <View>
+          <AppText variant="h3">Danh sách thuốc</AppText>
+          <AppText variant="caption" color={colors.subtle}>
+            {listError ? "Kiểm tra kết nối rồi tải lại danh sách." : "Mỗi trang hiển thị tối đa 5 thuốc để dễ quản lý."}
+          </AppText>
+        </View>
+        <Badge tone="info">
+          Trang {Math.max(1, pageNumber)}/{Math.max(1, totalPages || 1)}
+        </Badge>
+      </View>
+    </View>
+  );
+}
+
+function MedicationListItem({
+  medication,
+  removing,
+  onEdit,
+  onRemove,
+}: {
+  medication: UserMedication;
+  removing: boolean;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const state = getReminderState(medication);
+  const reminderTimes = getReminderTimes(medication);
+  const visibleTimes = reminderTimes.slice(0, 3);
+
+  return (
+    <View style={styles.medicationRow}>
+      <View style={styles.medicationIcon}>
+        <Pill size={19} color={colors.teal} />
+      </View>
+
+      <View style={styles.medicationMain}>
+        <View style={styles.medicationTitleRow}>
+          <AppText variant="bodyStrong" numberOfLines={1} style={styles.medicationTitle}>
+            {medication.medicineName || "Thuốc chưa đặt tên"}
+          </AppText>
+          <Badge tone={state.tone}>{state.label}</Badge>
+        </View>
+
+        <View style={styles.metaLine}>
+          <CalendarDays size={13} color={colors.subtle} />
+          <AppText variant="caption" color={colors.subtle} numberOfLines={1} style={styles.metaText}>
+            {formatDate(medication.startDate)} - {formatDate(medication.endDate)}
+          </AppText>
+        </View>
+
+        {medication.dosageInstruction ? (
+          <AppText variant="caption" color={colors.muted} numberOfLines={1}>
+            {medication.dosageInstruction}
+          </AppText>
+        ) : null}
+
+        <View style={styles.rowBottom}>
+          <View style={styles.timePills}>
+            {visibleTimes.length ? (
+              visibleTimes.map((time) => (
+                <View key={time} style={styles.timePill}>
+                  <Clock3 size={12} color={colors.teal} />
+                  <AppText variant="caption" color={colors.teal}>
+                    {time}
+                  </AppText>
+                </View>
+              ))
+            ) : (
+              <View style={styles.timePillMuted}>
+                <AppText variant="caption" color={colors.subtle}>
+                  Chưa có giờ
+                </AppText>
+              </View>
+            )}
+            {reminderTimes.length > visibleTimes.length ? (
+              <View style={styles.timePillMuted}>
+                <AppText variant="caption" color={colors.subtle}>
+                  +{reminderTimes.length - visibleTimes.length}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.itemActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Sửa thuốc" onPress={onEdit} style={styles.iconAction}>
+              <Pencil size={15} color={colors.ink} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Xóa thuốc"
+              onPress={onRemove}
+              disabled={removing}
+              style={[styles.iconAction, styles.deleteAction, removing && styles.disabled]}
+            >
+              <Trash2 size={15} color={colors.danger} />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function Pagination({
+  pageNumber,
+  totalPages,
+  totalCount,
+  pageSize,
+  loading,
+  onChange,
+}: {
+  pageNumber: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
+  loading: boolean;
+  onChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const firstItem = totalCount ? (pageNumber - 1) * pageSize + 1 : 0;
+  const lastItem = Math.min(totalCount, pageNumber * pageSize);
+
+  return (
+    <View style={styles.pagination}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Trang trước"
+        disabled={pageNumber <= 1 || loading}
+        onPress={() => onChange(Math.max(1, pageNumber - 1))}
+        style={[styles.pageButton, (pageNumber <= 1 || loading) && styles.pageButtonDisabled]}
+      >
+        <ChevronLeft size={18} color={colors.ink} />
+      </Pressable>
+      <View style={styles.pageInfo}>
+        <AppText variant="bodyStrong">
+          Trang {pageNumber}/{totalPages}
+        </AppText>
         <AppText variant="caption" color={colors.subtle}>
-          {listError ? "Kiểm tra kết nối rồi tải lại danh sách." : "Chạm Sửa để thay đổi ngày dùng và giờ nhắc."}
+          {firstItem}-{lastItem}/{totalCount} thuốc
         </AppText>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Trang sau"
+        disabled={pageNumber >= totalPages || loading}
+        onPress={() => onChange(Math.min(totalPages, pageNumber + 1))}
+        style={[styles.pageButton, (pageNumber >= totalPages || loading) && styles.pageButtonDisabled]}
+      >
+        <ChevronRight size={18} color={colors.ink} />
+      </Pressable>
     </View>
   );
 }
@@ -201,6 +395,9 @@ export function UserMedicationsScreen() {
   const { showToast } = useToast();
   const {
     medications,
+    pageInfo,
+    pageNumber,
+    setPageNumber,
     loading,
     refreshing,
     listError,
@@ -249,6 +446,9 @@ export function UserMedicationsScreen() {
       <MoreBackHeader title="Thuốc & lịch nhắc" />
       <MedicationHeader
         medications={medications}
+        totalCount={pageInfo.totalCount}
+        pageNumber={pageInfo.pageNumber || pageNumber}
+        totalPages={pageInfo.totalPages}
         loading={loading || refreshing}
         listError={listError}
         onReload={reload}
@@ -262,7 +462,7 @@ export function UserMedicationsScreen() {
       {loading && medications.length === 0 ? (
         <View style={styles.content}>
           {header}
-          <SkeletonGroup lines={5} />
+          <SkeletonGroup lines={4} />
         </View>
       ) : (
         <FlatList
@@ -285,10 +485,20 @@ export function UserMedicationsScreen() {
               ) : null}
             </View>
           }
+          ListFooterComponent={
+            <Pagination
+              pageNumber={pageInfo.pageNumber || pageNumber}
+              totalPages={pageInfo.totalPages}
+              totalCount={pageInfo.totalCount}
+              pageSize={pageInfo.pageSize}
+              loading={loading}
+              onChange={setPageNumber}
+            />
+          }
           contentContainerStyle={styles.content}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={reload} />}
           renderItem={({ item }) => (
-            <MedicationCard
+            <MedicationListItem
               medication={item}
               removing={removingId === item.id}
               onEdit={() => openEditForm(item)}
@@ -329,7 +539,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   hero: {
-    gap: spacing.lg,
+    gap: spacing.md,
     borderRadius: radius.xl,
     backgroundColor: colors.limeDark,
     padding: spacing.lg,
@@ -368,7 +578,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   heroSummary: {
-    minHeight: 66,
+    minHeight: 62,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
@@ -383,7 +593,7 @@ const styles = StyleSheet.create({
   },
   summaryTime: {
     minWidth: 76,
-    minHeight: 40,
+    minHeight: 38,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -411,7 +621,7 @@ const styles = StyleSheet.create({
   },
   statTile: {
     flex: 1,
-    minHeight: 72,
+    minHeight: 68,
     justifyContent: "center",
     gap: spacing.xs / 2,
     borderWidth: 1,
@@ -463,10 +673,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   timelineItem: {
-    minHeight: 44,
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.sm,
     borderRadius: radius.md,
     backgroundColor: "rgba(255,255,255,0.78)",
     paddingHorizontal: spacing.md,
@@ -477,17 +687,142 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.teal,
   },
-  timelineCopy: {
+  timelineName: {
     flex: 1,
-    minWidth: 0,
+    textAlign: "right",
+  },
+  listHeadCard: {
+    minHeight: 70,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
   },
-  listHead: {
+  medicationRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+    ...shadows.soft,
+  },
+  medicationIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.lg,
+    backgroundColor: colors.mint,
+  },
+  medicationMain: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.sm,
+  },
+  medicationTitleRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  medicationTitle: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metaLine: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.xs,
-    paddingTop: spacing.xs,
+  },
+  metaText: {
+    flex: 1,
+  },
+  rowBottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  timePills: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  timePill: {
+    minHeight: 28,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.sm,
+  },
+  timePillMuted: {
+    minHeight: 28,
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+    paddingHorizontal: spacing.sm,
+  },
+  itemActions: {
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  iconAction: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+  },
+  deleteAction: {
+    borderColor: "rgba(180,35,24,0.18)",
+    backgroundColor: colors.dangerBg,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  pagination: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  pageButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+  },
+  pageButtonDisabled: {
+    opacity: 0.42,
+  },
+  pageInfo: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
   },
   emptyWrap: {
     gap: spacing.md,

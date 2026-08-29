@@ -1,6 +1,6 @@
 // Ported 1:1 from the inline validation/formatting logic in Web's
 // UserMedicationsPage.jsx (there is no separate medicationValidation.js
-// file on Web — this mirrors its exact rules and constants).
+// file on Web; this mirrors its exact rules and constants).
 import { ApiError } from "@/src/api/client";
 import { UserMedication, UserMedicationPayload } from "@/src/types/medication";
 
@@ -95,9 +95,9 @@ export function toMedicationFormState(medication: UserMedication): MedicationFor
 
 export function formatMedicationDateRange(startDate?: string | null, endDate?: string | null) {
   if (!startDate && !endDate) return "Chưa đặt thời gian dùng thuốc";
-  const start = startDate ? new Date(startDate).toLocaleDateString("vi-VN") : "?";
-  const end = endDate ? new Date(endDate).toLocaleDateString("vi-VN") : "?";
-  return `${start} – ${end}`;
+  const start = startDate ? new Date(`${String(startDate).slice(0, 10)}T00:00:00`).toLocaleDateString("vi-VN") : "?";
+  const end = endDate ? new Date(`${String(endDate).slice(0, 10)}T00:00:00`).toLocaleDateString("vi-VN") : "?";
+  return `${start} - ${end}`;
 }
 
 export function getMedicationErrorMessage(error: unknown, fallback: string) {
