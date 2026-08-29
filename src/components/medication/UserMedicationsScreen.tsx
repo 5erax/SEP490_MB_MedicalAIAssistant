@@ -4,11 +4,10 @@ import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "re
 import { BellRing, CalendarDays, Clock3, Pill, Plus, RefreshCw, ShieldCheck } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
+import { MoreBackHeader } from "@/src/components/more";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
 import { useToast, useUserMedications } from "@/src/hooks";
 import { UserMedication } from "@/src/types/medication";
-import { formatMedicationDateRange } from "@/src/utils/medicationValidation";
-import { MoreBackHeader } from "@/src/components/more";
 import { MedicationCard } from "./MedicationCard";
 import { MedicationFormSheet } from "./MedicationFormSheet";
 
@@ -40,6 +39,20 @@ function getNextReminder(medications: UserMedication[]) {
   return candidates[0] ?? null;
 }
 
+function getTodayReminderTimes(medications: UserMedication[]) {
+  return medications
+    .filter((medication) => medication.isReminderEnabled)
+    .flatMap((medication) =>
+      getReminderTimes(medication).map((time) => ({
+        id: `${medication.id}-${time}`,
+        time,
+        name: medication.medicineName,
+      })),
+    )
+    .sort((left, right) => left.time.localeCompare(right.time))
+    .slice(0, 4);
+}
+
 function MedicationHeader({
   medications,
   loading,
@@ -56,6 +69,7 @@ function MedicationHeader({
   const enabledCount = medications.filter((medication) => medication.isReminderEnabled).length;
   const reminderCount = medications.reduce((total, medication) => total + getReminderTimes(medication).length, 0);
   const nextReminder = getNextReminder(medications);
+  const todayReminderTimes = getTodayReminderTimes(medications);
 
   return (
     <View style={styles.headerWrap}>
@@ -65,37 +79,35 @@ function MedicationHeader({
             <Pill size={22} color={colors.white} />
           </View>
           <View style={styles.heroBadge}>
-            <BellRing size={14} color={colors.white} />
+            <BellRing size={13} color={colors.white} />
             <AppText variant="caption" color={colors.white}>
               Lịch nhắc cá nhân
             </AppText>
           </View>
         </View>
 
-        <AppText variant="h1" color={colors.white} style={styles.heroTitle}>
-          Thuốc & lịch nhắc
-        </AppText>
-        <AppText color="rgba(255,255,255,0.86)" style={styles.heroCopy}>
-          Theo dõi thuốc đang dùng, thời gian uống và các mốc nhắc quan trọng trong ngày.
-        </AppText>
+        <View style={styles.heroCopyWrap}>
+          <AppText variant="h2" color={colors.white} style={styles.heroTitle}>
+            Thuốc & lịch nhắc
+          </AppText>
+          <AppText color="rgba(255,255,255,0.86)" style={styles.heroCopy}>
+            Theo dõi thuốc đang dùng, giờ uống và các mốc nhắc quan trọng trong ngày.
+          </AppText>
+        </View>
 
-        <View style={styles.statRow}>
-          <View style={styles.statTile}>
-            <AppText variant="h3">{medications.length}</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Thuốc
+        <View style={styles.heroSummary}>
+          <View style={styles.summaryMain}>
+            <AppText variant="caption" color="rgba(255,255,255,0.74)">
+              Nhắc gần nhất
+            </AppText>
+            <AppText variant="h3" color={colors.white} numberOfLines={1}>
+              {nextReminder ? nextReminder.medication.medicineName : "Chưa có lịch nhắc"}
             </AppText>
           </View>
-          <View style={styles.statTile}>
-            <AppText variant="h3">{enabledCount}</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Đang nhắc
-            </AppText>
-          </View>
-          <View style={styles.statTile}>
-            <AppText variant="h3">{reminderCount}</AppText>
-            <AppText variant="caption" color={colors.muted}>
-              Mốc giờ
+          <View style={styles.summaryTime}>
+            <Clock3 size={15} color={colors.white} />
+            <AppText variant="bodyStrong" color={colors.white}>
+              {nextReminder ? nextReminder.time : "--:--"}
             </AppText>
           </View>
         </View>
@@ -112,14 +124,30 @@ function MedicationHeader({
         >
           Tải lại
         </Button>
-        <Button
-          size="sm"
-          onPress={onCreate}
-          leftIcon={<Plus size={16} color={colors.white} />}
-          style={styles.addButton}
-        >
+        <Button size="sm" onPress={onCreate} leftIcon={<Plus size={16} color={colors.white} />} style={styles.addButton}>
           Thêm thuốc
         </Button>
+      </View>
+
+      <View style={styles.statGrid}>
+        <View style={styles.statTile}>
+          <AppText variant="h3">{medications.length}</AppText>
+          <AppText variant="caption" color={colors.muted}>
+            Thuốc
+          </AppText>
+        </View>
+        <View style={styles.statTile}>
+          <AppText variant="h3">{enabledCount}</AppText>
+          <AppText variant="caption" color={colors.muted}>
+            Đang nhắc
+          </AppText>
+        </View>
+        <View style={styles.statTile}>
+          <AppText variant="h3">{reminderCount}</AppText>
+          <AppText variant="caption" color={colors.muted}>
+            Mốc giờ
+          </AppText>
+        </View>
       </View>
 
       <View style={styles.notice}>
@@ -129,40 +157,41 @@ function MedicationHeader({
         </AppText>
       </View>
 
-      {nextReminder ? (
-        <View style={styles.nextCard}>
-          <View style={styles.nextIcon}>
-            <Clock3 size={20} color={colors.teal} />
+      <View style={styles.todayCard}>
+        <View style={styles.sectionTitleRow}>
+          <View style={styles.sectionIcon}>
+            <CalendarDays size={18} color={colors.teal} />
           </View>
-          <View style={styles.nextCopy}>
-            <AppText variant="caption" color={colors.teal}>
-              Lần nhắc gần nhất
-            </AppText>
-            <AppText variant="h3" numberOfLines={1}>
-              {nextReminder.medication.medicineName}
-            </AppText>
-            <AppText variant="caption" color={colors.muted}>
-              {formatMedicationDateRange(nextReminder.medication.startDate, nextReminder.medication.endDate)}
-            </AppText>
-          </View>
-          <View style={styles.nextTime}>
-            <AppText variant="bodyStrong" color={colors.teal}>
-              {nextReminder.time}
+          <View style={styles.sectionCopy}>
+            <AppText variant="bodyStrong">Lịch uống hôm nay</AppText>
+            <AppText variant="caption" color={colors.subtle}>
+              {todayReminderTimes.length ? "Các mốc nhắc đang bật" : "Bật nhắc trong form thuốc để hiện lịch hôm nay"}
             </AppText>
           </View>
         </View>
-      ) : null}
 
-      <View style={styles.sectionTitleRow}>
-        <View style={styles.sectionIcon}>
-          <CalendarDays size={18} color={colors.teal} />
-        </View>
-        <View style={styles.sectionCopy}>
-          <AppText variant="h3">Thuốc đang dùng</AppText>
-          <AppText variant="caption" color={colors.subtle}>
-            {listError ? "Kiểm tra kết nối rồi tải lại danh sách." : "Chạm vào Sửa để thay đổi giờ nhắc."}
-          </AppText>
-        </View>
+        {todayReminderTimes.length ? (
+          <View style={styles.timeline}>
+            {todayReminderTimes.map((item) => (
+              <View key={item.id} style={styles.timelineItem}>
+                <View style={styles.timelineDot} />
+                <View style={styles.timelineCopy}>
+                  <AppText variant="bodyStrong">{item.time}</AppText>
+                  <AppText variant="caption" color={colors.muted} numberOfLines={1}>
+                    {item.name}
+                  </AppText>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.listHead}>
+        <AppText variant="h3">Thuốc đang dùng</AppText>
+        <AppText variant="caption" color={colors.subtle}>
+          {listError ? "Kiểm tra kết nối rồi tải lại danh sách." : "Chạm Sửa để thay đổi ngày dùng và giờ nhắc."}
+        </AppText>
       </View>
     </View>
   );
@@ -300,10 +329,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   hero: {
-    gap: spacing.md,
+    gap: spacing.lg,
     borderRadius: radius.xl,
     backgroundColor: colors.limeDark,
-    padding: spacing.xl,
+    padding: spacing.lg,
     ...shadows.soft,
   },
   heroTop: {
@@ -313,15 +342,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   heroIcon: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.16)",
   },
   heroBadge: {
-    minHeight: 32,
+    minHeight: 31,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -329,23 +358,40 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.16)",
     paddingHorizontal: spacing.md,
   },
+  heroCopyWrap: {
+    gap: spacing.sm,
+  },
   heroTitle: {
     maxWidth: 300,
   },
   heroCopy: {
-    maxWidth: 330,
+    maxWidth: 320,
   },
-  statRow: {
+  heroSummary: {
+    minHeight: 66,
     flexDirection: "row",
-    gap: spacing.sm,
+    alignItems: "center",
+    gap: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    padding: spacing.md,
   },
-  statTile: {
+  summaryMain: {
     flex: 1,
-    minHeight: 78,
+    minWidth: 0,
+    gap: 3,
+  },
+  summaryTime: {
+    minWidth: 76,
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs / 2,
-    borderRadius: radius.md,
-    backgroundColor: colors.paper,
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.22)",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.14)",
     paddingHorizontal: spacing.md,
   },
   actionRow: {
@@ -356,8 +402,23 @@ const styles = StyleSheet.create({
     flex: 0.9,
   },
   addButton: {
-    flex: 1.2,
+    flex: 1.25,
     borderRadius: radius.pill,
+  },
+  statGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  statTile: {
+    flex: 1,
+    minHeight: 72,
+    justifyContent: "center",
+    gap: spacing.xs / 2,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.md,
   },
   notice: {
     flexDirection: "row",
@@ -372,56 +433,61 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
   },
-  nextCard: {
-    minHeight: 92,
-    flexDirection: "row",
-    alignItems: "center",
+  todayCard: {
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.24)",
-    borderRadius: radius.lg,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.xl,
     backgroundColor: colors.mint,
     padding: spacing.md,
-  },
-  nextIcon: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.paper,
-  },
-  nextCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  nextTime: {
-    minWidth: 62,
-    minHeight: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
   },
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    paddingTop: spacing.xs,
   },
   sectionIcon: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.md,
-    backgroundColor: colors.mint,
+    backgroundColor: colors.paper,
   },
   sectionCopy: {
     flex: 1,
     minWidth: 0,
+    gap: 2,
+  },
+  timeline: {
+    gap: spacing.sm,
+  },
+  timelineItem: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.78)",
+    paddingHorizontal: spacing.md,
+  },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
+  },
+  timelineCopy: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  listHead: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs,
   },
   emptyWrap: {
     gap: spacing.md,

@@ -26,14 +26,19 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
 
   return (
     <View style={styles.card}>
+      <View style={styles.accent} />
+
       <View style={styles.headerRow}>
         <View style={styles.iconBox}>
           <Pill size={20} color={colors.teal} />
         </View>
         <View style={styles.titleWrap}>
-          <AppText variant="h3" numberOfLines={2}>
-            {medication.medicineName}
-          </AppText>
+          <View style={styles.nameRow}>
+            <AppText variant="h3" numberOfLines={2} style={styles.name}>
+              {medication.medicineName}
+            </AppText>
+            <Badge tone={hasReminder ? "success" : "neutral"}>{hasReminder ? "Đang nhắc" : "Không nhắc"}</Badge>
+          </View>
           <View style={styles.metaRow}>
             <CalendarDays size={14} color={colors.subtle} />
             <AppText variant="caption" color={colors.subtle} numberOfLines={1} style={styles.metaText}>
@@ -41,7 +46,6 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
             </AppText>
           </View>
         </View>
-        <Badge tone={hasReminder ? "success" : "neutral"}>{hasReminder ? "Đang nhắc" : "Không nhắc"}</Badge>
       </View>
 
       {medication.dosageInstruction ? (
@@ -53,13 +57,23 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
         </View>
       ) : null}
 
-      <View style={styles.reminderPanel}>
+      <View style={[styles.reminderPanel, !hasReminder && styles.reminderPanelMuted]}>
         <View style={styles.reminderHead}>
-          <Bell size={16} color={hasReminder ? colors.teal : colors.subtle} />
-          <AppText variant="bodyStrong" color={hasReminder ? colors.ink : colors.subtle}>
-            {hasReminder ? "Giờ nhắc trong ngày" : "Chưa bật lịch nhắc"}
-          </AppText>
+          <View style={[styles.reminderIcon, hasReminder && styles.reminderIconActive]}>
+            <Bell size={15} color={hasReminder ? colors.white : colors.subtle} />
+          </View>
+          <View style={styles.reminderCopy}>
+            <AppText variant="bodyStrong" color={hasReminder ? colors.ink : colors.subtle}>
+              {hasReminder ? "Giờ nhắc trong ngày" : "Chưa bật lịch nhắc"}
+            </AppText>
+            {!hasReminder ? (
+              <AppText variant="caption" color={colors.subtle}>
+                Bấm Sửa để chọn ngày dùng thuốc và giờ nhắc.
+              </AppText>
+            ) : null}
+          </View>
         </View>
+
         {hasReminder ? (
           <View style={styles.timeRow}>
             {reminderTimes.map((time) => (
@@ -71,11 +85,7 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
               </View>
             ))}
           </View>
-        ) : (
-          <AppText variant="caption" color={colors.subtle}>
-            Bấm Sửa để chọn ngày dùng thuốc và giờ nhắc.
-          </AppText>
-        )}
+        ) : null}
       </View>
 
       <View style={styles.actions}>
@@ -101,13 +111,25 @@ export function MedicationCard({ medication, removing, onEdit, onRemove }: Medic
 
 const styles = StyleSheet.create({
   card: {
+    position: "relative",
+    overflow: "hidden",
     gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: colors.paper,
     padding: spacing.lg,
     ...shadows.soft,
+  },
+  accent: {
+    position: "absolute",
+    left: 0,
+    top: spacing.lg,
+    bottom: spacing.lg,
+    width: 4,
+    borderTopRightRadius: radius.pill,
+    borderBottomRightRadius: radius.pill,
+    backgroundColor: colors.teal,
   },
   headerRow: {
     flexDirection: "row",
@@ -115,17 +137,26 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   iconBox: {
-    width: 48,
-    height: 48,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.mint,
   },
   titleWrap: {
     flex: 1,
     minWidth: 0,
     gap: spacing.xs,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  name: {
+    flex: 1,
+    minWidth: 0,
   },
   metaRow: {
     flexDirection: "row",
@@ -137,22 +168,44 @@ const styles = StyleSheet.create({
   },
   instructionBox: {
     gap: spacing.xs,
-    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
     backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
   reminderPanel: {
-    gap: spacing.sm,
+    gap: spacing.md,
     borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.18)",
+    borderColor: "rgba(8,127,140,0.2)",
     borderRadius: radius.lg,
-    backgroundColor: "rgba(231,243,245,0.5)",
+    backgroundColor: colors.mint,
     padding: spacing.md,
+  },
+  reminderPanelMuted: {
+    borderColor: colors.line,
+    backgroundColor: colors.paperSoft,
   },
   reminderHead: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+  },
+  reminderIcon: {
+    width: 34,
+    height: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paper,
+  },
+  reminderIconActive: {
+    backgroundColor: colors.teal,
+  },
+  reminderCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   timeRow: {
     flexDirection: "row",
@@ -160,10 +213,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   timeChip: {
-    minHeight: 34,
+    minHeight: 36,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
     borderRadius: radius.pill,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
@@ -174,19 +229,19 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.lineStrong,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
   },
   deleteButton: {
-    borderColor: "rgba(180,35,24,0.3)",
+    borderColor: "rgba(180,35,24,0.22)",
     backgroundColor: colors.dangerBg,
   },
   pressed: {
