@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowRight, ChevronDown, ChevronUp, ClipboardCheck, Stethoscope } from "lucide-react-native";
+import { ChevronDown, ChevronUp, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -24,7 +24,7 @@ function confidencePercent(value: number | undefined) {
   return Math.max(0, Math.min(100, Math.round(numeric <= 1 ? numeric * 100 : numeric)));
 }
 
-export function ClinicalSummaryCard({ status, notice, department, unavailableCount, recommendedCount, sessionId }: ClinicalSummaryCardProps) {
+export function ClinicalSummaryCard({ status, notice, department, unavailableCount, recommendedCount }: ClinicalSummaryCardProps) {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   if (status === "idle") return null;
   const confidence = confidencePercent(department?.confidenceScore);
@@ -129,23 +129,6 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
           {unavailableCount > 0 ? (
             <Badge tone="warning">{unavailableCount} cơ sở gợi ý hiện không còn khả dụng</Badge>
           ) : null}
-          <Button
-            fullWidth
-            onPress={() =>
-              router.push({
-                pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,
-                params: sessionId ? { sessionId } : undefined,
-              })
-            }
-          >
-            <View style={styles.ctaInline}>
-              <ClipboardCheck size={17} color={colors.white} />
-              <AppText variant="bodyStrong" color={colors.white}>
-                Tư vấn trước khi đến khám
-              </AppText>
-              <ArrowRight size={17} color={colors.white} />
-            </View>
-          </Button>
         </View>
       ) : null}
     </Card>
@@ -226,11 +209,5 @@ const styles = StyleSheet.create({
   },
   descriptionPreview: {
     gap: spacing.xs,
-  },
-  ctaInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
   },
 });

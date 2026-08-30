@@ -19,6 +19,7 @@ import { useUserLocation } from "@/src/hooks/useUserLocation";
 import { useAuth } from "@/src/providers";
 import { shouldSetupPatientProfile } from "@/src/utils/roles";
 import { getFacilityId, getRecommendedDepartment } from "@/src/utils/facilityRanking";
+import { ROUTES } from "@/src/navigation/routes";
 import { ClinicalAnalysisResult, SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
 import { readResultPayload, symptomAnalysisApi } from "@/src/services/symptomAnalysisService";
 import { IntakeForm } from "./IntakeForm";
@@ -272,6 +273,12 @@ export function SpecialtyIntakeScreen() {
             locationStatus={locationStatus}
             onRequestLocation={requestUserLocation}
             onOpenMap={() => openFacilities(historyResultView.result, historyResultView.sessionId)}
+            onOpenPreConsultation={() =>
+              router.push({
+                pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,
+                params: { sessionId: historyResultView.sessionId },
+              })
+            }
             onNewSymptom={() => {
               setHistoryResultView(null);
               setActiveTab("chat");
@@ -403,6 +410,12 @@ export function SpecialtyIntakeScreen() {
           locationStatus={locationStatus}
           onRequestLocation={requestUserLocation}
           onOpenMap={() => openFacilities(result, sessionId)}
+          onOpenPreConsultation={() =>
+            router.push({
+              pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,
+              params: sessionId ? { sessionId } : undefined,
+            })
+          }
           onNewSymptom={() => resetDiagnosis({ clearInput: true })}
         />
       ) : null}

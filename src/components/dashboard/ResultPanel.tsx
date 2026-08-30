@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
-import { ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
+import { ArrowRight, Building2, CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck, MapPin, RefreshCcw, ShieldAlert, Stethoscope } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -14,6 +14,7 @@ type ResultPanelProps = {
   locationStatus: LocationStatus;
   onRequestLocation: () => void;
   onOpenMap: () => void;
+  onOpenPreConsultation: () => void;
   onNewSymptom: () => void;
 };
 
@@ -107,7 +108,7 @@ function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
   );
 }
 
-export function ResultPanel({ result, userLocation, locationStatus, onRequestLocation, onOpenMap, onNewSymptom }: ResultPanelProps) {
+export function ResultPanel({ result, userLocation, locationStatus, onRequestLocation, onOpenMap, onOpenPreConsultation, onNewSymptom }: ResultPanelProps) {
   const department = getRecommendedDepartment(result);
   const facilities = sortRecommendedFacilities(result, userLocation);
   const confidence = confidencePercent(department?.confidenceScore);
@@ -162,6 +163,15 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
             </View>
           ))}
         </View>
+        <Button fullWidth onPress={onOpenPreConsultation}>
+          <View style={styles.preConsultationCta}>
+            <ClipboardCheck size={17} color={colors.white} />
+            <AppText variant="bodyStrong" color={colors.white}>
+              Tư vấn trước khi đến khám
+            </AppText>
+            <ArrowRight size={17} color={colors.white} />
+          </View>
+        </Button>
       </Card>
 
       <DiagnosisDropdown diagnoses={result?.diagnoses ?? []} />
@@ -341,6 +351,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+  },
+  preConsultationCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
   loadingLabel: {
     flexDirection: "row",
