@@ -1,6 +1,6 @@
 // Ported from MedicationFormDialog in Web's UserMedicationsPage.jsx.
 import { useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { BellRing, CalendarDays, Clock3, Pill, Plus, ShieldCheck, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,30 +38,17 @@ function formatDateLabel(value: string) {
   return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
 
-function formatTimeDraft(value: string) {
-  const cleaned = value.replace(/[^\d:]/g, "");
-  if (cleaned.includes(":")) {
-    const [hours = "", minutes = ""] = cleaned.split(":");
-    return `${hours.slice(0, 2)}${cleaned.endsWith(":") ? ":" : minutes ? ":" : ""}${minutes.slice(0, 2)}`;
-  }
-  if (cleaned.length <= 2) return cleaned;
-  return `${cleaned.slice(0, 2)}:${cleaned.slice(2, 4)}`;
+function formatTimeValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 }
 
-function normalizeTypedTime(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  const match = trimmed.match(/^(\d{1,2})(?::?(\d{1,2}))?$/);
-  if (!match) return null;
-
-  const hours = Number(match[1]);
-  const minutes = Number(match[2] ?? "0");
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) {
-    return null;
+function dateFromReminderTime(value?: string) {
+  const date = new Date();
+  const [hours, minutes] = String(value || "").split(":").map(Number);
+  if (Number.isInteger(hours) && Number.isInteger(minutes)) {
+    date.setHours(hours, minutes, 0, 0);
   }
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return date;
 }
 
 function getScheduleState(form: MedicationFormState): { label: string; tone: ScheduleTone; description: string } {
@@ -160,33 +147,32 @@ export function MedicationFormSheet({
   onSubmit,
 }: MedicationFormSheetProps) {
   const [activePicker, setActivePicker] = useState<"startDate" | "endDate" | null>(null);
-  const [timeDraft, setTimeDraft] = useState("");
-  const [timeDraftError, setTimeDraftError] = useState("");
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [timePickerError, setTimePickerError] = useState("");
   const scheduleState = getScheduleState(form);
 
-  function handleTimeDraftChange(value: string) {
-    setTimeDraft(formatTimeDraft(value));
-    setTimeDraftError("");
-  }
-
-  function handleAddTypedTime() {
-    const nextTime = normalizeTypedTime(timeDraft);
-    if (!nextTime) {
-      setTimeDraftError("Nhập giờ theo dạng HH:mm, ví dụ 07:30 hoặc 17:48.");
-      return;
-    }
+  function handleAddReminderTime(selectedDate: Date) {
+    const nextTime = formatTimeValue(selectedDate);
     if (form.reminderTimes.includes(nextTime)) {
-      setTimeDraftError("Giờ này đã có trong danh sách.");
+      setTimePickerError("Giờ này đã có trong danh sách.");
       return;
     }
     if (form.reminderTimes.length >= MAX_REMINDER_TIMES) {
-      setTimeDraftError(`Tối đa ${MAX_REMINDER_TIMES} giờ nhắc.`);
+      setTimePickerError(`Tối đa ${MAX_REMINDER_TIMES} giờ nhắc.`);
       return;
     }
 
     onAddReminderTime(nextTime);
-    setTimeDraft("");
-    setTimeDraftError("");
+    setTimePickerError("");
+  }
+
+  function openTimePicker() {
+    if (form.reminderTimes.length >= MAX_REMINDER_TIMES) {
+      setTimePickerError(`Tối đa ${MAX_REMINDER_TIMES} giờ nhắc.`);
+      return;
+    }
+    setTimePickerError("");
+    setTimePickerVisible(true);
   }
 
   return (
@@ -320,37 +306,30 @@ export function MedicationFormSheet({
                 ))}
               </View>
 
-              <View style={styles.timeInputPanel}>
-                <View style={styles.timeInputCopy}>
+              <View style={styles.timePickerPanel}>
+                <View style={styles.timePickerCopy}>
                   <AppText variant="caption" color={colors.teal}>
-                    Nhập giờ nhắc
+                    Thêm giờ nhắc
                   </AppText>
                   <AppText variant="caption" color={colors.subtle}>
-                    Gõ nhanh 1748 hoặc 17:48 rồi bấm thêm.
+                    Mở bộ chọn giờ để thêm mốc nhắc uống thuốc trong ngày.
                   </AppText>
                 </View>
-                <View style={styles.timeInputRow}>
-                  <TextInput
-                    accessibilityLabel="Nhập giờ nhắc"
-                    value={timeDraft}
-                    onChangeText={handleTimeDraftChange}
-                    onSubmitEditing={handleAddTypedTime}
-                    placeholder="HH:mm"
-                    placeholderTextColor={colors.subtle}
-                    keyboardType="number-pad"
-                    maxLength={5}
-                    style={[styles.timeInput, timeDraftError && styles.timeInputError]}
-                  />
-                  <Pressable accessibilityRole="button" onPress={handleAddTypedTime} style={styles.addTimeButton}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={openTimePicker}
+                  style={({ pressed }) => [styles.addTimeButton, pressed && styles.pressed]}
+                >
+                  <View style={styles.addTimeButtonContent}>
                     <Plus size={15} color={colors.white} />
                     <AppText variant="bodyStrong" color={colors.white}>
                       Thêm
                     </AppText>
-                  </Pressable>
-                </View>
-                {timeDraftError ? (
+                  </View>
+                </Pressable>
+                {timePickerError ? (
                   <AppText variant="caption" color={colors.danger}>
-                    {timeDraftError}
+                    {timePickerError}
                   </AppText>
                 ) : null}
               </View>
@@ -392,6 +371,20 @@ export function MedicationFormSheet({
                   setActivePicker(Platform.OS === "ios" ? "endDate" : null);
                   if (event.type === "set" && selectedDate) {
                     onSetField("endDate", toIsoDate(selectedDate));
+                  }
+                }}
+              />
+            ) : null}
+
+            {timePickerVisible ? (
+              <DateTimePicker
+                value={dateFromReminderTime(form.reminderTimes[form.reminderTimes.length - 1])}
+                mode="time"
+                display="spinner"
+                onChange={(event, selectedTime) => {
+                  setTimePickerVisible(false);
+                  if (event.type === "set" && selectedTime) {
+                    handleAddReminderTime(selectedTime);
                   }
                 }}
               />
@@ -621,7 +614,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.6)",
     paddingHorizontal: spacing.md,
   },
-  timeInputPanel: {
+  timePickerPanel: {
     gap: spacing.sm,
     borderWidth: 1,
     borderColor: "rgba(8,127,140,0.2)",
@@ -629,40 +622,21 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.74)",
     padding: spacing.md,
   },
-  timeInputCopy: {
+  timePickerCopy: {
     gap: 2,
   },
-  timeInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  timeInput: {
-    flex: 1,
-    minHeight: 46,
-    borderWidth: 1.5,
-    borderColor: colors.lineStrong,
-    borderRadius: radius.md,
-    backgroundColor: colors.paper,
-    color: colors.ink,
-    paddingHorizontal: spacing.md,
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: 0,
-  },
-  timeInputError: {
-    borderColor: colors.danger,
-    backgroundColor: colors.dangerBg,
-  },
   addTimeButton: {
-    minWidth: 92,
     minHeight: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.teal,
+  },
+  addTimeButtonContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-    borderRadius: radius.md,
-    backgroundColor: colors.teal,
   },
   notice: {
     flexDirection: "row",
