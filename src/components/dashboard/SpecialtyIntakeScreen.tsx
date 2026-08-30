@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ClipboardPlus } from "lucide-react-native";
+import { ClipboardPlus, Clock3, History, MessageCircle, ShieldCheck, Stethoscope } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -50,6 +50,35 @@ function IntroPanel({ activeStep }: { activeStep: number }) {
       <AppText color="rgba(255,255,255,0.86)" style={styles.introCopy}>
         Mô tả dấu hiệu bạn đang gặp. MediMate sẽ hỏi thêm một số câu ngắn trước khi gợi ý chuyên khoa và cơ sở y tế phù hợp.
       </AppText>
+      <View style={styles.introInsightGrid}>
+        <View style={styles.introInsight}>
+          <Clock3 size={16} color={colors.white} />
+          <AppText variant="caption" color="rgba(255,255,255,0.72)">
+            Thời lượng
+          </AppText>
+          <AppText variant="bodyStrong" color={colors.white}>
+            2 phút
+          </AppText>
+        </View>
+        <View style={styles.introInsight}>
+          <Stethoscope size={16} color={colors.white} />
+          <AppText variant="caption" color="rgba(255,255,255,0.72)">
+            Kết quả
+          </AppText>
+          <AppText variant="bodyStrong" color={colors.white}>
+            Khoa phù hợp
+          </AppText>
+        </View>
+        <View style={styles.introInsight}>
+          <ShieldCheck size={16} color={colors.white} />
+          <AppText variant="caption" color="rgba(255,255,255,0.72)">
+            An toàn
+          </AppText>
+          <AppText variant="bodyStrong" color={colors.white}>
+            Có nhắc lưu ý
+          </AppText>
+        </View>
+      </View>
       <View style={styles.introStepper}>
         {STEP_LABELS.map((label, index) => {
           const active = index === activeStep;
@@ -239,11 +268,13 @@ export function SpecialtyIntakeScreen() {
       <View style={styles.segmentedControl}>
         <Animated.View style={[styles.segmentIndicator, { transform: [{ translateX: segmentTranslate }] }]} />
         <Pressable accessibilityRole="button" onPress={() => setActiveTab("chat")} style={styles.segmentItem}>
+          <MessageCircle size={14} color={activeTab === "chat" ? colors.teal : colors.subtle} />
           <AppText variant="caption" color={colors.ink} numberOfLines={1}>
             Trò chuyện
           </AppText>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setActiveTab("history")} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
+          <History size={14} color={activeTab === "history" ? colors.teal : colors.subtle} />
           <AppText variant="caption" color={colors.ink} numberOfLines={1}>
             Lịch sử
           </AppText>
@@ -517,6 +548,19 @@ const styles = StyleSheet.create({
   },
   introCopy: {
     maxWidth: 330,
+  },
+  introInsightGrid: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  introInsight: {
+    flex: 1,
+    minHeight: 86,
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    padding: spacing.sm,
   },
   introStepper: {
     minHeight: 72,
