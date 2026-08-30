@@ -2,6 +2,7 @@
 // normalizeFacilityType(), TYPE_LABELS, mergeFacilityDetail(), and the
 // getArrayData/getObjectData response-unwrapping helpers.
 import { FacilityDepartment, FacilityDepartmentRelation, FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
+import { normalizeFacilityRating } from "./facilityRating";
 
 export const TYPE_LABELS: Record<FacilityTypeKey, string> = {
   hospital: "Bệnh viện",
@@ -32,6 +33,7 @@ export function normalizeFacilityType(value: unknown): FacilityTypeKey {
 }
 
 function coordinateOrNull(value: unknown, min: number, max: number) {
+  if (value == null || String(value).trim() === "") return null;
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric < min || numeric > max) return null;
   return numeric;
@@ -69,20 +71,27 @@ export function normalizeFacility(
         typeof department === "string" ? department : toStringOrEmpty((department as Record<string, unknown>)?.departmentName ?? (department as Record<string, unknown>)?.name),
       ).filter(Boolean)
     : [];
+  const embeddedDepartmentDetails = Array.isArray(facility.departments)
+    ? facility.departments.filter((department) => department && typeof department === "object").map((department) => ({
+        id: toStringOrEmpty(department.departmentId ?? department.id),
+        name: toStringOrEmpty(department.departmentName ?? department.name),
+      })).filter((department) => department.id && department.name)
+    : [];
   const embeddedDepartmentIds = Array.isArray(facility.departmentIds)
     ? (facility.departmentIds as unknown[]).map(toStringOrEmpty).filter(Boolean)
     : [];
 
   const departments = Array.from(new Set([...embeddedDepartments, ...relationDepartments.map((d) => d.name)])); // dedup
-  const departmentIds = Array.from(new Set([...embeddedDepartmentIds, ...relationDepartmentIds]));
+  const departmentIds = Array.from(new Set([...embeddedDepartmentIds, ...embeddedDepartmentDetails.map((department) => department.id), ...relationDepartmentIds]));
 
   const consultationMap = new Map<string, FacilityDepartment>();
-  relationDepartments.forEach((department) => {
+  [...embeddedDepartmentDetails, ...relationDepartments].forEach((department) => {
     if (department.id) consultationMap.set(department.id, department);
   });
 
   return {
     facilityId,
+    ...normalizeFacilityRating(facility),
     facilityName: toStringOrEmpty(facility.facilityName) || "Cơ sở y tế",
     address: toStringOrEmpty(facility.address) || "TP.HCM",
     latitude: coordinateOrNull(facility.latitude, -90, 90),
@@ -102,12 +111,14 @@ export function normalizeFacility(
     departments: departments.length ? departments : ["Đa khoa"],
     departmentIds,
     consultationDepartments: Array.from(consultationMap.values()),
+    distanceKm: typeof facility.distanceKm === "number" && Number.isFinite(facility.distanceKm) && facility.distanceKm >= 0 ? facility.distanceKm : null,
   };
 }
 
 export function mergeFacilityDetail(existing: NormalizedFacility, apiFacility: Record<string, unknown>): Record<string, unknown> {
   return {
     ...existing,
+    ...normalizeFacilityRating(apiFacility),
     phone: toStringOrEmpty(apiFacility.phone) || existing.phone,
     website: toStringOrEmpty(apiFacility.website) || existing.website,
     openingHours: toStringOrEmpty(apiFacility.openingHours) || existing.openingHours,

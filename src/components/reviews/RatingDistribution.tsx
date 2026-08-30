@@ -8,12 +8,13 @@ import { FeedbackReview } from "@/src/utils/reviewHelpers";
 // a 5->1 star histogram over the currently-loaded review page (not a
 // server-computed aggregate over all reviews).
 export function RatingDistribution({ reviews }: { reviews: FeedbackReview[] }) {
-  const total = reviews.length;
+  const ratings = reviews.map((review) => Number(review.rating)).filter((rating) => Number.isInteger(rating) && rating >= 1 && rating <= 5);
+  const total = ratings.length;
 
   return (
     <View style={styles.group}>
       {[5, 4, 3, 2, 1].map((star) => {
-        const count = reviews.filter((review) => Math.round(Number(review.rating)) === star).length;
+        const count = ratings.filter((rating) => rating === star).length;
         const percent = total ? Math.round((count / total) * 100) : 0;
         return (
           <View key={star} style={styles.row}>

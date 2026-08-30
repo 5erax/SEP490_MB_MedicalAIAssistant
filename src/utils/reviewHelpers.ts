@@ -39,12 +39,6 @@ export type FeedbackReview = {
   [key: string]: unknown;
 };
 
-export function getAverageRating(reviews: FeedbackReview[] = []) {
-  const ratings = reviews.map((review) => Number(review.rating)).filter((value) => Number.isFinite(value));
-  if (!ratings.length) return null;
-  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
-}
-
 export function getReviewAuthorName(review: FeedbackReview | null | undefined) {
   return (
     review?.reviewerName ||

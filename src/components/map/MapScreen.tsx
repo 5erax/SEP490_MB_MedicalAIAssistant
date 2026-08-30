@@ -11,17 +11,19 @@ import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useClinicalRecommendation } from "@/src/hooks/useClinicalRecommendation";
 import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
 import { useFacilities } from "@/src/hooks/useFacilities";
+import { useNearbyFacilities } from "@/src/hooks/useNearbyFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
+import { DEFAULT_NEARBY_RADIUS_KM, NEARBY_FACILITY_LIMIT } from "@/src/services/facilityService";
 import { FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
 import { buildRecommendedFacilities } from "@/src/utils/clinicalFacilityMerge";
 import { normalizeSearchText } from "@/src/utils/facilityNormalize";
-import { getFacilityDistanceKm } from "@/src/utils/facilityRanking";
 import { ClinicalSummaryCard } from "./ClinicalSummaryCard";
 import { FacilityDetailSheet } from "./FacilityDetailSheet";
 import { FacilityFilters } from "./FacilityFilters";
 import { FacilityListItem } from "./FacilityListItem";
 import { FacilityMapView } from "./FacilityMapView";
 import type { MapLoadStatus, MapZoomDirection, MapZoomAction } from "./FacilityMapView.types";
+import { RatingChangeHandler } from "@/src/hooks/useFacilityReviews";
 
 type MapQueryParams = {
   source?: string;
@@ -32,7 +34,7 @@ type MapQueryParams = {
 
 export function MapScreen() {
   const params = useLocalSearchParams<MapQueryParams>();
-  const { facilities, loading, apiNotice, reload } = useFacilities();
+  const { facilities, loading: catalogLoading, apiNotice: catalogNotice, reload, updateRating: updateCatalogRating } = useFacilities();
   const clinical = useClinicalRecommendation(params);
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
   const recommendedDepartmentName =
@@ -41,7 +43,9 @@ export function MapScreen() {
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebouncedValue(searchText, 400);
   const [departmentSearchText, setDepartmentSearchText] = useState("");
-  const debouncedDepartmentSearch = useDebouncedValue(departmentSearchText, 300);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_NEARBY_RADIUS_KM);
+  const [radiusMenuVisible, setRadiusMenuVisible] = useState(false);
   const [departmentMenuVisible, setDepartmentMenuVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<FacilityTypeKey | "all">("all");
   const [selectedFacility, setSelectedFacility] = useState<NormalizedFacility | null>(null);
@@ -54,6 +58,18 @@ export function MapScreen() {
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
   const autoListOpenedRef = useRef(false);
+  const effectiveDepartmentId = selectedDepartmentId ?? (clinical.isClinicalFlow
+    ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
+    : params.departmentId ?? "");
+  const nearby = useNearbyFacilities(userLocation, radiusKm, effectiveDepartmentId);
+  const reloadNearby = nearby.reload;
+  const updateNearbyRating = nearby.updateRating;
+  const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
+    updateCatalogRating(facilityId, summary);
+    updateNearbyRating(facilityId, summary);
+  }, [updateCatalogRating, updateNearbyRating]);
+  const loading = userLocation ? nearby.loading : catalogLoading;
+  const apiNotice = userLocation ? nearby.error : catalogNotice;
 
   const { facilities: recommendedFacilities, unavailableCount } = useMemo(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || !clinical.context) {
@@ -62,20 +78,14 @@ export function MapScreen() {
     return buildRecommendedFacilities(clinical.context.recommendedFacilities, facilities);
   }, [clinical.context, clinical.isClinicalFlow, clinical.status, facilities]);
 
-  const hasManualDepartmentFilter = Boolean(normalizeSearchText(departmentSearchText));
-  const baseFacilities = clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
+  const hasManualDepartmentFilter = selectedDepartmentId !== null;
+  const baseFacilities = userLocation ? nearby.facilities
+    : clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
-    const normalizedDepartmentSearch = normalizeSearchText(debouncedDepartmentSearch);
 
     return baseFacilities.filter((facility) => {
-      if (normalizedDepartmentSearch) {
-        const matchDepartmentSearch = [...facility.departments, ...facility.departmentIds].some((field) =>
-          normalizeSearchText(field).includes(normalizedDepartmentSearch),
-        );
-        if (!matchDepartmentSearch) return false;
-      }
 
       const matchSearch =
         !normalizedSearch ||
@@ -89,25 +99,23 @@ export function MapScreen() {
         ].some((field) => normalizeSearchText(field).includes(normalizedSearch));
       if (!matchSearch) return false;
 
-      if (!clinical.isClinicalFlow && params.departmentId) {
-        const normalizedDepartment = normalizeSearchText(params.departmentId);
-        const matchDepartment =
-          facility.departmentIds.includes(params.departmentId) ||
-          facility.departments.some((name) => normalizeSearchText(name).includes(normalizedDepartment));
-        if (!matchDepartment) return false;
+      // Nearby already applies departmentId on the server; do not drop valid
+      // matches if a facility's optional department metadata is missing.
+      if (!userLocation && effectiveDepartmentId && (!clinical.isClinicalFlow || hasManualDepartmentFilter)) {
+        if (!facility.departmentIds.includes(effectiveDepartmentId)) return false;
       }
 
       if (selectedType !== "all" && facility.facilityTypeKey !== selectedType) return false;
 
       return true;
     });
-  }, [baseFacilities, clinical.isClinicalFlow, debouncedDepartmentSearch, debouncedSearch, params.departmentId, selectedType]);
+  }, [baseFacilities, clinical.isClinicalFlow, debouncedSearch, effectiveDepartmentId, hasManualDepartmentFilter, selectedType, userLocation]);
 
   const visibleFacilities = useMemo(
     () =>
       filteredFacilities.map((facility) => ({
         ...facility,
-        distanceKm: getFacilityDistanceKm(facility, userLocation),
+        distanceKm: userLocation ? facility.distanceKm : null,
       })),
     [filteredFacilities, userLocation],
   );
@@ -126,18 +134,22 @@ export function MapScreen() {
   const departmentOptions = useMemo(() => {
     const departments = new Map<string, string>();
     facilities.forEach((facility) => {
-      facility.departments.forEach((department) => {
-        const normalized = normalizeSearchText(department);
-        if (normalized && !departments.has(normalized)) {
-          departments.set(normalized, department);
+      facility.consultationDepartments.forEach((department) => {
+        if (department.id && !departments.has(department.id)) {
+          departments.set(department.id, department.name);
         }
       });
     });
-    return Array.from(departments.values()).sort((first, second) => first.localeCompare(second, "vi"));
+    return Array.from(departments, ([id, name]) => ({ id, name })).sort((first, second) => first.name.localeCompare(second.name, "vi"));
   }, [facilities]);
 
-  const hasActiveFacilitiesWithoutMapData = facilities.length > 0 && facilities.every((facility) => !facility.hasValidCoordinates);
-  const activeDepartmentLabel = departmentSearchText || recommendedDepartmentName || "Tất cả các khoa";
+  const hasActiveFacilitiesWithoutMapData = baseFacilities.length > 0 && baseFacilities.every((facility) => !facility.hasValidCoordinates);
+  const activeDepartmentLabel = effectiveDepartmentId
+    ? departmentOptions.find((department) => department.id === effectiveDepartmentId)?.name || recommendedDepartmentName || "Khoa đã chọn"
+    : "Tất cả các khoa";
+  const nearbySummary = userLocation
+    ? loading ? `Đang tìm trong ${radiusKm} km…` : `Trong ${radiusKm} km · ${visibleFacilities.length} cơ sở${nearby.facilities.length >= NEARBY_FACILITY_LIMIT ? ` (tối đa ${NEARBY_FACILITY_LIMIT})` : ""}`
+    : "Định vị để tìm cơ sở y tế quanh bạn.";
 
   const openDetail = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
@@ -146,17 +158,18 @@ export function MapScreen() {
   }, []);
 
   const selectFromSheet = useCallback((facility: NormalizedFacility) => {
-    setSelectedFacility(facility);
     setListVisible(false);
-  }, []);
+    openDetail(facility);
+  }, [openDetail]);
 
   const closeList = useCallback(() => setListVisible(false), []);
   const openList = useCallback(() => setListVisible(true), []);
   const zoomMap = useCallback((direction: MapZoomDirection) => {
     setZoomAction((current) => ({ id: (current?.id ?? 0) + 1, direction }));
   }, []);
-  const selectDepartment = useCallback((department: string) => {
-    setDepartmentSearchText(department);
+  const selectDepartment = useCallback((departmentId: string) => {
+    setSelectedDepartmentId(departmentId);
+    setDepartmentSearchText("");
     setSelectedFacility(null);
     setDepartmentMenuVisible(false);
   }, []);
@@ -185,9 +198,10 @@ export function MapScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await reload();
+    if (userLocation) reloadNearby();
+    else await reload();
     setRefreshing(false);
-  }, [reload]);
+  }, [reloadNearby, reload, userLocation]);
 
   return (
     <Screen padded={false} style={styles.screen}>
@@ -229,8 +243,8 @@ export function MapScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lọc theo chuyên khoa"
-            onPress={() => setDepartmentMenuVisible((current) => !current)}
-            style={[styles.departmentMenuButton, departmentSearchText ? styles.departmentMenuButtonActive : null]}
+            onPress={() => { setRadiusMenuVisible(false); setDepartmentMenuVisible((current) => !current); }}
+            style={[styles.departmentMenuButton, effectiveDepartmentId ? styles.departmentMenuButtonActive : null]}
           >
             <Stethoscope size={17} color={colors.teal} />
             <AppText variant="bodyStrong" color={colors.teal} numberOfLines={1} style={styles.departmentMenuLabel}>
@@ -238,31 +252,62 @@ export function MapScreen() {
             </AppText>
             <ChevronDown size={17} color={colors.teal} />
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Bán kính tìm kiếm ${radiusKm} km`}
+            accessibilityState={{ expanded: radiusMenuVisible }}
+            onPress={() => { setDepartmentMenuVisible(false); setRadiusMenuVisible((current) => !current); }}
+            style={styles.radiusButton}
+          >
+            <AppText variant="bodyStrong" color={colors.teal}>{radiusKm} km</AppText>
+            <ChevronDown size={16} color={colors.teal} />
+          </Pressable>
         </View>
+
+        {radiusMenuVisible ? (
+          <View style={styles.radiusOptions}>
+            {[5, 7, 10, 20].map((value) => (
+              <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: value === radiusKm }}
+                onPress={() => { setRadiusKm(value); setSelectedFacility(null); setRadiusMenuVisible(false); }}
+                style={[styles.radiusOption, value === radiusKm && styles.departmentOptionActive]}>
+                <AppText variant="bodyStrong" color={colors.teal}>{value} km</AppText>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         {departmentMenuVisible ? (
           <View style={styles.departmentMenu}>
+            <TextInput accessibilityLabel="Tìm khoa trong danh sách" value={departmentSearchText} onChangeText={setDepartmentSearchText}
+              placeholder="Tìm khoa..." placeholderTextColor={colors.subtle} style={styles.departmentOptionSearch} />
             <ScrollView showsVerticalScrollIndicator={false} style={styles.departmentMenuScroll}>
+              {catalogLoading ? <AppText variant="caption" color={colors.muted} style={styles.departmentOption}>Đang tải danh sách khoa…</AppText> : null}
+              {!catalogLoading && departmentOptions.length === 0 ? (
+                <View style={styles.departmentOption}>
+                  <AppText variant="caption" color={colors.muted}>Chưa có danh sách khoa.</AppText>
+                  <Button size="sm" variant="ghost" onPress={reload}>Tải lại khoa</Button>
+                </View>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => selectDepartment("")}
-                style={[styles.departmentOption, !departmentSearchText && styles.departmentOptionActive]}
+                style={[styles.departmentOption, !effectiveDepartmentId && styles.departmentOptionActive]}
               >
-                <AppText variant="bodyStrong" color={!departmentSearchText ? colors.teal : colors.ink}>
+                <AppText variant="bodyStrong" color={!effectiveDepartmentId ? colors.teal : colors.ink}>
                   Tất cả các khoa
                 </AppText>
               </Pressable>
-              {departmentOptions.map((department) => {
-                const selected = departmentSearchText === department;
+              {departmentOptions.filter((department) => normalizeSearchText(department.name).includes(normalizeSearchText(departmentSearchText))).map((department) => {
+                const selected = effectiveDepartmentId === department.id;
                 return (
                   <Pressable
                     accessibilityRole="button"
-                    key={department}
-                    onPress={() => selectDepartment(department)}
+                    key={department.id}
+                    onPress={() => selectDepartment(department.id)}
                     style={[styles.departmentOption, selected && styles.departmentOptionActive]}
                   >
                     <AppText variant="bodyStrong" color={selected ? colors.teal : colors.ink} numberOfLines={1}>
-                      {department}
+                      {department.name}
                     </AppText>
                   </Pressable>
                 );
@@ -271,37 +316,7 @@ export function MapScreen() {
           </View>
         ) : null}
 
-        <View style={styles.mapSearchPanel}>
-          <View style={styles.departmentSearchRow}>
-            <Search size={17} color={colors.teal} />
-            <TextInput
-              accessibilityLabel="Tìm theo chuyên khoa"
-              value={departmentSearchText}
-              onChangeText={setDepartmentSearchText}
-              placeholder="Tìm theo chuyên khoa..."
-              placeholderTextColor={colors.subtle}
-              returnKeyType="search"
-              style={styles.departmentSearchInput}
-            />
-            {departmentSearchText ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Xóa tìm kiếm chuyên khoa"
-                onPress={() => setDepartmentSearchText("")}
-                style={styles.clearSearchButton}
-              >
-                <X size={15} color={colors.ink} />
-              </Pressable>
-            ) : null}
-          </View>
-          {departmentSearchText ? (
-            <AppText variant="caption" color={colors.subtle}>
-              {visibleFacilities.length} cơ sở phù hợp
-            </AppText>
-          ) : null}
-        </View>
-
-        {clinical.isClinicalFlow && clinical.status === "ready" && !hasManualDepartmentFilter ? (
+        {clinical.isClinicalFlow && clinical.status === "ready" && !hasManualDepartmentFilter && !userLocation ? (
           <View style={styles.clinicalContextChip}>
             <View style={styles.clinicalChipIcon}>
               <Stethoscope size={16} color={colors.teal} />
@@ -321,13 +336,13 @@ export function MapScreen() {
         <Button
           variant="secondary"
           size="sm"
-          disabled={locationStatus === "loading" || locationStatus === "ready"}
-          onPress={requestUserLocation}
+          disabled={locationStatus === "loading"}
+          onPress={() => { setSelectedFacility(null); void requestUserLocation(); }}
           style={styles.locateButton}
         >
           <View style={styles.inlineButton}>
             <MapPin size={16} color={colors.ink} />
-            <AppText variant="bodyStrong">{locationStatus === "ready" ? "Đã có vị trí" : "Dùng vị trí của tôi"}</AppText>
+            <AppText variant="bodyStrong">{locationStatus === "loading" ? "Đang định vị…" : userLocation ? "Định vị lại" : "Định vị"}</AppText>
           </View>
         </Button>
 
@@ -335,7 +350,7 @@ export function MapScreen() {
           <View style={styles.nearbyInline}>
             <ListFilter size={17} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
-              {clinical.isClinicalFlow ? "Xem cơ sở phù hợp" : "Cơ sở y tế gần bạn"}
+              {userLocation ? "Gần bạn" : "Danh sách"}
             </AppText>
             <View style={styles.countPill}>
               <AppText variant="caption" color={colors.teal}>
@@ -344,6 +359,15 @@ export function MapScreen() {
             </View>
           </View>
         </Button>
+        </View>
+        <View style={styles.nearbyStatus} accessibilityLiveRegion="polite">
+          <AppText variant="caption" color={nearby.error ? colors.warning : colors.muted}>{nearby.error || nearbySummary}</AppText>
+          {locationStatus === "denied" || locationStatus === "unsupported" ? (
+            <AppText variant="caption" color={colors.warning}>
+              {locationStatus === "denied" ? "Chưa được cấp quyền vị trí. Hãy bật quyền vị trí rồi thử lại." : "Chưa lấy được vị trí. Hãy kiểm tra GPS/quyền vị trí rồi thử lại."}
+            </AppText>
+          ) : null}
+          {nearby.error ? <Button size="sm" variant="ghost" onPress={nearby.reload}>Thử tìm lại</Button> : null}
         </View>
       </View>
 
@@ -367,6 +391,7 @@ export function MapScreen() {
           facilities={visibleFacilities}
           hasActiveFacilitiesWithoutMapData={hasActiveFacilitiesWithoutMapData}
           loading={loading}
+          nearbyRadiusKm={userLocation ? radiusKm : null}
           locationDenied={locationStatus === "denied"}
           onChangeSearchText={setSearchText}
           onChangeType={setSelectedType}
@@ -378,12 +403,12 @@ export function MapScreen() {
           selectedFacilityId={selectedFacility?.facilityId ?? ""}
           selectedType={selectedType}
           sessionId={clinical.context?.sessionId}
-          isClinicalFlow={clinical.isClinicalFlow}
+          isClinicalFlow={clinical.isClinicalFlow && !hasManualDepartmentFilter && !userLocation}
           unavailableCount={unavailableCount}
         />
       ) : null}
 
-      <FacilityDetailSheet facility={detailFacility} visible={detailVisible} onClose={() => setDetailVisible(false)} />
+      {detailVisible ? <FacilityDetailSheet facility={detailFacility} visible onClose={() => setDetailVisible(false)} onRatingChange={handleRatingChange} /> : null}
     </Screen>
   );
 }
@@ -401,6 +426,7 @@ type FacilityListSheetProps = {
   facilities: NormalizedFacility[];
   hasActiveFacilitiesWithoutMapData: boolean;
   loading: boolean;
+  nearbyRadiusKm: number | null;
   locationDenied: boolean;
   onChangeSearchText: (value: string) => void;
   onChangeType: (value: FacilityTypeKey | "all") => void;
@@ -425,6 +451,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
   facilities,
   hasActiveFacilitiesWithoutMapData,
   loading,
+  nearbyRadiusKm,
   locationDenied,
   onChangeSearchText,
   onChangeType,
@@ -455,14 +482,14 @@ const FacilityListSheet = memo(function FacilityListSheet({
   const header = useMemo(
     () => (
       <View style={styles.sheetListHeader}>
-        <ClinicalSummaryCard
+        {isClinicalFlow ? <ClinicalSummaryCard
           status={clinicalStatus}
           notice={clinicalNotice}
           department={department}
           unavailableCount={unavailableCount}
           recommendedCount={facilities.length}
           sessionId={sessionId}
-        />
+        /> : null}
 
         <FacilityFilters
           searchText={searchText}
@@ -500,6 +527,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
       facilities.length,
       hasActiveFacilitiesWithoutMapData,
       loading,
+      isClinicalFlow,
       onChangeSearchText,
       onChangeType,
       searchText,
@@ -513,7 +541,7 @@ const FacilityListSheet = memo(function FacilityListSheet({
     () =>
       locationDenied ? (
         <AppText variant="caption" color={colors.subtle}>
-          Chưa cấp quyền vị trí. Danh sách vẫn hiển thị đầy đủ, chỉ thiếu khoảng cách.
+          Chưa cấp quyền vị trí. Danh sách này chưa được lọc theo bán kính quanh bạn.
         </AppText>
       ) : null,
     [locationDenied],
@@ -526,9 +554,9 @@ const FacilityListSheet = memo(function FacilityListSheet({
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <View style={styles.sheetTitleGroup}>
-            <AppText variant="h2">{isClinicalFlow ? "Cơ sở phù hợp" : "Cơ sở y tế gần bạn"}</AppText>
+            <AppText variant="h2">{nearbyRadiusKm ? "Cơ sở y tế gần bạn" : isClinicalFlow ? "Cơ sở phù hợp" : "Cơ sở y tế"}</AppText>
             <AppText variant="caption" color={colors.subtle}>
-              {isClinicalFlow ? `${facilities.length} nơi phù hợp với kết quả tư vấn` : `${facilities.length} địa điểm đang hiển thị trên bản đồ`}
+              {nearbyRadiusKm ? `Trong ${nearbyRadiusKm} km · ${facilities.length} kết quả · gần nhất trước` : isClinicalFlow ? `${facilities.length} nơi phù hợp với kết quả tư vấn` : `${facilities.length} địa điểm · chưa lọc theo vị trí`}
             </AppText>
           </View>
           <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={onClose} style={styles.closeButton}>
@@ -554,7 +582,10 @@ const FacilityListSheet = memo(function FacilityListSheet({
         ) : (
           <View style={styles.emptyWrap}>
             {header}
-            <EmptyState title="Chưa tìm thấy cơ sở y tế phù hợp" description="Vui lòng thử đổi bộ lọc hoặc từ khóa tìm kiếm." />
+            <EmptyState title={apiNotice ? "Chưa thể tải kết quả" : "Chưa tìm thấy cơ sở y tế phù hợp"}
+              description={nearbyRadiusKm ? `Thử tăng bán kính ${nearbyRadiusKm} km, chọn khoa khác hoặc đổi từ khóa.` : "Vui lòng thử đổi bộ lọc hoặc từ khóa tìm kiếm."} />
+            <Button size="sm" variant="secondary" onPress={onClose}>{nearbyRadiusKm ? "Đổi bán kính / khoa" : "Đổi bộ lọc"}</Button>
+            {apiNotice ? <Button size="sm" onPress={onRefresh}>Thử tải lại</Button> : null}
           </View>
         )}
       </View>
@@ -612,6 +643,50 @@ const styles = StyleSheet.create({
   departmentControlRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  radiusButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.paper,
+  },
+  radiusOptions: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: spacing.xs,
+    padding: spacing.xs,
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  radiusOption: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+  },
+  departmentOptionSearch: {
+    minHeight: 44,
+    marginHorizontal: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    color: colors.ink,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  nearbyStatus: {
+    alignSelf: "flex-start",
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
   },
   departmentMenuButton: {
     minWidth: 178,
@@ -656,7 +731,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   departmentMenuScroll: {
-    maxHeight: 240,
+    maxHeight: 196,
   },
   departmentOption: {
     minHeight: 42,
@@ -668,38 +743,6 @@ const styles = StyleSheet.create({
   departmentOptionActive: {
     backgroundColor: colors.mint,
   },
-  mapSearchPanel: {
-    display: "none",
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.18)",
-    borderRadius: radius.lg,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    padding: spacing.sm,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 2,
-  },
-  departmentSearchRow: {
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
-  },
-  departmentSearchInput: {
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: 0,
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0,
-  },
   clearSearchButton: {
     width: 30,
     height: 30,
@@ -709,8 +752,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mint,
   },
   mapQuickActions: {
-    display: "none",
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: spacing.sm,
   },

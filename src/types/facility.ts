@@ -27,6 +27,8 @@ export type NormalizedFacility = {
   departmentIds: string[];
   consultationDepartments: FacilityDepartment[];
   distanceKm?: number | null;
+  averageRating: number | null;
+  reviewCount: number | null;
 };
 
 export type FacilityDepartmentRelation = {
