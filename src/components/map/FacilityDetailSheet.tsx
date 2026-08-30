@@ -1,7 +1,7 @@
 // Ported from openFacilityDetail() in Web's NearbyClinicPage.jsx — fetches
 // the full facility record + active doctors at that facility in parallel,
 // merges the fresh detail over the list-derived facility.
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, Share, StyleSheet, View } from "react-native";
 import { Globe, MapPin, Navigation, Phone, Share2, Stethoscope, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,6 +16,9 @@ import { getArrayData, getObjectData, mergeFacilityDetail } from "@/src/utils/fa
 import { ReviewsSection } from "@/src/components/reviews";
 import { DoctorDetailSheet, DoctorListItem } from "@/src/components/doctor";
 import { Doctor } from "@/src/types/doctor";
+import { RatingChangeHandler } from "@/src/hooks/useFacilityReviews";
+import { FacilityRating } from "@/src/components/reviews/FacilityRating";
+import { normalizeFacilityRating } from "@/src/utils/facilityRating";
 
 type DetailTab = "overview" | "doctors" | "reviews";
 
@@ -29,9 +32,10 @@ type FacilityDetailSheetProps = {
   facility: NormalizedFacility | null;
   visible: boolean;
   onClose: () => void;
+  onRatingChange?: RatingChangeHandler;
 };
 
-export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDetailSheetProps) {
+export function FacilityDetailSheet({ facility, visible, onClose, onRatingChange }: FacilityDetailSheetProps) {
   const { showToast } = useToast();
   const [detail, setDetail] = useState<NormalizedFacility | null>(facility);
   const [loading, setLoading] = useState(false);
@@ -40,9 +44,17 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
   const [doctorsLoading, setDoctorsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const ratingRevision = useRef(0);
+  const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
+    ratingRevision.current += 1;
+    setDetail((current) => current?.facilityId === facilityId ? { ...current, ...summary } : current);
+    onRatingChange?.(facilityId, summary);
+  }, [onRatingChange]);
 
   useEffect(() => {
     if (!visible || !facility) return;
+    let active = true;
+    const initialRatingRevision = ratingRevision.current;
     setActiveTab("overview");
     setDetail(facility);
     setError("");
@@ -55,9 +67,13 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
       medicalFacilitiesApi.get(facility.facilityId),
       doctorManagementApi.list({ facilityId: facility.facilityId, pageNumber: 1, pageSize: 12, isActive: true }),
     ]).then(([facilityResult, doctorResult]) => {
+      if (!active) return;
       if (facilityResult.status === "fulfilled") {
         const merged = mergeFacilityDetail(facility, getObjectData(facilityResult.value));
-        setDetail({ ...facility, ...merged } as NormalizedFacility);
+        // A slower initial detail request must not undo a later review edit.
+        const ratingIsCurrent = initialRatingRevision === ratingRevision.current;
+        setDetail((current) => ({ ...facility, ...merged, ...(!ratingIsCurrent && current ? normalizeFacilityRating(current) : {}) } as NormalizedFacility));
+        if (ratingIsCurrent) onRatingChange?.(facility.facilityId, normalizeFacilityRating(merged));
       } else {
         setError((facilityResult.reason as Error)?.message || "Không tải được thông tin chi tiết cơ sở y tế.");
       }
@@ -68,7 +84,8 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
       }
       setDoctorsLoading(false);
     });
-  }, [visible, facility]);
+    return () => { active = false; };
+  }, [visible, facility, onRatingChange]);
 
   if (!facility) return null;
   const current = detail ?? facility;
@@ -124,6 +141,9 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
           {activeTab === "overview" ? (
             <>
               <Badge tone="info">{current.facilityTypeLabel}</Badge>
+              <Pressable accessibilityRole="button" accessibilityLabel="Xem đánh giá của cơ sở" onPress={() => setActiveTab("reviews")}>
+                <FacilityRating averageRating={current.averageRating} reviewCount={current.reviewCount} />
+              </Pressable>
 
               <View style={styles.infoRow}>
                 <MapPin size={16} color={colors.subtle} />
@@ -206,7 +226,7 @@ export function FacilityDetailSheet({ facility, visible, onClose }: FacilityDeta
               )}
             </View>
           ) : (
-            <ReviewsSection facilityId={current.facilityId} />
+            <ReviewsSection key={current.facilityId} facilityId={current.facilityId} onRatingChange={handleRatingChange} />
           )}
         </ScrollView>
       </SafeAreaView>

@@ -1,12 +1,14 @@
 // Ported from the review fetch/submit effects in Web's NearbyClinicPage.jsx
 // (submitReview, uploadReviewImage, startEditingReview, cancelEditingReview).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 
 import { useAuth } from "@/src/providers";
 import { feedbackReviewsApi } from "@/src/services/feedbackReviewService";
+import { medicalFacilitiesApi } from "@/src/services/facilityService";
+import { FacilityRatingSummary, normalizeFacilityRating } from "@/src/utils/facilityRating";
 import { uploadImageToCloudinary } from "@/src/services/cloudinaryUploadService";
-import { normalizeSearchText } from "@/src/utils/facilityNormalize";
+import { getObjectData, normalizeSearchText } from "@/src/utils/facilityNormalize";
 import {
   FeedbackReview,
   getReviewImageUrls,
@@ -18,11 +20,24 @@ import {
 export type ReviewForm = { rating: string; comment: string; imageUrls: string[] };
 
 const INITIAL_FORM: ReviewForm = { rating: "5", comment: "", imageUrls: [] };
+const UNKNOWN_RATING: FacilityRatingSummary = { averageRating: null, reviewCount: null };
+type ReviewPage = { items: FeedbackReview[]; totalPages: number; totalCount: number };
+export type RatingChangeHandler = (facilityId: string, summary: FacilityRatingSummary) => void;
 
-export function useFacilityReviews(facilityId: string | undefined) {
+export function useFacilityReviews(facilityId: string | undefined, onRatingChange?: RatingChangeHandler) {
   const { session } = useAuth();
   const [reviews, setReviews] = useState<FeedbackReview[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [ratingSummary, setRatingSummary] = useState<FacilityRatingSummary>(UNKNOWN_RATING);
+  const [loadError, setLoadError] = useState("");
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalReviews, setTotalReviews] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestId = useRef(0);
+  const activeFacility = useRef<string | undefined>(facilityId);
+  const saving = useRef(false);
+  const paging = useRef(false);
   const [form, setForm] = useState<ReviewForm>(INITIAL_FORM);
   const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -30,28 +45,79 @@ export function useFacilityReviews(facilityId: string | undefined) {
   const [message, setMessage] = useState("");
   const [submittedReview, setSubmittedReview] = useState<FeedbackReview | null>(null);
 
-  const currentUserReview = reviews.find((review) => isReviewByCurrentUser(review, session)) || submittedReview;
+  const currentUserReview = submittedReview || reviews.find((review) => isReviewByCurrentUser(review, session));
 
   const load = useCallback(async () => {
-    if (!facilityId) return;
+    if (!facilityId) return false;
+    const version = ++requestId.current;
     setLoading(true);
-    try {
-      const response = (await feedbackReviewsApi.byFacility(facilityId)) as { data?: { items?: FeedbackReview[] } };
-      setReviews(response.data?.items ?? []);
-    } catch (error) {
-      setMessage(getReviewMessageText(error, "Không thể tải đánh giá cho cơ sở này."));
-    } finally {
-      setLoading(false);
+    setLoadError("");
+    const [reviewResult, facilityResult] = await Promise.allSettled([
+      feedbackReviewsApi.byFacility(facilityId), medicalFacilitiesApi.get(facilityId),
+    ]);
+    if (requestId.current !== version || activeFacility.current !== facilityId) return false;
+    const problems: string[] = [];
+    if (reviewResult.status === "fulfilled" && Array.isArray((reviewResult.value.data as ReviewPage)?.items)) {
+      const page = reviewResult.value.data as ReviewPage;
+      setReviews(page.items);
+      setSubmittedReview((current) => current ? page.items.find((review) => review.id && review.id === current.id) ?? current : null);
+      setPageNumber(1);
+      setTotalPages(Number(page.totalPages) || 1);
+      setTotalReviews(Number.isInteger(page.totalCount) && page.totalCount >= 0 ? page.totalCount : null);
+    } else {
+      problems.push("Chưa thể tải danh sách đánh giá.");
     }
-  }, [facilityId]);
+    if (facilityResult.status === "fulfilled") {
+      const summary = normalizeFacilityRating(getObjectData(facilityResult.value));
+      setRatingSummary(summary);
+      onRatingChange?.(facilityId, summary);
+      if (summary.reviewCount == null || (summary.reviewCount > 0 && summary.averageRating == null)) {
+        problems.push("Chưa thể xác định điểm tổng hợp của cơ sở.");
+      }
+    } else {
+      setRatingSummary(UNKNOWN_RATING);
+      onRatingChange?.(facilityId, UNKNOWN_RATING);
+      problems.push("Chưa thể cập nhật điểm trung bình của cơ sở.");
+    }
+    setLoadError(problems.join(" "));
+    setLoading(false);
+    return problems.length === 0;
+  }, [facilityId, onRatingChange]);
 
   useEffect(() => {
+    activeFacility.current = facilityId;
     setReviews([]);
+    setRatingSummary(UNKNOWN_RATING);
+    setTotalReviews(null);
+    setForm(INITIAL_FORM);
     setSubmittedReview(null);
     setEditing(false);
     setMessage("");
-    load();
-  }, [load]);
+    void load();
+    return () => { requestId.current += 1; activeFacility.current = undefined; };
+  }, [facilityId, load]);
+
+  async function loadMore() {
+    if (!facilityId || loading || paging.current || pageNumber >= totalPages) return;
+    const version = requestId.current;
+    paging.current = true;
+    setLoadingMore(true);
+    setLoadError("");
+    try {
+      const response = await feedbackReviewsApi.byFacility(facilityId, pageNumber + 1);
+      if (version !== requestId.current || activeFacility.current !== facilityId) return;
+      const page = response.data as ReviewPage;
+      if (!Array.isArray(page?.items)) throw new Error("Invalid review page");
+      setReviews((current) => [...current, ...page.items.filter((item) => !item.id || !current.some((review) => review.id === item.id))]);
+      setPageNumber((current) => current + 1);
+      setTotalPages(Number(page.totalPages) || 1);
+    } catch {
+      if (version === requestId.current && activeFacility.current === facilityId) setLoadError("Chưa thể tải thêm đánh giá. Vui lòng thử lại.");
+    } finally {
+      paging.current = false;
+      if (activeFacility.current === facilityId) setLoadingMore(false);
+    }
+  }
 
   function startEditing() {
     if (!currentUserReview?.id) return;
@@ -116,11 +182,17 @@ export function useFacilityReviews(facilityId: string | undefined) {
   async function submit() {
     if (!facilityId) return "no-facility" as const;
     if (!session) return "requires-auth" as const;
+    if (saving.current) return "busy" as const;
+    const submittedRating = Number(form.rating);
+    if (!Number.isInteger(submittedRating) || submittedRating < 1 || submittedRating > 5) {
+      setMessage("Vui lòng chọn từ 1 đến 5 sao.");
+      return "error" as const;
+    }
 
+    saving.current = true;
     setSubmitting(true);
     setMessage("");
     try {
-      const submittedRating = Number(form.rating);
       const submittedComment = form.comment.trim();
       const imageUrlsMap = toReviewImageUrlMap(form.imageUrls);
       const reviewValues = {
@@ -132,6 +204,7 @@ export function useFacilityReviews(facilityId: string | undefined) {
       const response = (await (isUpdating
         ? feedbackReviewsApi.update(currentUserReview!.id!, reviewValues)
         : feedbackReviewsApi.create({ facilityId, ...reviewValues }))) as { data?: FeedbackReview; message?: string };
+      if (activeFacility.current !== facilityId) return "success" as const;
 
       const saved: FeedbackReview = {
         ...(currentUserReview || {}),
@@ -150,16 +223,17 @@ export function useFacilityReviews(facilityId: string | undefined) {
       setForm(INITIAL_FORM);
       setMessage(isUpdating ? "Đã cập nhật đánh giá của bạn." : getReviewMessageText(response.message, "Đã gửi đánh giá của bạn."));
 
-      const refreshed = (await feedbackReviewsApi.byFacility(facilityId)) as { data?: { items?: FeedbackReview[] } };
-      const refreshedItems = refreshed.data?.items ?? [];
-      const savedIndex = refreshedItems.findIndex((review) => String(review.id) === String(saved.id));
-      const nextReviews =
-        savedIndex >= 0
-          ? refreshedItems.map((review, index) => (index === savedIndex ? { ...saved, ...review } : review))
-          : [saved, ...refreshedItems];
-      setReviews(nextReviews);
+      // Persisted review is already successful. A failed refresh must never
+      // report the POST/PUT as failed or encourage sending it again.
+      setRatingSummary(UNKNOWN_RATING);
+      onRatingChange?.(facilityId, UNKNOWN_RATING);
+      const refreshed = await load();
+      if (!refreshed && activeFacility.current === facilityId) {
+        setMessage("Đã lưu đánh giá. Chưa thể đồng bộ đủ dữ liệu mới; hãy bấm Tải lại đánh giá.");
+      }
       return "success" as const;
     } catch (error) {
+      if (activeFacility.current !== facilityId) return "error" as const;
       const text = getReviewMessageText(error, "Không thể gửi đánh giá. Vui lòng thử lại sau.");
       setMessage(text);
       if (normalizeSearchText(text).includes("da danh gia")) {
@@ -167,13 +241,20 @@ export function useFacilityReviews(facilityId: string | undefined) {
       }
       return "error" as const;
     } finally {
-      setSubmitting(false);
+      saving.current = false;
+      if (activeFacility.current === facilityId) setSubmitting(false);
     }
   }
 
   return {
     reviews,
     loading,
+    ratingSummary,
+    loadError,
+    totalReviews,
+    loadingMore,
+    hasMore: pageNumber < totalPages,
+    loadMore,
     form,
     setForm,
     editing,

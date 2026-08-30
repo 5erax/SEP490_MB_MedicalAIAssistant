@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { facilityDepartmentsApi, medicalFacilitiesApi } from "@/src/services/facilityService";
 import { NormalizedFacility } from "@/src/types/facility";
 import { buildRelationsByFacility, getArrayData, normalizeFacility } from "@/src/utils/facilityNormalize";
+import { FacilityRatingSummary } from "@/src/utils/facilityRating";
 
 export function useFacilities() {
   const [facilities, setFacilities] = useState<NormalizedFacility[]>([]);
@@ -54,5 +55,9 @@ export function useFacilities() {
     load();
   }, [load]);
 
-  return { facilities, loading, apiNotice, reload: load };
+  const updateRating = useCallback((facilityId: string, summary: FacilityRatingSummary) => {
+    setFacilities((current) => current.map((facility) => facility.facilityId === facilityId ? { ...facility, ...summary } : facility));
+  }, []);
+
+  return { facilities, loading, apiNotice, reload: load, updateRating };
 }

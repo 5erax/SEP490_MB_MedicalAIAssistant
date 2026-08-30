@@ -3,6 +3,7 @@ import { Star } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 
 import { colors } from "@/src/theme/tokens";
+import { getStarFill } from "@/src/utils/facilityRating";
 
 const RATING_LABELS = ["", "Rất tệ", "Không hài lòng", "Bình thường", "Hài lòng", "Rất hài lòng"];
 
@@ -37,9 +38,14 @@ export function StarRatingInput({ value, onChange, size = 28 }: StarRatingInputP
 
 export function StarRatingDisplay({ value, size = 14 }: { value: number; size?: number }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} accessible accessibilityLabel={`${Number.isFinite(value) ? value.toLocaleString("vi-VN", { maximumFractionDigits: 1 }) : 0} trên 5 sao`}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <Star key={star} size={size} color={colors.amber} fill={star <= Math.round(value) ? colors.amber : "transparent"} />
+        <View key={star} style={{ width: size, height: size }}>
+          <Star size={size} color={colors.amber} fill="transparent" />
+          <View style={{ position: "absolute", left: 0, top: 0, width: size * getStarFill(value, star), height: size, overflow: "hidden" }}>
+            <Star size={size} color={colors.amber} fill={colors.amber} />
+          </View>
+        </View>
       ))}
     </View>
   );

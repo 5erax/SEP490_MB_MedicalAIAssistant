@@ -30,7 +30,6 @@ const MIN_ZOOM = 9;
 const MAX_ZOOM = 18;
 const CLUSTER_MAX_ZOOM = 14;
 const CAMERA_ANIMATION_MS = 420;
-const MAP_BOUNDS: [number, number, number, number] = [106.3, 10.35, 107.15, 11.15];
 const DEFAULT_CENTER: [number, number] = [106.700424, 10.775658];
 
 type FacilityFeatureProperties = {
@@ -127,27 +126,35 @@ export function FacilityMapViewMapLibre({
       return;
     }
 
-    if (mappableFacilities.length === 1) {
+    if (userLocation && mappableFacilities.length === 0) {
+      cameraRef.current?.flyTo({ center: [userLocation.longitude, userLocation.latitude], zoom: 12, duration });
+      return;
+    }
+
+    if (mappableFacilities.length === 1 && !userLocation) {
       const only = mappableFacilities[0];
       cameraRef.current?.flyTo({ center: [only.longitude as number, only.latitude as number], zoom: 14, duration });
       return;
     }
 
-    if (mappableFacilities.length > 1) {
+    if (mappableFacilities.length > 1 || (userLocation && mappableFacilities.length > 0)) {
       const longitudes = mappableFacilities.map((facility) => facility.longitude as number);
       const latitudes = mappableFacilities.map((facility) => facility.latitude as number);
+      if (userLocation) {
+        longitudes.push(userLocation.longitude);
+        latitudes.push(userLocation.latitude);
+      }
       cameraRef.current?.fitBounds(
         [Math.min(...longitudes), Math.min(...latitudes), Math.max(...longitudes), Math.max(...latitudes)],
-        { padding: { top: 112, bottom: 112, left: 72, right: 72 }, duration },
+        { padding: { top: 250, bottom: 100, left: 48, right: 48 }, duration },
       );
     }
-  }, [mappableFacilities, selectedFacility]);
+  }, [mappableFacilities, selectedFacility, userLocation]);
 
   useEffect(() => {
     if (status !== "ready") return;
     focusVisibleFacilities(800);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, selectedFacility?.facilityId]);
+  }, [status, focusVisibleFacilities]);
 
   const applyZoomAction = useCallback(async () => {
     if (!zoomAction) return;
@@ -240,7 +247,6 @@ export function FacilityMapViewMapLibre({
           initialViewState={{ center: DEFAULT_CENTER, zoom: 11, bearing: 0, pitch: 0 }}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
-          maxBounds={MAP_BOUNDS}
         />
 
         <GeoJSONSource

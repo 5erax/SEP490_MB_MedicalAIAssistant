@@ -5,6 +5,7 @@ import { AppText, Badge } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { NormalizedFacility } from "@/src/types/facility";
 import { formatDistance } from "@/src/utils/facilityRanking";
+import { FacilityRating } from "@/src/components/reviews/FacilityRating";
 
 type FacilityListItemProps = {
   facility: NormalizedFacility;
@@ -25,6 +26,7 @@ export function FacilityListItem({ facility, selected, onPress }: FacilityListIt
         </AppText>
         <Badge tone="info">{facility.facilityTypeLabel}</Badge>
       </View>
+      <FacilityRating averageRating={facility.averageRating} reviewCount={facility.reviewCount} />
       <View style={styles.row}>
         <MapPin size={14} color={colors.subtle} />
         <AppText variant="caption" color={colors.muted} style={styles.address}>
