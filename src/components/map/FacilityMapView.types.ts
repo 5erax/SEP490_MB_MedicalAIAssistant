@@ -10,4 +10,5 @@ export type FacilityMapViewProps = {
   onSelectFacility: (facility: NormalizedFacility) => void;
   onStatusChange?: (status: MapLoadStatus) => void;
   retryKey?: number;
+  zoomResetKey?: number;
 };

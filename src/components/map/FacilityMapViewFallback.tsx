@@ -219,6 +219,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
   userLocation,
   onSelectFacility,
   onStatusChange,
+  zoomResetKey = 0,
 }: FacilityMapViewProps) {
   const [layout, setLayout] = useState<LayoutSize>({ width: 0, height: 0 });
 
@@ -285,6 +286,13 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
     translateX.value = withTiming(layout.width / 2 - selectedPoint.x * nextScale, { duration: 260 });
     translateY.value = withTiming(layout.height / 2 - selectedPoint.y * nextScale, { duration: 260 });
   }, [layout.height, layout.width, scale, selectedPoint, translateX, translateY]);
+
+  useEffect(() => {
+    if (zoomResetKey === 0) return;
+    scale.value = withTiming(1, { duration: 220 });
+    translateX.value = withTiming(0, { duration: 220 });
+    translateY.value = withTiming(0, { duration: 220 });
+  }, [scale, translateX, translateY, zoomResetKey]);
 
   const pan = Gesture.Pan()
     .onBegin(() => {
@@ -411,6 +419,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
 function areMapPropsEqual(prev: FacilityMapViewProps, next: FacilityMapViewProps) {
   if (prev.selectedFacility?.facilityId !== next.selectedFacility?.facilityId) return false;
   if (prev.userLocation?.latitude !== next.userLocation?.latitude || prev.userLocation?.longitude !== next.userLocation?.longitude) return false;
+  if (prev.zoomResetKey !== next.zoomResetKey) return false;
   if (prev.facilities.length !== next.facilities.length) return false;
 
   for (let index = 0; index < prev.facilities.length; index += 1) {

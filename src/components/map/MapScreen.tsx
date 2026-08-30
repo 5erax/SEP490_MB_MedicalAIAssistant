@@ -3,8 +3,8 @@
 // from a bottom sheet so Expo Go stays smooth.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronDown, Home, ListFilter, MapPin, Search, Stethoscope, X } from "lucide-react-native";
+import { useLocalSearchParams } from "expo-router";
+import { ChevronDown, ListFilter, MapPin, Maximize2, Search, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -13,7 +13,6 @@ import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
 import { useFacilities } from "@/src/hooks/useFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
 import { FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
-import { ROUTES } from "@/src/navigation/routes";
 import { buildRecommendedFacilities } from "@/src/utils/clinicalFacilityMerge";
 import { normalizeSearchText } from "@/src/utils/facilityNormalize";
 import { getFacilityDistanceKm } from "@/src/utils/facilityRanking";
@@ -33,7 +32,6 @@ type MapQueryParams = {
 
 export function MapScreen() {
   const params = useLocalSearchParams<MapQueryParams>();
-  const router = useRouter();
   const { facilities, loading, apiNotice, reload } = useFacilities();
   const clinical = useClinicalRecommendation(params);
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
@@ -49,6 +47,7 @@ export function MapScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [listVisible, setListVisible] = useState(false);
   const [, setMapStatus] = useState<MapLoadStatus>("loading");
+  const [zoomResetKey, setZoomResetKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
@@ -143,7 +142,7 @@ export function MapScreen() {
 
   const closeList = useCallback(() => setListVisible(false), []);
   const openList = useCallback(() => setListVisible(true), []);
-  const openHome = useCallback(() => router.replace(ROUTES.PATIENT.HOME), [router]);
+  const zoomToFacilities = useCallback(() => setZoomResetKey((current) => current + 1), []);
   const selectDepartment = useCallback((department: string) => {
     setDepartmentSearchText(department);
     setDepartmentMenuVisible(false);
@@ -186,15 +185,12 @@ export function MapScreen() {
           userLocation={userLocation}
           onSelectFacility={openDetail}
           onStatusChange={setMapStatus}
+          zoomResetKey={zoomResetKey}
         />
       </View>
 
       <View pointerEvents="box-none" style={styles.floatingActions}>
         <View style={styles.mapToolbar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Về trang chủ" onPress={openHome} style={styles.homeButton}>
-            <Home size={19} color={colors.teal} />
-          </Pressable>
-
           <View style={styles.mapSearchInputWrap}>
             <Search size={18} color={colors.teal} />
             <TextInput
@@ -337,6 +333,10 @@ export function MapScreen() {
         </Button>
         </View>
       </View>
+
+      <Pressable accessibilityRole="button" accessibilityLabel="Thu phóng bản đồ" onPress={zoomToFacilities} style={styles.mapZoomButton}>
+        <Maximize2 size={22} color={colors.teal} />
+      </Pressable>
 
       {listVisible ? (
         <FacilityListSheet
@@ -562,21 +562,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  homeButton: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.22)",
-    borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.96)",
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 2,
-  },
   mapSearchInputWrap: {
     flex: 1,
     minWidth: 0,
@@ -606,7 +591,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   departmentControlRow: {
-    marginLeft: 56,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -638,7 +622,6 @@ const styles = StyleSheet.create({
   },
   departmentMenu: {
     alignSelf: "flex-start",
-    marginLeft: 56,
     width: 220,
     maxHeight: 252,
     overflow: "hidden",
@@ -759,6 +742,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     minWidth: 0,
+  },
+  mapZoomButton: {
+    position: "absolute",
+    right: spacing.lg,
+    bottom: spacing["4xl"] + spacing.lg,
+    width: 54,
+    height: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.22)",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    elevation: 4,
   },
   countPill: {
     minWidth: 26,

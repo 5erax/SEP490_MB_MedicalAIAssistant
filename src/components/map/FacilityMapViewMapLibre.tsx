@@ -58,6 +58,7 @@ export function FacilityMapViewMapLibre({
   onSelectFacility,
   onStatusChange,
   retryKey = 0,
+  zoomResetKey = 0,
 }: FacilityMapViewProps) {
   const [status, setStatus] = useState<MapLoadStatus>("loading");
   const mapRef = useRef<MapRef>(null);
@@ -116,21 +117,19 @@ export function FacilityMapViewMapLibre({
     return () => clearTimeout(timer);
   }, [status, retryKey]);
 
-  useEffect(() => {
-    if (status !== "ready") return;
-
+  const focusVisibleFacilities = useCallback((duration = 800) => {
     if (selectedFacility?.hasValidCoordinates && selectedFacility.longitude != null && selectedFacility.latitude != null) {
       cameraRef.current?.flyTo({
         center: [selectedFacility.longitude, selectedFacility.latitude],
         zoom: 16,
-        duration: 800,
+        duration,
       });
       return;
     }
 
     if (mappableFacilities.length === 1) {
       const only = mappableFacilities[0];
-      cameraRef.current?.flyTo({ center: [only.longitude as number, only.latitude as number], zoom: 14, duration: 800 });
+      cameraRef.current?.flyTo({ center: [only.longitude as number, only.latitude as number], zoom: 14, duration });
       return;
     }
 
@@ -139,11 +138,21 @@ export function FacilityMapViewMapLibre({
       const latitudes = mappableFacilities.map((facility) => facility.latitude as number);
       cameraRef.current?.fitBounds(
         [Math.min(...longitudes), Math.min(...latitudes), Math.max(...longitudes), Math.max(...latitudes)],
-        { padding: { top: 72, bottom: 72, left: 72, right: 72 }, duration: 800 },
+        { padding: { top: 112, bottom: 112, left: 72, right: 72 }, duration },
       );
     }
+  }, [mappableFacilities, selectedFacility]);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    focusVisibleFacilities(800);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, selectedFacility?.facilityId]);
+
+  useEffect(() => {
+    if (status !== "ready" || zoomResetKey === 0) return;
+    focusVisibleFacilities(520);
+  }, [focusVisibleFacilities, status, zoomResetKey]);
 
   const handleFacilitySourcePress = useCallback(
     async (event: { nativeEvent?: { features?: GeoJSON.Feature[] }; stopPropagation?: () => void }) => {
