@@ -31,17 +31,9 @@ export function CurrentSubscriptionCard({ loading, error, activeSubscription, on
         <AppText color={colors.muted}>Đang đồng bộ thông tin gói của tài khoản.</AppText>
       ) : error ? (
         <AppText color={colors.muted}>{error} Dữ liệu tài khoản của bạn chưa bị thay đổi.</AppText>
-      ) : activeSubscription ? (
-        <AppText color={colors.muted}>
-          Có hiệu lực đến{" "}
-          <AppText variant="bodyStrong">
-            {activeSubscription.endDate ? new Date(activeSubscription.endDate).toLocaleDateString("vi-VN") : "đang cập nhật"}
-          </AppText>
-          . Gia hạn tự động: <AppText variant="bodyStrong">{activeSubscription.autoRenew ? "Bật" : "Tắt"}</AppText>.
-        </AppText>
-      ) : (
+      ) : !activeSubscription ? (
         <AppText color={colors.muted}>Bạn chưa có gói trả phí đang hoạt động.</AppText>
-      )}
+      ) : null}
 
       {error && !loading ? (
         <Button variant="secondary" size="sm" onPress={onRetry}>
