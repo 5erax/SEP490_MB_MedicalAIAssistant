@@ -3,8 +3,9 @@
 // Admin-only, not ported here).
 import { apiRequest } from "@/src/api/client";
 import { ENDPOINTS } from "@/src/api/endpoints";
-import { PayOsCheckout, PayOsReconcileResult, Payment, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
+import { PayOsCheckout, PayOsReconcileResult, Payment, SubscriptionPlan, SubscriptionPlanOffer, UserSubscription } from "@/src/types/subscription";
 import { ApiResponse } from "@/src/types/api";
+import { getPricingSnapshot } from "@/src/utils/subscriptionOffers";
 
 function withQuery(path: string, params: Record<string, string | number | undefined> = {}) {
   const search = new URLSearchParams();
@@ -16,18 +17,25 @@ function withQuery(path: string, params: Record<string, string | number | undefi
 }
 
 export const subscriptionPlansApi = {
+  offers() {
+    // Attach the session when available for personalized eligibility. The
+    // anonymous endpoint remains usable without a stored access token.
+    return apiRequest<SubscriptionPlanOffer[]>(ENDPOINTS.SUBSCRIPTION_PLANS.OFFERS, { requiresAuth: true });
+  },
   active() {
     return apiRequest<SubscriptionPlan[]>(ENDPOINTS.SUBSCRIPTION_PLANS.ACTIVE);
   },
 };
 
 export const userSubscriptionsApi = {
-  checkout(planId: string, autoRenew = false) {
+  checkout(planOffer: SubscriptionPlanOffer, autoRenew = false) {
+    const snapshot = getPricingSnapshot(planOffer);
+    if (!snapshot) return Promise.reject(new Error("Thông tin giá hoặc số lượt chưa hợp lệ. Vui lòng tải lại gói."));
     return apiRequest<PayOsCheckout>(ENDPOINTS.USER_SUBSCRIPTIONS.CHECKOUT, {
       method: "POST",
       // This repository is the mobile client even when Expo Web is used as a
       // UI preview. The mobile callback lets PayOS reopen the installed app.
-      data: { planId, autoRenew, clientType: "mobile" },
+      data: { planId: planOffer.plan.id, autoRenew, clientType: "mobile", ...snapshot },
       requiresAuth: true,
     });
   },

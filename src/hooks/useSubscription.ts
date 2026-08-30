@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 
@@ -15,16 +16,19 @@ import {
 } from "@/src/services/paymentCheckoutStorage";
 import { paymentsApi, subscriptionPlansApi, userSubscriptionsApi } from "@/src/services/subscriptionService";
 import { subscriptionUsageApi } from "@/src/services/subscriptionUsageService";
-import { CheckoutState, PayOsReconcileResult, SubscriptionPlan, UserSubscription } from "@/src/types/subscription";
+import { CheckoutState, PayOsReconcileResult, SubscriptionPlanOffer, UserSubscription } from "@/src/types/subscription";
 import { isSuccessfulPayment, isTerminalPayment } from "@/src/utils/subscriptionPlanPresentation";
+import { isSaleOfferUnavailable, isSamePricingSnapshot, OFFER_CHANGED_MESSAGE } from "@/src/utils/subscriptionOffers";
 
 const POLL_INTERVAL_MS = 3000;
+const OFFERS_REFRESH_INTERVAL_MS = 15_000;
 const MAX_POLL_ATTEMPTS = 100;
 const BLOCKING_PAYMENT_STATUSES = new Set([400, 403, 404, 409]);
 const handledTerminalPaymentIds = new Set<string>();
 
 type UseSubscriptionOptions = {
   autoResumePending?: boolean;
+  watchOffers?: boolean;
 };
 
 function reconcileStatuses(result: PayOsReconcileResult) {
@@ -59,13 +63,16 @@ async function openCheckoutUrl(paymentUrl: string) {
   await WebBrowser.openBrowserAsync(paymentUrl);
 }
 
-export function useSubscription({ autoResumePending = true }: UseSubscriptionOptions = {}) {
+export function useSubscription({ autoResumePending = true, watchOffers = true }: UseSubscriptionOptions = {}) {
   const { clearSession, session, setSession } = useAuth();
   const { showToast } = useToast();
+  const isFocused = useIsFocused();
 
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [planOffers, setPlanOffers] = useState<SubscriptionPlanOffer[]>([]);
+  const plans = useMemo(() => planOffers.map((item) => item.plan), [planOffers]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState("");
+  const [pricingChangeMessage, setPricingChangeMessage] = useState("");
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(Boolean(session));
   const [subscriptionsError, setSubscriptionsError] = useState("");
@@ -80,20 +87,43 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
   const pollAttempts = useRef(0);
   const paymentCheckInFlight = useRef(false);
   const pendingCheckoutRef = useRef<PendingPaymentCheckout | null>(null);
+  const checkoutInFlight = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
+  const offersRequestId = useRef(0);
+  const offerSessionKey = session?.accessToken ?? "";
+  const offerSessionRef = useRef(offerSessionKey);
 
-  const loadPlans = useCallback(async () => {
-    setPlansLoading(true);
-    setPlansError("");
-    try {
-      const response = await subscriptionPlansApi.active();
-      setPlans(Array.isArray(response.data) ? response.data : []);
-    } catch {
-      setPlans([]);
-      setPlansError("Không thể tải thông tin gói.");
-    } finally {
-      setPlansLoading(false);
+  useEffect(() => {
+    offerSessionRef.current = offerSessionKey;
+  }, [offerSessionKey]);
+
+  const loadPlanOffers = useCallback(async ({ silent = false, rethrow = false } = {}) => {
+    const requestId = ++offersRequestId.current;
+    const isCurrent = () => requestId === offersRequestId.current && offerSessionRef.current === offerSessionKey;
+    if (!silent) {
+      setPlansLoading(true);
+      setPlansError("");
     }
-  }, []);
+    try {
+      const response = await subscriptionPlansApi.offers();
+      if (!Array.isArray(response.data)) throw new Error("Invalid plan offers response");
+      if (!isCurrent()) return null;
+      setPlanOffers(response.data);
+      setPlansError("");
+      return response.data;
+    } catch (error) {
+      if (isCurrent() && !silent) {
+        setPlanOffers([]);
+        setPlansError("Không thể tải giá và ưu đãi hiện tại. Vui lòng thử lại trước khi mua.");
+      }
+      if (rethrow) throw error;
+      return null;
+    } finally {
+      if (isCurrent()) setPlansLoading(false);
+    }
+  }, [offerSessionKey]);
+
+  const reloadPlans = useCallback(() => loadPlanOffers(), [loadPlanOffers]);
 
   const loadSubscriptions = useCallback(async () => {
     if (!session) return [] as UserSubscription[];
@@ -192,6 +222,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
                     message: "Gói dịch vụ và số lượt của bạn đã được cập nhật.",
                   });
                 }
+                await loadPlanOffers({ silent: true });
                 return "success" as const;
               }
 
@@ -216,6 +247,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
                       : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
                   });
                 }
+                await loadPlanOffers({ silent: true });
                 return "terminal" as const;
               }
 
@@ -275,6 +307,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
               message: "Quyền lợi MediMate Plus đã được kích hoạt.",
             });
           }
+          await loadPlanOffers({ silent: true });
           return "success" as const;
         }
 
@@ -301,6 +334,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
                 : "Vui lòng kiểm tra giao dịch hoặc thử lại sau.",
             });
           }
+          await loadPlanOffers({ silent: true });
           return "terminal" as const;
         }
 
@@ -334,7 +368,7 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
         setCheckingPayment(false);
       }
     },
-    [forgetPendingCheckout, refreshEntitlements, showToast, stopPolling],
+    [forgetPendingCheckout, loadPlanOffers, refreshEntitlements, showToast, stopPolling],
   );
 
   const pollPayment = useCallback(
@@ -473,17 +507,33 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
   }, [pollPayment, resolvePendingCheckout]);
 
   const startCheckout = useCallback(
-    async (planId: string, autoRenew: boolean) => {
-      if (!planId) return;
+    async (displayedPlanOffer: SubscriptionPlanOffer, autoRenew: boolean) => {
+      // A ref also blocks taps made before React has rendered the disabled button.
+      if (!displayedPlanOffer.plan.id || checkoutInFlight.current || pendingCheckoutRef.current) return;
+      checkoutInFlight.current = true;
       stopPolling();
+      setPricingChangeMessage("");
       setCheckoutState({
         status: "creating",
-        message: "Đang tạo liên kết thanh toán PayOS...",
+        message: "Đang kiểm tra lại giá và số lượt trước khi thanh toán...",
         paymentId: "",
       });
 
       try {
-        const response = await userSubscriptionsApi.checkout(planId, autoRenew);
+        const latestItems = await loadPlanOffers({ silent: true, rethrow: true });
+        if (!latestItems) {
+          setCheckoutState({ status: "error", paymentId: "", message: "Bảng giá đang được cập nhật. Vui lòng kiểm tra lại và bấm mua lần nữa." });
+          return;
+        }
+        const latest = latestItems.find((item) => item.plan.id === displayedPlanOffer.plan.id);
+        if (!latest || !isSamePricingSnapshot(displayedPlanOffer, latest)) {
+          const message = latest ? OFFER_CHANGED_MESSAGE : "Gói này hiện không còn khả dụng. Vui lòng chọn gói khác trong bảng giá mới.";
+          setCheckoutState({ status: "idle", paymentId: "", message: "" });
+          setPricingChangeMessage(message);
+          showToast({ type: "warning", title: "Bảng giá đã thay đổi", message });
+          return;
+        }
+        const response = await userSubscriptionsApi.checkout(latest, autoRenew);
         const checkoutResponse = response.data;
         if (!checkoutResponse?.paymentUrl || !checkoutResponse?.paymentId) {
           throw new Error("Checkout response is incomplete");
@@ -503,6 +553,9 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
           // Continue checkout in memory; persistence is a recovery aid.
         }
 
+        // The pending checkout now prevents duplicates. Allow offer refreshes
+        // again while PayOS is open or the app returns to the foreground.
+        checkoutInFlight.current = false;
         setCheckoutState(pendingCheckoutState(checkout, "PayOS đang được mở. Sau khi hoàn tất, hãy quay lại MediMate."));
         void pollPayment(checkout);
 
@@ -515,6 +568,13 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
         }
       } catch (error) {
         const status = (error as { status?: number })?.status;
+        if (isSaleOfferUnavailable(error)) {
+          await loadPlanOffers();
+          setCheckoutState({ status: "idle", paymentId: "", message: "" });
+          setPricingChangeMessage(OFFER_CHANGED_MESSAGE);
+          showToast({ type: "warning", title: "Bảng giá đã thay đổi", message: OFFER_CHANGED_MESSAGE });
+          return;
+        }
         if (status === 401) {
           stopPolling();
           await clearSession();
@@ -533,18 +593,19 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
         }
 
         if (!pendingCheckoutRef.current) {
-          const apiMessage = error instanceof Error ? error.message.trim() : "";
           setCheckoutState({
             status: "error",
             paymentId: "",
-            message: status === 409 && apiMessage
-              ? apiMessage
+            message: status === 409
+              ? "Chưa thể tạo giao dịch do thông tin thanh toán đang xung đột. Vui lòng kiểm tra lịch sử giao dịch hoặc thử lại sau."
               : "Chưa thể tạo liên kết thanh toán lúc này. Vui lòng thử lại sau.",
           });
         }
+      } finally {
+        checkoutInFlight.current = false;
       }
     },
-    [clearSession, pollPayment, showToast, stopPolling],
+    [clearSession, loadPlanOffers, pollPayment, showToast, stopPolling],
   );
 
   const cancelSubscription = useCallback(
@@ -571,8 +632,20 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
   );
 
   useEffect(() => {
-    loadPlans();
-  }, [loadPlans]);
+    if (watchOffers && isFocused) void loadPlanOffers();
+    // Older responses must not overwrite a new account's personalized offers.
+    return () => { offersRequestId.current += 1; };
+  }, [isFocused, loadPlanOffers, watchOffers]);
+
+  useEffect(() => {
+    if (!watchOffers || !isFocused) return;
+    const timer = setInterval(() => {
+      if (appStateRef.current === "active" && !checkoutInFlight.current) {
+        void loadPlanOffers({ silent: true });
+      }
+    }, OFFERS_REFRESH_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [isFocused, loadPlanOffers, watchOffers]);
 
   useEffect(() => {
     loadSubscriptions();
@@ -602,11 +675,13 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState !== "active" || !pendingCheckoutRef.current) return;
-      void pollPayment(pendingCheckoutRef.current);
+      appStateRef.current = nextState;
+      if (nextState !== "active") return;
+      if (watchOffers && isFocused && !checkoutInFlight.current) void loadPlanOffers({ silent: true });
+      if (pendingCheckoutRef.current) void pollPayment(pendingCheckoutRef.current);
     });
     return () => subscription.remove();
-  }, [pollPayment]);
+  }, [isFocused, loadPlanOffers, pollPayment, watchOffers]);
 
   useEffect(
     () => () => {
@@ -617,9 +692,11 @@ export function useSubscription({ autoResumePending = true }: UseSubscriptionOpt
 
   return {
     plans,
+    planOffers,
     plansLoading,
     plansError,
-    reloadPlans: loadPlans,
+    pricingChangeMessage,
+    reloadPlans,
     subscriptions,
     subscriptionsLoading,
     subscriptionsError,

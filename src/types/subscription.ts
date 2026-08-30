@@ -18,6 +18,39 @@ export type SubscriptionPlanQuota = {
   isActive?: boolean;
 };
 
+export type SaleCampaignEligibilityType = 0 | 1 | 2;
+
+export type SaleOffer = {
+  offerId: string;
+  campaignId: string;
+  campaignName?: string | null;
+  description?: string | null;
+  badgeText?: string | null;
+  eligibilityType?: SaleCampaignEligibilityType;
+  originalPrice: number;
+  effectivePrice: number;
+  discountAmount: number;
+  discountPercent: number;
+  baseCredit: number;
+  bonusCredit: number;
+  grantedCredit: number;
+  startAt?: string;
+  endAt?: string;
+  maxRedemptions?: number | null;
+  remainingRedemptions?: number | null;
+  maxRedemptionsPerUser?: number | null;
+};
+
+export type SubscriptionPlanOffer = {
+  plan: SubscriptionPlan;
+  originalPrice: number;
+  effectivePrice: number;
+  baseCredit: number;
+  bonusCredit: number;
+  grantedCredit: number;
+  offer?: SaleOffer | null;
+};
+
 export type UserSubscription = {
   id: string;
   planName?: string;
@@ -35,6 +68,14 @@ export type Payment = {
   statusName?: string;
   status?: string;
   amount?: number;
+  originalAmount?: number;
+  discountAmount?: number;
+  saleCampaignId?: string | null;
+  saleCampaignName?: string | null;
+  saleBadgeText?: string | null;
+  baseCredit?: number | null;
+  bonusCredit?: number;
+  grantedCredit?: number | null;
   currency?: string;
   provider?: string;
   paymentProvider?: string;
@@ -58,6 +99,10 @@ export type PayOsCheckout = {
   baseCredit?: number;
   bonusCredit?: number;
   grantedCredit?: number;
+  appliedSaleCampaignId?: string | null;
+  appliedSaleCampaignPlanId?: string | null;
+  saleCampaignName?: string | null;
+  saleBadgeText?: string | null;
   [key: string]: unknown;
 };
 

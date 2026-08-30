@@ -23,7 +23,7 @@ export function PaymentResultScreen() {
     checkoutState,
     checkingPayment,
     checkPaymentResult,
-  } = useSubscription({ autoResumePending: false });
+  } = useSubscription({ autoResumePending: false, watchOffers: false });
   const handledOrderCode = useRef("");
 
   const orderCode = String(firstParam(params.orderCode) ?? "").trim();

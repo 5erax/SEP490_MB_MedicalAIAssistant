@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { X } from "lucide-react-native";
 
-import { AppText, Button, LoadingState } from "@/src/components/ui";
+import { AppText, Badge, Button, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { paymentsApi } from "@/src/services/subscriptionService";
 import { Payment } from "@/src/types/subscription";
@@ -17,13 +17,13 @@ type PaymentDetailSheetProps = {
   onClose: () => void;
 };
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({ label, value, strikeThrough = false }: { label: string; value: string; strikeThrough?: boolean }) {
   return (
     <View style={styles.row}>
-      <AppText variant="caption" color={colors.subtle}>
+      <AppText variant="caption" color={colors.subtle} style={styles.rowLabel}>
         {label}
       </AppText>
-      <AppText variant="bodyStrong">{value}</AppText>
+      <AppText variant="bodyStrong" style={[styles.rowValue, strikeThrough && styles.originalAmount]}>{value}</AppText>
     </View>
   );
 }
@@ -61,6 +61,10 @@ export function PaymentDetailSheet({ paymentId, summary, visible, onClose }: Pay
 
   if (!paymentId) return null;
   const current = payment ?? summary;
+  const hasDiscount = typeof payment?.amount === "number" && typeof payment.originalAmount === "number"
+    && payment.amount < payment.originalAmount;
+  const hasSale = Boolean(payment?.saleCampaignId || payment?.saleCampaignName || payment?.saleBadgeText || (payment?.bonusCredit ?? 0) > 0);
+  const hasCredit = typeof payment?.baseCredit === "number" || typeof payment?.grantedCredit === "number";
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -94,7 +98,22 @@ export function PaymentDetailSheet({ paymentId, summary, visible, onClose }: Pay
                 </AppText>
                 <PaymentStatusBadge payment={payment} />
               </View>
-              <DetailRow label="Số tiền" value={formatMoney(payment.amount, payment.currency)} />
+              {hasDiscount ? <DetailRow label="Giá gốc" value={formatMoney(payment.originalAmount, payment.currency)} strikeThrough /> : null}
+              {hasDiscount && (payment.discountAmount ?? 0) > 0 ? <DetailRow label="Giảm giá" value={formatMoney(payment.discountAmount, payment.currency)} /> : null}
+              <DetailRow label="Số tiền giao dịch" value={formatMoney(payment.amount, payment.currency)} />
+              {hasSale || hasCredit ? (
+                <View style={styles.saleSnapshot}>
+                  <AppText variant="bodyStrong" color={colors.teal}>{hasSale ? "Ưu đãi của giao dịch" : "Quyền lợi theo giao dịch"}</AppText>
+                  {hasSale ? <Badge tone="warning">{payment.saleBadgeText || "Ưu đãi"}</Badge> : null}
+                  {payment.saleCampaignName ? <AppText variant="bodyStrong">{payment.saleCampaignName}</AppText> : null}
+                  {typeof payment.baseCredit === "number" ? <DetailRow label="Lượt gốc" value={`${payment.baseCredit.toLocaleString("vi-VN")} lượt`} /> : null}
+                  {(payment.bonusCredit ?? 0) > 0 ? <DetailRow label="Lượt khuyến mãi" value={`+${payment.bonusCredit!.toLocaleString("vi-VN")} lượt`} /> : null}
+                  {typeof payment.grantedCredit === "number" ? <DetailRow label="Tổng lượt theo giao dịch" value={`${payment.grantedCredit.toLocaleString("vi-VN")} lượt`} /> : null}
+                  <AppText variant="caption" color={colors.muted}>
+                    Thông tin được lưu tại thời điểm tạo giao dịch. Số lượt được cộng khi thanh toán được xác nhận thành công.
+                  </AppText>
+                </View>
+              ) : null}
               <DetailRow label="Cổng thanh toán" value={payment.paymentProvider || payment.provider || "—"} />
               <DetailRow label="Mã giao dịch" value={payment.transactionReference || "—"} />
               <DetailRow label="Ngày tạo" value={formatDateTime(payment.createdAt)} />
@@ -156,11 +175,29 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
     paddingBottom: spacing.md,
+  },
+  rowLabel: {
+    flexShrink: 1,
+    maxWidth: "45%",
+  },
+  rowValue: {
+    flex: 1,
+    textAlign: "right",
+  },
+  originalAmount: {
+    textDecorationLine: "line-through",
+    color: colors.subtle,
+  },
+  saleSnapshot: {
+    gap: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.mint,
+    borderRadius: radius.md,
   },
   footer: {
     padding: spacing.lg,

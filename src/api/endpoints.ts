@@ -82,6 +82,7 @@ export const ENDPOINTS = {
   SUBSCRIPTION_PLANS: {
     BASE: SUBSCRIPTION_PLANS_BASE,
     ACTIVE: `${SUBSCRIPTION_PLANS_BASE}/active`,
+    OFFERS: `${SUBSCRIPTION_PLANS_BASE}/offers`,
     BY_ID: (id: string | number) => byId(SUBSCRIPTION_PLANS_BASE, id),
     STATUS: (id: string | number) => status(SUBSCRIPTION_PLANS_BASE, id),
   },

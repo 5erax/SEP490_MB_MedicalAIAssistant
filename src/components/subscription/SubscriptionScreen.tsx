@@ -11,10 +11,8 @@ import { useSubscription } from "@/src/hooks/useSubscription";
 import { useAuth } from "@/src/providers";
 import { hasPremiumAccess } from "@/src/utils/premium";
 import { ROUTES } from "@/src/navigation/routes";
-import { SubscriptionPlan } from "@/src/types/subscription";
+import { SubscriptionPlan, SubscriptionPlanOffer } from "@/src/types/subscription";
 import {
-  formatPrice,
-  getPlanBenefits,
   getPlanCycle,
   isActiveSubscription,
 } from "@/src/utils/subscriptionPlanPresentation";
@@ -39,9 +37,10 @@ const FAQS: [string, string][] = [
 export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?: boolean }) {
   const { session } = useAuth();
   const {
-    plans,
+    planOffers,
     plansLoading,
     plansError,
+    pricingChangeMessage,
     reloadPlans,
     subscriptions,
     subscriptionsLoading,
@@ -61,30 +60,35 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   const currentSubscriptionY = useRef(0);
+  const upgradeInFlight = useRef(false);
 
   const isPremium = hasPremiumAccess(session);
-  const paidPlans = useMemo(() => plans.filter((plan) => Number(plan.price) > 0), [plans]);
-  const availableCycles = useMemo(() => new Set(paidPlans.map(getPlanCycle)), [paidPlans]);
-  const selectedCycle = availableCycles.has(billingCycle) ? billingCycle : paidPlans[0] ? getPlanCycle(paidPlans[0]) : billingCycle;
-  const visiblePaidPlans = useMemo(
-    () => paidPlans.filter((plan) => getPlanCycle(plan) === selectedCycle),
-    [paidPlans, selectedCycle],
+  // A fully discounted paid plan is still a purchasable offer, not the free tier.
+  const paidOffers = useMemo(() => planOffers.filter((item) => item.originalPrice > 0), [planOffers]);
+  const availableCycles = useMemo(() => new Set(paidOffers.map((item) => getPlanCycle(item.plan))), [paidOffers]);
+  const selectedCycle = availableCycles.has(billingCycle) ? billingCycle : paidOffers[0] ? getPlanCycle(paidOffers[0].plan) : billingCycle;
+  const visiblePaidOffers = useMemo(
+    () => paidOffers.filter((item) => getPlanCycle(item.plan) === selectedCycle),
+    [paidOffers, selectedCycle],
   );
-  const freePlan = useMemo(() => plans.find((plan) => Number(plan.price) === 0), [plans]);
+  const freePlan = useMemo(() => planOffers.find((item) => item.originalPrice === 0)?.plan, [planOffers]);
   const activeSubscription = useMemo(() => subscriptions.find(isActiveSubscription) ?? null, [subscriptions]);
   const canManageSubscription = Boolean(session && (activeSubscription || isPremium));
   const paidPlanUnavailable = !plansLoading && Boolean(plansError);
 
-  async function handleUpgrade(plan: SubscriptionPlan) {
+  async function handleUpgrade(planOffer: SubscriptionPlanOffer) {
+    if (upgradeInFlight.current) return;
     if (!session) {
       router.push(ROUTES.PUBLIC.LOGIN);
       return;
     }
-    if (!plan.id) return;
-    setCheckoutPlanId(plan.id);
+    if (!planOffer.plan.id) return;
+    upgradeInFlight.current = true;
+    setCheckoutPlanId(planOffer.plan.id);
     try {
-      await startCheckout(plan.id, autoRenew);
+      await startCheckout(planOffer, autoRenew);
     } finally {
+      upgradeInFlight.current = false;
       setCheckoutPlanId("");
     }
   }
@@ -111,7 +115,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
   const checkoutBusy = ["creating", "pending"].includes(checkoutState.status);
   const upgradeLabel = (plan: SubscriptionPlan) =>
     checkoutState.status === "creating" && checkoutPlanId === plan.id
-      ? "Đang tạo thanh toán..."
+      ? "Đang kiểm tra và tạo thanh toán..."
       : checkoutState.status === "pending"
         ? "Có giao dịch đang chờ"
         : session
@@ -130,8 +134,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
         </AppText>
         <AppText variant="h1">Chọn gói phù hợp với cách bạn sử dụng MediMate</AppText>
         <AppText color={colors.muted}>
-          So sánh phần dùng ngay được và quyền lợi có hạn mức của gói đăng ký. Giá và thời hạn được lấy từ cấu hình đang
-          hoạt động.
+          Giá, ưu đãi và số lượt được cập nhật từ hệ thống. MediMate sẽ kiểm tra lại thông tin gói trước khi mở PayOS.
         </AppText>
       </View>
 
@@ -173,12 +176,19 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
         </View>
       ) : null}
 
+      {pricingChangeMessage ? (
+        <View style={styles.pricingNotice} accessibilityLiveRegion="polite">
+          <AppText variant="bodyStrong" color={colors.warning}>Bảng giá đã thay đổi</AppText>
+          <AppText color={colors.ink}>{pricingChangeMessage}</AppText>
+        </View>
+      ) : null}
+
       {plansLoading ? (
         <SkeletonGroup lines={5} />
       ) : (
         <View style={styles.plansGroup}>
           <FreePlanCard plan={freePlan} onExplore={() => router.replace(ROUTES.PATIENT.HOME)} />
-          {session && visiblePaidPlans.length > 0 && !isPremium && !activeSubscription ? (
+          {session && visiblePaidOffers.length > 0 && !isPremium && !activeSubscription ? (
             <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: autoRenew }} onPress={() => setAutoRenew((current) => !current)} style={styles.autoRenewRow}>
               <View style={[styles.checkbox, autoRenew && styles.checkboxChecked]} />
               <View style={styles.autoRenewText}>
@@ -189,18 +199,16 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
               </View>
             </Pressable>
           ) : null}
-          {visiblePaidPlans.map((plan) => (
+          {visiblePaidOffers.map((planOffer) => (
             <PaidPlanCard
-              key={plan.id}
-              plan={plan}
-              benefits={getPlanBenefits(plan.featureLimitJson, plan.quotas)}
-              priceLabel={Number(plan.price) > 0 ? formatPrice(Number(plan.price)) : "Không khả dụng"}
+              key={planOffer.plan.id}
+              planOffer={planOffer}
               loading={plansLoading}
               unavailable={paidPlanUnavailable}
-              actionLabel={upgradeLabel(plan)}
-              actionDisabled={checkoutBusy}
-              actionLoading={checkoutState.status === "creating" && checkoutPlanId === plan.id}
-              onAction={() => void handleUpgrade(plan)}
+              actionLabel={upgradeLabel(planOffer.plan)}
+              actionDisabled={checkoutBusy || plansLoading}
+              actionLoading={checkoutState.status === "creating" && checkoutPlanId === planOffer.plan.id}
+              onAction={() => void handleUpgrade(planOffer)}
             />
           ))}
           {canManageSubscription ? (
@@ -235,6 +243,8 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
                   ? "Đã hủy thanh toán"
                 : checkoutState.status === "error"
                   ? "Chưa thể hoàn tất thanh toán"
+                  : checkoutState.status === "creating"
+                    ? "Đang kiểm tra gói và tạo thanh toán"
                   : checkingPayment
                     ? "Đang xác minh với PayOS"
                     : "Đang chờ thanh toán"}
@@ -321,7 +331,7 @@ export function SubscriptionScreen({ showBackHeader = false }: { showBackHeader?
         </AppText>
       </View>
 
-      {!plansLoading && !plansError && paidPlans.length === 0 ? (
+      {!plansLoading && !plansError && paidOffers.length === 0 ? (
         <EmptyState title="Hiện chưa có gói trả phí khả dụng" description="Bạn vẫn có thể sử dụng các tiện ích công khai của MediMate." />
       ) : null}
     </Screen>
@@ -360,6 +370,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.dangerBg,
     padding: spacing.md,
+  },
+  pricingNotice: {
+    gap: spacing.xs,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningBg,
+    padding: spacing.lg,
   },
   plansGroup: {
     gap: spacing.lg,
