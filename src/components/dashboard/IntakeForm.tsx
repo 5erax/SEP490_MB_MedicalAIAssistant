@@ -11,12 +11,6 @@ type IntakeFormProps = {
   onSubmit: () => void;
 };
 
-const EXAMPLE_PROMPTS = [
-  "Đau họng, ho khan 2 ngày, hơi sốt về chiều",
-  "Đau bụng âm ỉ sau khi ăn, buồn nôn nhẹ",
-  "Đau đầu, chóng mặt khi đứng dậy",
-];
-
 export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFormProps) {
   const disabled = !input.trim() || loading;
 
@@ -55,27 +49,6 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
             editable={!loading}
             style={styles.input}
           />
-        </View>
-
-        <View style={styles.examplesPanel}>
-          <AppText variant="caption" color={colors.teal} style={styles.examplesTitle}>
-            Gợi ý nhanh
-          </AppText>
-          <View style={styles.examples}>
-            {EXAMPLE_PROMPTS.map((prompt) => (
-              <Pressable
-                key={prompt}
-                accessibilityRole="button"
-                disabled={loading}
-                onPress={() => onChangeInput(prompt)}
-                style={({ pressed }) => [styles.exampleChip, pressed && styles.pressed, loading && styles.disabled]}
-              >
-                <AppText variant="caption" color={colors.ink} numberOfLines={2}>
-                  {prompt}
-                </AppText>
-              </Pressable>
-            ))}
-          </View>
         </View>
 
         <View style={styles.cardFooter}>
@@ -191,29 +164,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0,
     textAlignVertical: "top",
-  },
-  examplesPanel: {
-    gap: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(17,20,18,0.06)",
-    paddingTop: spacing.sm,
-  },
-  examplesTitle: {
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
-  examples: {
-    gap: spacing.xs,
-  },
-  exampleChip: {
-    minHeight: 38,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.12)",
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
   },
   cardFooter: {
     flexDirection: "row",
