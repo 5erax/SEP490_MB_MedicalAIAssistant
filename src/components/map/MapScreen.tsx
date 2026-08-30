@@ -214,6 +214,9 @@ export function MapScreen() {
             ) : null}
           </View>
 
+        </View>
+
+        <View style={styles.departmentControlRow}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lọc theo chuyên khoa"
@@ -602,8 +605,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0,
   },
+  departmentControlRow: {
+    marginLeft: 56,
+    flexDirection: "row",
+    alignItems: "center",
+  },
   departmentMenuButton: {
-    maxWidth: 150,
+    minWidth: 178,
+    maxWidth: 220,
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
@@ -625,10 +634,11 @@ const styles = StyleSheet.create({
   },
   departmentMenuLabel: {
     flexShrink: 1,
-    maxWidth: 92,
+    maxWidth: 150,
   },
   departmentMenu: {
-    alignSelf: "flex-end",
+    alignSelf: "flex-start",
+    marginLeft: 56,
     width: 220,
     maxHeight: 252,
     overflow: "hidden",
