@@ -465,6 +465,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   zoomControls: {
+    display: "none",
     position: "absolute",
     top: spacing.md,
     right: spacing.md,
