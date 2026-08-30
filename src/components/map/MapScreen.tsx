@@ -35,6 +35,8 @@ export function MapScreen() {
   const { facilities, loading, apiNotice, reload } = useFacilities();
   const clinical = useClinicalRecommendation(params);
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
+  const recommendedDepartmentName =
+    clinical.isClinicalFlow && clinical.status === "ready" ? clinical.context?.recommendedDepartment?.departmentName ?? "" : "";
 
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebouncedValue(searchText, 400);
@@ -60,7 +62,8 @@ export function MapScreen() {
     return buildRecommendedFacilities(clinical.context.recommendedFacilities, facilities);
   }, [clinical.context, clinical.isClinicalFlow, clinical.status, facilities]);
 
-  const baseFacilities = clinical.isClinicalFlow ? recommendedFacilities : facilities;
+  const hasManualDepartmentFilter = Boolean(normalizeSearchText(departmentSearchText));
+  const baseFacilities = clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
@@ -109,6 +112,12 @@ export function MapScreen() {
     [filteredFacilities, userLocation],
   );
 
+  useEffect(() => {
+    if (!selectedFacility) return;
+    if (visibleFacilities.some((facility) => facility.facilityId === selectedFacility.facilityId)) return;
+    setSelectedFacility(visibleFacilities[0] ?? null);
+  }, [selectedFacility, visibleFacilities]);
+
   const availableTypes = useMemo(
     () => Array.from(new Set(facilities.map((facility) => facility.facilityTypeKey))),
     [facilities],
@@ -128,6 +137,7 @@ export function MapScreen() {
   }, [facilities]);
 
   const hasActiveFacilitiesWithoutMapData = facilities.length > 0 && facilities.every((facility) => !facility.hasValidCoordinates);
+  const activeDepartmentLabel = departmentSearchText || recommendedDepartmentName || "Tất cả các khoa";
 
   const openDetail = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
@@ -147,6 +157,7 @@ export function MapScreen() {
   }, []);
   const selectDepartment = useCallback((department: string) => {
     setDepartmentSearchText(department);
+    setSelectedFacility(null);
     setDepartmentMenuVisible(false);
   }, []);
 
@@ -223,7 +234,7 @@ export function MapScreen() {
           >
             <Stethoscope size={17} color={colors.teal} />
             <AppText variant="bodyStrong" color={colors.teal} numberOfLines={1} style={styles.departmentMenuLabel}>
-              {departmentSearchText || "Tất cả các khoa"}
+              {activeDepartmentLabel}
             </AppText>
             <ChevronDown size={17} color={colors.teal} />
           </Pressable>
@@ -290,7 +301,7 @@ export function MapScreen() {
           ) : null}
         </View>
 
-        {clinical.isClinicalFlow && clinical.status === "ready" ? (
+        {clinical.isClinicalFlow && clinical.status === "ready" && !hasManualDepartmentFilter ? (
           <View style={styles.clinicalContextChip}>
             <View style={styles.clinicalChipIcon}>
               <Stethoscope size={16} color={colors.teal} />
