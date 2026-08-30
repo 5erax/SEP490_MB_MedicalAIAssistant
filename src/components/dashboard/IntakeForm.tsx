@@ -43,7 +43,7 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
           <TextInput
             value={input}
             onChangeText={onChangeInput}
-            placeholder="Ví dụ: đau họng 2 ngày, ho nhiều về đêm, sốt nhẹ..."
+            placeholder="Nhập triệu chứng bạn đang gặp..."
             placeholderTextColor={colors.subtle}
             multiline
             editable={!loading}
