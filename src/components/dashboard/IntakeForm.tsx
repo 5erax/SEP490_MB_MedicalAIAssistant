@@ -24,19 +24,23 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
     <View style={styles.group}>
       <View style={styles.intakeCard}>
         <View style={styles.cardHeader}>
-          <View style={styles.headerIcon}>
-            <ClipboardList size={21} color={colors.teal} />
-          </View>
-          <View style={styles.headerText}>
-            <AppText variant="caption" color={colors.teal}>
-              Bắt đầu tư vấn
-            </AppText>
-            <AppText variant="bodyStrong">Mô tả triệu chứng càng cụ thể càng tốt</AppText>
+          <View style={styles.headerMain}>
+            <View style={styles.headerIcon}>
+              <ClipboardList size={20} color={colors.teal} />
+            </View>
+            <View style={styles.headerText}>
+              <AppText variant="caption" color={colors.teal}>
+                Bắt đầu tư vấn
+              </AppText>
+              <AppText variant="bodyStrong" style={styles.headerTitle}>
+                Mô tả triệu chứng của bạn
+              </AppText>
+            </View>
           </View>
           <View style={styles.aiBadge}>
             <Sparkles size={13} color={colors.teal} />
             <AppText variant="caption" color={colors.teal}>
-              AI
+              AI hỗ trợ
             </AppText>
           </View>
         </View>
@@ -53,20 +57,25 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
           />
         </View>
 
-        <View style={styles.examples}>
-          {EXAMPLE_PROMPTS.map((prompt) => (
-            <Pressable
-              key={prompt}
-              accessibilityRole="button"
-              disabled={loading}
-              onPress={() => onChangeInput(prompt)}
-              style={({ pressed }) => [styles.exampleChip, pressed && styles.pressed, loading && styles.disabled]}
-            >
-              <AppText variant="caption" color={colors.muted} numberOfLines={1}>
-                {prompt}
-              </AppText>
-            </Pressable>
-          ))}
+        <View style={styles.examplesPanel}>
+          <AppText variant="caption" color={colors.teal} style={styles.examplesTitle}>
+            Gợi ý nhanh
+          </AppText>
+          <View style={styles.examples}>
+            {EXAMPLE_PROMPTS.map((prompt) => (
+              <Pressable
+                key={prompt}
+                accessibilityRole="button"
+                disabled={loading}
+                onPress={() => onChangeInput(prompt)}
+                style={({ pressed }) => [styles.exampleChip, pressed && styles.pressed, loading && styles.disabled]}
+              >
+                <AppText variant="caption" color={colors.ink} numberOfLines={2}>
+                  {prompt}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={styles.cardFooter}>
@@ -82,7 +91,16 @@ export function IntakeForm({ input, onChangeInput, loading, onSubmit }: IntakeFo
             onPress={onSubmit}
             style={({ pressed }) => [styles.sendButton, disabled && styles.disabled, pressed && !disabled && styles.pressed]}
           >
-            {loading ? <ActivityIndicator color={colors.white} size="small" /> : <SendHorizontal size={18} color={colors.white} />}
+            {loading ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <>
+                <AppText variant="bodyStrong" color={colors.white}>
+                  Phân tích
+                </AppText>
+                <SendHorizontal size={17} color={colors.white} />
+              </>
+            )}
           </Pressable>
         </View>
       </View>
@@ -104,26 +122,34 @@ const styles = StyleSheet.create({
   },
   intakeCard: {
     width: "100%",
-    gap: spacing.md,
+    gap: spacing.sm,
     borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.16)",
-    borderRadius: radius.xl,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    borderColor: "rgba(8,127,140,0.12)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.paper,
     padding: spacing.md,
     shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 2,
   },
   cardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  headerMain: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
   },
   headerIcon: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.lg,
@@ -134,26 +160,29 @@ const styles = StyleSheet.create({
     minWidth: 0,
     gap: spacing.xs / 2,
   },
+  headerTitle: {
+    lineHeight: 21,
+  },
   aiBadge: {
-    minHeight: 30,
+    minHeight: 28,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     borderRadius: radius.pill,
     backgroundColor: colors.mint,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
   inputShell: {
-    minHeight: 118,
+    minHeight: 124,
     borderWidth: 1,
-    borderColor: "rgba(17,20,18,0.1)",
+    borderColor: "rgba(17,20,18,0.12)",
     borderRadius: radius.lg,
-    backgroundColor: colors.paperSoft,
+    backgroundColor: colors.white,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   input: {
-    minHeight: 96,
+    minHeight: 112,
     maxHeight: 150,
     color: colors.ink,
     paddingVertical: spacing.sm,
@@ -163,20 +192,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     textAlignVertical: "top",
   },
+  examplesPanel: {
+    gap: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(17,20,18,0.06)",
+    paddingTop: spacing.sm,
+  },
+  examplesTitle: {
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
   examples: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   exampleChip: {
-    maxWidth: "100%",
-    minHeight: 34,
+    minHeight: 38,
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.14)",
-    borderRadius: radius.pill,
-    backgroundColor: colors.paper,
-    paddingHorizontal: spacing.md,
+    borderColor: "rgba(8,127,140,0.12)",
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   cardFooter: {
     flexDirection: "row",
@@ -194,11 +231,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sendButton: {
-    width: 48,
-    height: 48,
+    minWidth: 118,
+    height: 46,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: spacing.xs,
     borderRadius: radius.pill,
     backgroundColor: colors.teal,
+    paddingHorizontal: spacing.md,
+    shadowColor: colors.teal,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 2,
   },
 });
