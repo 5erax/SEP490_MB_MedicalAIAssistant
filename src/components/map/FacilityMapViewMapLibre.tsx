@@ -58,7 +58,7 @@ export function FacilityMapViewMapLibre({
   onSelectFacility,
   onStatusChange,
   retryKey = 0,
-  zoomResetKey = 0,
+  zoomAction,
 }: FacilityMapViewProps) {
   const [status, setStatus] = useState<MapLoadStatus>("loading");
   const mapRef = useRef<MapRef>(null);
@@ -149,10 +149,18 @@ export function FacilityMapViewMapLibre({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, selectedFacility?.facilityId]);
 
+  const applyZoomAction = useCallback(async () => {
+    if (!zoomAction) return;
+    const currentZoom = await mapRef.current?.getZoom().catch(() => null);
+    const baseZoom = typeof currentZoom === "number" && Number.isFinite(currentZoom) ? currentZoom : 11;
+    const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, baseZoom + (zoomAction.direction === "in" ? 1 : -1)));
+    cameraRef.current?.zoomTo(nextZoom, { duration: 240, easing: "ease" });
+  }, [zoomAction]);
+
   useEffect(() => {
-    if (status !== "ready" || zoomResetKey === 0) return;
-    focusVisibleFacilities(520);
-  }, [focusVisibleFacilities, status, zoomResetKey]);
+    if (status !== "ready" || !zoomAction || zoomAction.id === 0) return;
+    void applyZoomAction();
+  }, [applyZoomAction, status, zoomAction]);
 
   const handleFacilitySourcePress = useCallback(
     async (event: { nativeEvent?: { features?: GeoJSON.Feature[] }; stopPropagation?: () => void }) => {

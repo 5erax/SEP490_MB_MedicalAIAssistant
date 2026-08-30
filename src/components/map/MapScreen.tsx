@@ -4,7 +4,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { ChevronDown, ListFilter, MapPin, Maximize2, Search, Stethoscope, X } from "lucide-react-native";
+import { ChevronDown, ListFilter, MapPin, Minus, Plus, Search, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -21,7 +21,7 @@ import { FacilityDetailSheet } from "./FacilityDetailSheet";
 import { FacilityFilters } from "./FacilityFilters";
 import { FacilityListItem } from "./FacilityListItem";
 import { FacilityMapView } from "./FacilityMapView";
-import type { MapLoadStatus } from "./FacilityMapView.types";
+import type { MapLoadStatus, MapZoomDirection, MapZoomAction } from "./FacilityMapView.types";
 
 type MapQueryParams = {
   source?: string;
@@ -47,7 +47,7 @@ export function MapScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [listVisible, setListVisible] = useState(false);
   const [, setMapStatus] = useState<MapLoadStatus>("loading");
-  const [zoomResetKey, setZoomResetKey] = useState(0);
+  const [zoomAction, setZoomAction] = useState<MapZoomAction>();
   const [refreshing, setRefreshing] = useState(false);
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
@@ -142,7 +142,9 @@ export function MapScreen() {
 
   const closeList = useCallback(() => setListVisible(false), []);
   const openList = useCallback(() => setListVisible(true), []);
-  const zoomToFacilities = useCallback(() => setZoomResetKey((current) => current + 1), []);
+  const zoomMap = useCallback((direction: MapZoomDirection) => {
+    setZoomAction((current) => ({ id: (current?.id ?? 0) + 1, direction }));
+  }, []);
   const selectDepartment = useCallback((department: string) => {
     setDepartmentSearchText(department);
     setDepartmentMenuVisible(false);
@@ -185,7 +187,7 @@ export function MapScreen() {
           userLocation={userLocation}
           onSelectFacility={openDetail}
           onStatusChange={setMapStatus}
-          zoomResetKey={zoomResetKey}
+          zoomAction={zoomAction}
         />
       </View>
 
@@ -334,9 +336,15 @@ export function MapScreen() {
         </View>
       </View>
 
-      <Pressable accessibilityRole="button" accessibilityLabel="Thu phóng bản đồ" onPress={zoomToFacilities} style={styles.mapZoomButton}>
-        <Maximize2 size={22} color={colors.teal} />
-      </Pressable>
+      <View style={styles.mapZoomControls}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Phóng to bản đồ" onPress={() => zoomMap("in")} style={styles.mapZoomButton}>
+          <Plus size={21} color={colors.teal} />
+        </Pressable>
+        <View style={styles.mapZoomDivider} />
+        <Pressable accessibilityRole="button" accessibilityLabel="Thu nhỏ bản đồ" onPress={() => zoomMap("out")} style={styles.mapZoomButton}>
+          <Minus size={21} color={colors.teal} />
+        </Pressable>
+      </View>
 
       {listVisible ? (
         <FacilityListSheet
@@ -743,23 +751,34 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     minWidth: 0,
   },
-  mapZoomButton: {
+  mapZoomControls: {
     position: "absolute",
     right: spacing.lg,
     bottom: spacing["4xl"] + spacing.lg,
-    width: 54,
-    height: 54,
+    width: 48,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(8,127,140,0.22)",
-    borderRadius: radius.pill,
+    borderRadius: radius.lg,
     backgroundColor: "rgba(255,255,255,0.96)",
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.12,
     shadowRadius: 22,
     elevation: 4,
+  },
+  mapZoomButton: {
+    width: 48,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapZoomDivider: {
+    width: 28,
+    height: 1,
+    backgroundColor: "rgba(8,127,140,0.18)",
   },
   countPill: {
     minWidth: 26,
