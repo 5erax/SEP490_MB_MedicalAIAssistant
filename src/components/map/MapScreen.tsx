@@ -2,9 +2,9 @@
 // layout: the map is the primary screen, and the facility list opens on demand
 // from a bottom sheet so Expo Go stays smooth.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { ListFilter, MapPin, Stethoscope, X } from "lucide-react-native";
+import { ListFilter, MapPin, Search, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -38,6 +38,8 @@ export function MapScreen() {
 
   const [searchText, setSearchText] = useState("");
   const debouncedSearch = useDebouncedValue(searchText, 400);
+  const [departmentSearchText, setDepartmentSearchText] = useState("");
+  const debouncedDepartmentSearch = useDebouncedValue(departmentSearchText, 300);
   const [selectedType, setSelectedType] = useState<FacilityTypeKey | "all">("all");
   const [selectedFacility, setSelectedFacility] = useState<NormalizedFacility | null>(null);
   const [detailFacility, setDetailFacility] = useState<NormalizedFacility | null>(null);
@@ -60,8 +62,16 @@ export function MapScreen() {
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
+    const normalizedDepartmentSearch = normalizeSearchText(debouncedDepartmentSearch);
 
     return baseFacilities.filter((facility) => {
+      if (normalizedDepartmentSearch) {
+        const matchDepartmentSearch = [...facility.departments, ...facility.departmentIds].some((field) =>
+          normalizeSearchText(field).includes(normalizedDepartmentSearch),
+        );
+        if (!matchDepartmentSearch) return false;
+      }
+
       const matchSearch =
         !normalizedSearch ||
         [
@@ -86,7 +96,7 @@ export function MapScreen() {
 
       return true;
     });
-  }, [baseFacilities, clinical.isClinicalFlow, debouncedSearch, params.departmentId, selectedType]);
+  }, [baseFacilities, clinical.isClinicalFlow, debouncedDepartmentSearch, debouncedSearch, params.departmentId, selectedType]);
 
   const visibleFacilities = useMemo(
     () =>
@@ -159,6 +169,36 @@ export function MapScreen() {
       </View>
 
       <View pointerEvents="box-none" style={styles.floatingActions}>
+        <View style={styles.mapSearchPanel}>
+          <View style={styles.departmentSearchRow}>
+            <Search size={17} color={colors.teal} />
+            <TextInput
+              accessibilityLabel="Tìm theo chuyên khoa"
+              value={departmentSearchText}
+              onChangeText={setDepartmentSearchText}
+              placeholder="Tìm theo chuyên khoa..."
+              placeholderTextColor={colors.subtle}
+              returnKeyType="search"
+              style={styles.departmentSearchInput}
+            />
+            {departmentSearchText ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Xóa tìm kiếm chuyên khoa"
+                onPress={() => setDepartmentSearchText("")}
+                style={styles.clearSearchButton}
+              >
+                <X size={15} color={colors.ink} />
+              </Pressable>
+            ) : null}
+          </View>
+          {departmentSearchText ? (
+            <AppText variant="caption" color={colors.subtle}>
+              {visibleFacilities.length} cơ sở phù hợp
+            </AppText>
+          ) : null}
+        </View>
+
         {clinical.isClinicalFlow && clinical.status === "ready" ? (
           <View style={styles.clinicalContextChip}>
             <View style={styles.clinicalChipIcon}>
@@ -175,6 +215,7 @@ export function MapScreen() {
           </View>
         ) : null}
 
+        <View style={styles.mapQuickActions}>
         <Button
           variant="secondary"
           size="sm"
@@ -188,7 +229,7 @@ export function MapScreen() {
           </View>
         </Button>
 
-        <Button fullWidth onPress={openList} style={styles.nearbyButton}>
+        <Button onPress={openList} style={styles.nearbyButton}>
           <View style={styles.nearbyInline}>
             <ListFilter size={17} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
@@ -201,6 +242,7 @@ export function MapScreen() {
             </View>
           </View>
         </Button>
+        </View>
       </View>
 
       {listVisible ? (
@@ -419,7 +461,51 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,
-    bottom: spacing["3xl"],
+    top: spacing.md,
+    gap: spacing.sm,
+  },
+  mapSearchPanel: {
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    padding: spacing.sm,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 2,
+  },
+  departmentSearchRow: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.paper,
+    paddingHorizontal: spacing.md,
+  },
+  departmentSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 0,
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0,
+  },
+  clearSearchButton: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.mint,
+  },
+  mapQuickActions: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   clinicalContextChip: {
@@ -450,22 +536,25 @@ const styles = StyleSheet.create({
     gap: spacing.xs / 2,
   },
   locateButton: {
-    alignSelf: "flex-start",
+    flexShrink: 0,
     backgroundColor: "rgba(255,255,255,0.94)",
   },
   nearbyButton: {
-    minHeight: 52,
+    flex: 1,
+    minHeight: 42,
   },
   inlineButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
+    minWidth: 0,
   },
   nearbyInline: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm,
+    minWidth: 0,
   },
   countPill: {
     minWidth: 26,
