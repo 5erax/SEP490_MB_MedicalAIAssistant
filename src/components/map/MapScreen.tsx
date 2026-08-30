@@ -2,9 +2,9 @@
 // layout: the map is the primary screen, and the facility list opens on demand
 // from a bottom sheet so Expo Go stays smooth.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
-import { ListFilter, MapPin, Search, Stethoscope, X } from "lucide-react-native";
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronDown, Home, ListFilter, MapPin, Search, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -13,6 +13,7 @@ import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
 import { useFacilities } from "@/src/hooks/useFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
 import { FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
+import { ROUTES } from "@/src/navigation/routes";
 import { buildRecommendedFacilities } from "@/src/utils/clinicalFacilityMerge";
 import { normalizeSearchText } from "@/src/utils/facilityNormalize";
 import { getFacilityDistanceKm } from "@/src/utils/facilityRanking";
@@ -32,6 +33,7 @@ type MapQueryParams = {
 
 export function MapScreen() {
   const params = useLocalSearchParams<MapQueryParams>();
+  const router = useRouter();
   const { facilities, loading, apiNotice, reload } = useFacilities();
   const clinical = useClinicalRecommendation(params);
   const { userLocation, locationStatus, requestUserLocation } = useUserLocation();
@@ -40,6 +42,7 @@ export function MapScreen() {
   const debouncedSearch = useDebouncedValue(searchText, 400);
   const [departmentSearchText, setDepartmentSearchText] = useState("");
   const debouncedDepartmentSearch = useDebouncedValue(departmentSearchText, 300);
+  const [departmentMenuVisible, setDepartmentMenuVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<FacilityTypeKey | "all">("all");
   const [selectedFacility, setSelectedFacility] = useState<NormalizedFacility | null>(null);
   const [detailFacility, setDetailFacility] = useState<NormalizedFacility | null>(null);
@@ -112,6 +115,19 @@ export function MapScreen() {
     [facilities],
   );
 
+  const departmentOptions = useMemo(() => {
+    const departments = new Map<string, string>();
+    facilities.forEach((facility) => {
+      facility.departments.forEach((department) => {
+        const normalized = normalizeSearchText(department);
+        if (normalized && !departments.has(normalized)) {
+          departments.set(normalized, department);
+        }
+      });
+    });
+    return Array.from(departments.values()).sort((first, second) => first.localeCompare(second, "vi"));
+  }, [facilities]);
+
   const hasActiveFacilitiesWithoutMapData = facilities.length > 0 && facilities.every((facility) => !facility.hasValidCoordinates);
 
   const openDetail = useCallback((facility: NormalizedFacility) => {
@@ -127,6 +143,11 @@ export function MapScreen() {
 
   const closeList = useCallback(() => setListVisible(false), []);
   const openList = useCallback(() => setListVisible(true), []);
+  const openHome = useCallback(() => router.replace(ROUTES.PATIENT.HOME), [router]);
+  const selectDepartment = useCallback((department: string) => {
+    setDepartmentSearchText(department);
+    setDepartmentMenuVisible(false);
+  }, []);
 
   useEffect(() => {
     if (clinical.isClinicalFlow || loading || autoOpenedRef.current || !params.facilityId) return;
@@ -169,6 +190,75 @@ export function MapScreen() {
       </View>
 
       <View pointerEvents="box-none" style={styles.floatingActions}>
+        <View style={styles.mapToolbar}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Về trang chủ" onPress={openHome} style={styles.homeButton}>
+            <Home size={19} color={colors.teal} />
+          </Pressable>
+
+          <View style={styles.mapSearchInputWrap}>
+            <Search size={18} color={colors.teal} />
+            <TextInput
+              accessibilityLabel="Tìm tên bệnh viện hoặc phòng khám"
+              value={searchText}
+              onChangeText={setSearchText}
+              onSubmitEditing={openList}
+              placeholder="Tìm tên bệnh viện, phòng"
+              placeholderTextColor={colors.subtle}
+              returnKeyType="search"
+              style={styles.mapSearchInput}
+            />
+            {searchText ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Xóa tìm kiếm" onPress={() => setSearchText("")} style={styles.clearSearchButton}>
+                <X size={14} color={colors.ink} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Lọc theo chuyên khoa"
+            onPress={() => setDepartmentMenuVisible((current) => !current)}
+            style={[styles.departmentMenuButton, departmentSearchText ? styles.departmentMenuButtonActive : null]}
+          >
+            <Stethoscope size={17} color={colors.teal} />
+            <AppText variant="bodyStrong" color={colors.teal} numberOfLines={1} style={styles.departmentMenuLabel}>
+              {departmentSearchText || "Tất cả các khoa"}
+            </AppText>
+            <ChevronDown size={17} color={colors.teal} />
+          </Pressable>
+        </View>
+
+        {departmentMenuVisible ? (
+          <View style={styles.departmentMenu}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.departmentMenuScroll}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => selectDepartment("")}
+                style={[styles.departmentOption, !departmentSearchText && styles.departmentOptionActive]}
+              >
+                <AppText variant="bodyStrong" color={!departmentSearchText ? colors.teal : colors.ink}>
+                  Tất cả các khoa
+                </AppText>
+              </Pressable>
+              {departmentOptions.map((department) => {
+                const selected = departmentSearchText === department;
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={department}
+                    onPress={() => selectDepartment(department)}
+                    style={[styles.departmentOption, selected && styles.departmentOptionActive]}
+                  >
+                    <AppText variant="bodyStrong" color={selected ? colors.teal : colors.ink} numberOfLines={1}>
+                      {department}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        ) : null}
+
         <View style={styles.mapSearchPanel}>
           <View style={styles.departmentSearchRow}>
             <Search size={17} color={colors.teal} />
@@ -459,12 +549,115 @@ const styles = StyleSheet.create({
   },
   floatingActions: {
     position: "absolute",
-    left: spacing.lg,
-    right: spacing.lg,
-    top: spacing.md,
+    left: spacing.sm,
+    right: spacing.sm,
+    top: spacing.sm,
     gap: spacing.sm,
   },
+  mapToolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  homeButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.22)",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  mapSearchInputWrap: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    paddingLeft: spacing.lg,
+    paddingRight: spacing.sm,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  mapSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 0,
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 0,
+  },
+  departmentMenuButton: {
+    maxWidth: 150,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    paddingHorizontal: spacing.sm,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  departmentMenuButtonActive: {
+    backgroundColor: colors.mint,
+  },
+  departmentMenuLabel: {
+    flexShrink: 1,
+    maxWidth: 92,
+  },
+  departmentMenu: {
+    alignSelf: "flex-end",
+    width: 220,
+    maxHeight: 252,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(255,255,255,0.98)",
+    paddingVertical: spacing.xs,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 3,
+  },
+  departmentMenuScroll: {
+    maxHeight: 240,
+  },
+  departmentOption: {
+    minHeight: 42,
+    justifyContent: "center",
+    borderRadius: radius.md,
+    marginHorizontal: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  departmentOptionActive: {
+    backgroundColor: colors.mint,
+  },
   mapSearchPanel: {
+    display: "none",
     gap: spacing.xs,
     borderWidth: 1,
     borderColor: "rgba(8,127,140,0.18)",
@@ -504,6 +697,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mint,
   },
   mapQuickActions: {
+    display: "none",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
