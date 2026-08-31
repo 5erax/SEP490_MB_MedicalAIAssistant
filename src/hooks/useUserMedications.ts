@@ -1,6 +1,6 @@
 // Ported from the state/handlers in Web's UserMedicationsPage.jsx
 // (load, buildPayload, validateForm, addReminderTime, submit, remove).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { userMedicationsApi } from "@/src/services/userMedicationService";
 import { PaginatedResult } from "@/src/types/api";
@@ -26,26 +26,10 @@ const EMPTY_PAGE: PaginatedResult<UserMedication> = {
 };
 
 function normalizeMedicationPage(
-  response: { data?: PaginatedResult<UserMedication> | UserMedication[] } | null | undefined,
+  response: { data?: PaginatedResult<UserMedication> } | null | undefined,
   requestedPage: number,
 ): PaginatedResult<UserMedication> {
   const data = response?.data;
-
-  if (Array.isArray(data)) {
-    const totalCount = data.length;
-    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    const pageNumber = Math.min(Math.max(1, requestedPage), Math.max(1, totalPages));
-    const start = (pageNumber - 1) * PAGE_SIZE;
-
-    return {
-      items: data.slice(start, start + PAGE_SIZE),
-      pageNumber,
-      pageSize: PAGE_SIZE,
-      totalCount,
-      totalPages,
-    };
-  }
-
   const items = Array.isArray(data?.items) ? data.items : [];
   const pageSize = Math.max(1, Number(data?.pageSize) || PAGE_SIZE);
   const totalCount = Math.max(0, Number(data?.totalCount) || items.length);
@@ -73,29 +57,53 @@ export function useUserMedications() {
   const [formErrors, setFormErrors] = useState<MedicationFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const pageRequestId = useRef(0);
 
-  const load = useCallback(async (targetPage = pageNumber, isRefresh = false) => {
+  const applyPage = useCallback((page: PaginatedResult<UserMedication>) => {
+    setPageInfo(page);
+    setMedications(page.items);
+    setPageNumber(page.pageNumber);
+  }, []);
+
+  const fetchPage = useCallback(async (targetPage: number) => {
+    const response = await userMedicationsApi.getPaged(targetPage, PAGE_SIZE);
+    return normalizeMedicationPage(response, targetPage);
+  }, []);
+
+  const load = useCallback(async (targetPage = 1, isRefresh = false) => {
+    const requestId = ++pageRequestId.current;
+    const isCurrentRequest = () => requestId === pageRequestId.current;
+
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setListError("");
+
     try {
-      const response = await userMedicationsApi.list(targetPage, PAGE_SIZE);
-      const page = normalizeMedicationPage(response, targetPage);
-      setPageInfo(page);
-      setMedications(page.items);
+      let page = await fetchPage(targetPage);
+
+      if (page.items.length === 0 && page.totalCount > 0 && targetPage > 1 && page.totalPages < targetPage) {
+        page = await fetchPage(Math.max(page.totalPages, 1));
+      }
+
+      if (!isCurrentRequest()) return null;
+      applyPage(page);
+      return page;
     } catch (error) {
-      setPageInfo((current) => ({ ...current, items: [] }));
-      setMedications([]);
-      setListError(getMedicationErrorMessage(error, "Chưa thể tải danh sách thuốc. Vui lòng thử lại sau."));
+      if (isCurrentRequest()) {
+        setListError(getMedicationErrorMessage(error, "Không thể tải danh sách thuốc. Vui lòng thử lại sau."));
+      }
+      return null;
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isCurrentRequest()) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [pageNumber]);
+  }, [applyPage, fetchPage]);
 
   useEffect(() => {
-    load(pageNumber);
-  }, [load, pageNumber]);
+    void load(1);
+  }, [load]);
 
   function openCreateForm() {
     setEditingId(null);
@@ -148,15 +156,14 @@ export function useUserMedications() {
     setSubmitting(true);
     try {
       const payload = buildMedicationPayload(form);
-      const nextPage = editingId ? pageNumber : 1;
       if (editingId) {
         await userMedicationsApi.update(editingId, payload);
       } else {
         await userMedicationsApi.create(payload);
-        setPageNumber(1);
       }
+
       closeForm();
-      await load(nextPage);
+      await load(editingId ? pageNumber : 1);
       return "success" as const;
     } catch (error) {
       setFormErrors({ medicineName: getMedicationErrorMessage(error, "Không thể lưu thông tin thuốc. Vui lòng thử lại.") });
@@ -170,11 +177,7 @@ export function useUserMedications() {
     setRemovingId(id);
     try {
       await userMedicationsApi.remove(id);
-      if (medications.length === 1 && pageNumber > 1) {
-        setPageNumber((current) => Math.max(1, current - 1));
-      } else {
-        await load(pageNumber);
-      }
+      await load(pageNumber);
       return "success" as const;
     } catch (error) {
       setListError(getMedicationErrorMessage(error, "Không thể xoá thuốc này. Vui lòng thử lại."));
@@ -184,11 +187,18 @@ export function useUserMedications() {
     }
   }
 
+  function changePage(targetPage: number) {
+    const lastPage = Math.max(1, pageInfo.totalPages || 1);
+    const nextPage = Math.min(Math.max(1, targetPage), lastPage);
+    if (loading || refreshing || nextPage === pageNumber) return;
+    void load(nextPage);
+  }
+
   return {
     medications,
     pageInfo,
     pageNumber,
-    setPageNumber,
+    changePage,
     loading,
     refreshing,
     listError,

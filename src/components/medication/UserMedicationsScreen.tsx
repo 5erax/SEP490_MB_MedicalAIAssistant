@@ -122,7 +122,7 @@ function MedicationHeader({
         <View style={styles.heroSummary}>
           <View style={styles.summaryMain}>
             <AppText variant="caption" color="rgba(255,255,255,0.74)">
-              Lần nhắc tiếp theo
+              Lần nhắc trong trang
             </AppText>
             <AppText variant="h3" color={colors.white} numberOfLines={1}>
               {nextReminder ? nextReminder.medication.medicineName : "Chưa có lịch nhắc"}
@@ -151,7 +151,7 @@ function MedicationHeader({
               {currentActiveCount}
             </AppText>
             <AppText variant="caption" color={colors.muted}>
-              Đang nhắc
+              Đang nhắc/trang
             </AppText>
           </View>
           <View style={styles.heroDivider} />
@@ -160,7 +160,7 @@ function MedicationHeader({
               {reminderCount}
             </AppText>
             <AppText variant="caption" color={colors.muted}>
-              Mốc giờ
+              Mốc giờ/trang
             </AppText>
           </View>
         </View>
@@ -383,7 +383,7 @@ export function UserMedicationsScreen() {
     medications,
     pageInfo,
     pageNumber,
-    setPageNumber,
+    changePage,
     loading,
     refreshing,
     listError,
@@ -478,7 +478,7 @@ export function UserMedicationsScreen() {
               totalCount={pageInfo.totalCount}
               pageSize={pageInfo.pageSize}
               loading={loading}
-              onChange={setPageNumber}
+              onChange={changePage}
             />
           }
           contentContainerStyle={styles.content}

@@ -114,6 +114,7 @@ export const ENDPOINTS = {
   },
   USER_MEDICATIONS: {
     BASE: USER_MEDICATIONS_BASE,
+    PAGED: `${USER_MEDICATIONS_BASE}/paged`,
     BY_ID: (id: string | number) => byId(USER_MEDICATIONS_BASE, id),
     REMINDERS: (id: string | number) => `${byId(USER_MEDICATIONS_BASE, id)}/reminders`,
   },

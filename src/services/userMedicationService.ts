@@ -6,11 +6,14 @@ import { UserMedication, UserMedicationPayload } from "@/src/types/medication";
 import { withPagination } from "@/src/utils/pagination";
 
 export const userMedicationsApi = {
-  list(pageNumber = 1, pageSize = 5) {
-    return apiRequest<PaginatedResult<UserMedication> | UserMedication[]>(
-      `${ENDPOINTS.USER_MEDICATIONS.BASE}?${withPagination(pageNumber, pageSize)}`,
-      { requiresAuth: true },
-    );
+  list() {
+    return apiRequest<UserMedication[]>(ENDPOINTS.USER_MEDICATIONS.BASE, { requiresAuth: true });
+  },
+
+  getPaged(pageNumber = 1, pageSize = 5) {
+    return apiRequest<PaginatedResult<UserMedication>>(`${ENDPOINTS.USER_MEDICATIONS.PAGED}?${withPagination(pageNumber, pageSize)}`, {
+      requiresAuth: true,
+    });
   },
 
   create(payload: UserMedicationPayload) {
