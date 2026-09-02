@@ -20,6 +20,11 @@ export function routeForPushNotification(data: PushNotificationData) {
         pathname: ROUTES.PATIENT.PRE_CONSULTATION,
         params: undefined,
       };
+    case "SaleCampaignAnnouncement":
+      return {
+        pathname: ROUTES.PATIENT.PRICING,
+        params: undefined,
+      };
     default:
       return null;
   }
