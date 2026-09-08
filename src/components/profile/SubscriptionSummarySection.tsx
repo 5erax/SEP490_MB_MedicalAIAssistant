@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowUpRight, CalendarClock, CreditCard, Gauge, Sparkles } from "lucide-react-native";
+import { CalendarClock, CreditCard, Gauge, Sparkles } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -37,14 +37,6 @@ function formatCount(value: unknown) {
   return count.toLocaleString("vi-VN");
 }
 
-function getUsagePercent(item: SubscriptionUsageQuota) {
-  const limit = Number(item.limitValue ?? item.grantedCount);
-  const used = Number(item.usedCount) || 0;
-  const reserved = Number(item.reservedCount) || 0;
-  if (!Number.isFinite(limit) || limit <= 0) return 0;
-  return Math.min(100, Math.max(0, ((used + reserved) / limit) * 100));
-}
-
 function getUsageSummary(usageList: SubscriptionUsageQuota[]) {
   return usageList.reduce(
     (summary, item) => {
@@ -58,14 +50,6 @@ function getUsageSummary(usageList: SubscriptionUsageQuota[]) {
     },
     { limit: 0, remaining: 0, used: 0, reserved: 0 },
   );
-}
-
-function getQuotaDisplayName(item: SubscriptionUsageQuota, index: number) {
-  const name = String(item.quotaName || "").trim();
-  if (!name || name.toLowerCase() === "hạn mức sử dụng") {
-    return index === 0 ? "Tổng lượt MediMate" : `Quyền lợi ${index + 1}`;
-  }
-  return name;
 }
 
 export function SubscriptionSummarySection({
@@ -138,15 +122,6 @@ export function SubscriptionSummarySection({
         )}
       </View>
 
-      <Button
-        fullWidth
-        onPress={() => router.push(ROUTES.PUBLIC.PRICING)}
-        leftIcon={<Sparkles size={16} color={colors.white} />}
-        rightIcon={<ArrowUpRight size={16} color={colors.white} />}
-      >
-        Nâng cấp MediMate+
-      </Button>
-
       {usageList.length > 0 ? (
         <View style={styles.usagePanel}>
           <View style={styles.usageHeader}>
@@ -189,40 +164,16 @@ export function SubscriptionSummarySection({
           <View style={styles.progressTrackLarge}>
             <View style={[styles.progressFill, { width: `${summaryPercent}%` }]} />
           </View>
-
-          {usageList.map((item, index) => (
-            <View key={item.quotaCode ?? item.code ?? index} style={styles.usageCard}>
-              <View style={styles.usageTopRow}>
-                <View style={styles.usageTitleWrap}>
-                  <AppText variant="bodyStrong" numberOfLines={2}>
-                    {getQuotaDisplayName(item, index)}
-                  </AppText>
-                  <AppText variant="caption" color={colors.subtle}>
-                    Đã dùng {formatCount(item.usedCount)}
-                    {Number(item.reservedCount) > 0 ? ` · đang giữ ${formatCount(item.reservedCount)}` : ""}
-                  </AppText>
-                </View>
-                <View style={styles.remainingPill}>
-                  <AppText variant="caption" color={colors.teal}>
-                    Còn lại
-                  </AppText>
-                  <AppText variant="bodyStrong" color={colors.teal}>
-                    {formatCount(item.remainingCount)}/{formatCount(item.limitValue ?? item.grantedCount)}
-                  </AppText>
-                </View>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${getUsagePercent(item)}%` }]} />
-              </View>
-              {item.cycleEnd ? (
-                <AppText variant="caption" color={colors.muted}>
-                  Làm mới vào {formatDateTime(item.cycleEnd)}
-                </AppText>
-              ) : null}
-            </View>
-          ))}
         </View>
       ) : null}
+
+      <Button
+        fullWidth
+        onPress={() => router.push(ROUTES.PUBLIC.PRICING)}
+        leftIcon={<Sparkles size={16} color={colors.white} />}
+      >
+        Nâng cấp MediMate+
+      </Button>
     </Card>
   );
 }
@@ -320,38 +271,6 @@ const styles = StyleSheet.create({
   },
   progressTrackLarge: {
     height: 10,
-    overflow: "hidden",
-    borderRadius: radius.pill,
-    backgroundColor: colors.paperSoft,
-  },
-  usageCard: {
-    gap: spacing.sm,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: "rgba(221,228,213,0.78)",
-    backgroundColor: colors.paperSoft,
-    padding: spacing.md,
-  },
-  usageTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  usageTitleWrap: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  remainingPill: {
-    alignItems: "flex-end",
-    gap: spacing.xs / 2,
-    borderRadius: radius.md,
-    backgroundColor: colors.mint,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  progressTrack: {
-    height: 7,
     overflow: "hidden",
     borderRadius: radius.pill,
     backgroundColor: colors.paperSoft,
