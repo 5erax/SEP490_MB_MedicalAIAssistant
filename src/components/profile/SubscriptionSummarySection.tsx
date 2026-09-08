@@ -89,20 +89,20 @@ export function SubscriptionSummarySection({
   return (
     <Card variant="soft" style={styles.card}>
       <View style={styles.headerBlock}>
-        <View style={styles.headerMetaRow}>
-          <View style={styles.headerMetaLeft}>
+        <View style={styles.packageHeader}>
+          <View style={styles.packageTitleRow}>
             <View style={styles.iconMark}>
-              <CreditCard size={17} color={colors.teal} />
+              <CreditCard size={18} color={colors.teal} />
             </View>
-            <AppText variant="caption" color={colors.teal}>
-              Gói hiện tại
-            </AppText>
+            <View style={styles.packageHeaderCopy}>
+              <AppText variant="h3">Gói hiện tại</AppText>
+              <AppText variant="caption" color={colors.subtle}>
+                Quyền lợi MediMate
+              </AppText>
+            </View>
           </View>
           <Badge tone={active ? "success" : "neutral"}>{statusLabel}</Badge>
         </View>
-        <AppText variant="h3" numberOfLines={1} style={styles.headerTitleText}>
-          Quyền lợi MediMate
-        </AppText>
       </View>
 
       <View style={styles.planPanel}>
@@ -184,17 +184,21 @@ const styles = StyleSheet.create({
   headerBlock: {
     gap: spacing.sm,
   },
-  headerMetaRow: {
+  packageHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: spacing.md,
+    gap: spacing.sm,
   },
-  headerMetaLeft: {
+  packageTitleRow: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+  },
+  packageHeaderCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
   },
   iconMark: {
     width: 36,
@@ -203,10 +207,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 10,
     backgroundColor: colors.mint,
-  },
-  headerTitleText: {
-    fontSize: 20,
-    lineHeight: 25,
   },
   planPanel: {
     gap: spacing.md,
