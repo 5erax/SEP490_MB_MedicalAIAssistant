@@ -106,14 +106,9 @@ export function SubscriptionSummarySection({
       </View>
 
       <View style={styles.planPanel}>
-        <View style={styles.planContent}>
-          <AppText variant="caption" color="rgba(255,255,255,0.78)">
-            Gói đang sử dụng
-          </AppText>
-          <AppText variant="h2" color={colors.white} numberOfLines={2} style={styles.planName}>
-            {planName}
-          </AppText>
-        </View>
+        <AppText variant="h2" color={colors.white} numberOfLines={2} style={styles.planName}>
+          {planName}
+        </AppText>
         {subscription?.endDate ? (
           <View style={styles.dateRow}>
             <CalendarClock size={15} color="rgba(255,255,255,0.82)" />
@@ -219,9 +214,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.xl,
-  },
-  planContent: {
-    gap: spacing.xs,
   },
   planName: {
     fontSize: 24,
