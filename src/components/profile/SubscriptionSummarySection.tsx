@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ArrowUpRight, CalendarClock, CreditCard, Sparkles, WalletCards } from "lucide-react-native";
+import { ArrowUpRight, CalendarClock, CreditCard, Gauge, Sparkles } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -45,6 +45,29 @@ function getUsagePercent(item: SubscriptionUsageQuota) {
   return Math.min(100, Math.max(0, ((used + reserved) / limit) * 100));
 }
 
+function getUsageSummary(usageList: SubscriptionUsageQuota[]) {
+  return usageList.reduce(
+    (summary, item) => {
+      const limit = Number(item.limitValue ?? item.grantedCount);
+      const remaining = Number(item.remainingCount);
+      summary.used += Number(item.usedCount) || 0;
+      summary.reserved += Number(item.reservedCount) || 0;
+      if (Number.isFinite(limit)) summary.limit += limit;
+      if (Number.isFinite(remaining)) summary.remaining += remaining;
+      return summary;
+    },
+    { limit: 0, remaining: 0, used: 0, reserved: 0 },
+  );
+}
+
+function getQuotaDisplayName(item: SubscriptionUsageQuota, index: number) {
+  const name = String(item.quotaName || "").trim();
+  if (!name || name.toLowerCase() === "hạn mức sử dụng") {
+    return index === 0 ? "Tổng lượt MediMate" : `Quyền lợi ${index + 1}`;
+  }
+  return name;
+}
+
 export function SubscriptionSummarySection({
   state,
   subscription,
@@ -74,6 +97,10 @@ export function SubscriptionSummarySection({
   const active = isActiveSubscription(subscription);
   const statusLabel = formatSubscriptionStatus(subscription?.statusName);
   const planName = formatPlanName(subscription?.planName);
+  const usageSummary = getUsageSummary(usageList);
+  const summaryPercent = usageSummary.limit > 0
+    ? Math.min(100, Math.max(0, ((usageSummary.used + usageSummary.reserved) / usageSummary.limit) * 100))
+    : 0;
 
   return (
     <Card variant="soft" style={styles.card}>
@@ -93,11 +120,8 @@ export function SubscriptionSummarySection({
       </View>
 
       <View style={styles.planPanel}>
-        <View style={styles.planTopRow}>
-          <View style={styles.planIcon}>
-            <WalletCards size={20} color={colors.white} />
-          </View>
-          <Badge tone={active ? "success" : "neutral"}>{active ? "Đang dùng" : statusLabel}</Badge>
+        <View style={styles.planIcon}>
+          <CreditCard size={20} color={colors.white} />
         </View>
         <AppText variant="h2" color={colors.white} numberOfLines={2}>
           {planName}
@@ -124,22 +148,54 @@ export function SubscriptionSummarySection({
       </Button>
 
       {usageList.length > 0 ? (
-        <View style={styles.usageGroup}>
+        <View style={styles.usagePanel}>
           <View style={styles.usageHeader}>
-            <View>
-              <AppText variant="bodyStrong">Hạn mức sử dụng</AppText>
+            <View style={styles.usageHeaderIcon}>
+              <Gauge size={18} color={colors.teal} />
+            </View>
+            <View style={styles.usageHeaderCopy}>
+              <AppText variant="h3">Hạn mức sử dụng</AppText>
               <AppText variant="caption" color={colors.subtle}>
-                Theo dõi số lượt còn lại trong chu kỳ hiện tại
+                Số lượt còn lại trong chu kỳ hiện tại
               </AppText>
             </View>
-            <Badge tone="info">{usageList.length} quyền lợi</Badge>
           </View>
-          {usageList.map((item) => (
-            <View key={item.quotaCode} style={styles.usageCard}>
+
+          <View style={styles.usageSummaryCard}>
+            <View style={styles.usageMetricPrimary}>
+              <AppText variant="caption" color={colors.teal}>
+                Còn lại
+              </AppText>
+              <AppText variant="h2" color={colors.teal}>
+                {formatCount(usageSummary.remaining)}/{formatCount(usageSummary.limit)}
+              </AppText>
+            </View>
+            <View style={styles.usageMetric}>
+              <AppText variant="caption" color={colors.subtle}>
+                Đã dùng
+              </AppText>
+              <AppText variant="bodyStrong">{formatCount(usageSummary.used)}</AppText>
+            </View>
+            {usageSummary.reserved > 0 ? (
+              <View style={styles.usageMetric}>
+                <AppText variant="caption" color={colors.subtle}>
+                  Đang giữ
+                </AppText>
+                <AppText variant="bodyStrong">{formatCount(usageSummary.reserved)}</AppText>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.progressTrackLarge}>
+            <View style={[styles.progressFill, { width: `${summaryPercent}%` }]} />
+          </View>
+
+          {usageList.map((item, index) => (
+            <View key={item.quotaCode ?? item.code ?? index} style={styles.usageCard}>
               <View style={styles.usageTopRow}>
                 <View style={styles.usageTitleWrap}>
                   <AppText variant="bodyStrong" numberOfLines={2}>
-                    {item.quotaName || "Hạn mức sử dụng"}
+                    {getQuotaDisplayName(item, index)}
                   </AppText>
                   <AppText variant="caption" color={colors.subtle}>
                     Đã dùng {formatCount(item.usedCount)}
@@ -205,12 +261,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
     padding: spacing.lg,
   },
-  planTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
   planIcon: {
     width: 40,
     height: 40,
@@ -224,21 +274,62 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
   },
-  usageGroup: {
-    gap: spacing.sm,
-  },
-  usageHeader: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  usageCard: {
+  usagePanel: {
     gap: spacing.sm,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  usageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  usageHeaderIcon: {
+    width: 38,
+    height: 38,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+  },
+  usageHeaderCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
+  },
+  usageSummaryCard: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: spacing.sm,
+  },
+  usageMetricPrimary: {
+    flex: 1.35,
+    gap: spacing.xs / 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.mint,
+    padding: spacing.md,
+  },
+  usageMetric: {
+    flex: 1,
+    gap: spacing.xs / 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
+    padding: spacing.md,
+  },
+  progressTrackLarge: {
+    height: 10,
+    overflow: "hidden",
+    borderRadius: radius.pill,
+    backgroundColor: colors.paperSoft,
+  },
+  usageCard: {
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(221,228,213,0.78)",
+    backgroundColor: colors.paperSoft,
     padding: spacing.md,
   },
   usageTopRow: {
