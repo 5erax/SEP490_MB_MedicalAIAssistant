@@ -88,28 +88,32 @@ export function SubscriptionSummarySection({
 
   return (
     <Card variant="soft" style={styles.card}>
-      <View style={styles.headerRow}>
-        <View style={styles.headerTitle}>
-          <View style={styles.iconMark}>
-            <CreditCard size={18} color={colors.teal} />
-          </View>
-          <View style={styles.titleCopy}>
+      <View style={styles.headerBlock}>
+        <View style={styles.headerMetaRow}>
+          <View style={styles.headerMetaLeft}>
+            <View style={styles.iconMark}>
+              <CreditCard size={17} color={colors.teal} />
+            </View>
             <AppText variant="caption" color={colors.teal}>
               Gói hiện tại
             </AppText>
-            <AppText variant="h3">Quyền lợi MediMate</AppText>
           </View>
+          <Badge tone={active ? "success" : "neutral"}>{statusLabel}</Badge>
         </View>
-        <Badge tone={active ? "success" : "neutral"}>{statusLabel}</Badge>
+        <AppText variant="h3" numberOfLines={1} style={styles.headerTitleText}>
+          Quyền lợi MediMate
+        </AppText>
       </View>
 
       <View style={styles.planPanel}>
-        <View style={styles.planIcon}>
-          <CreditCard size={20} color={colors.white} />
+        <View style={styles.planContent}>
+          <AppText variant="caption" color="rgba(255,255,255,0.78)">
+            Gói đang sử dụng
+          </AppText>
+          <AppText variant="h2" color={colors.white} numberOfLines={2} style={styles.planName}>
+            {planName}
+          </AppText>
         </View>
-        <AppText variant="h2" color={colors.white} numberOfLines={2}>
-          {planName}
-        </AppText>
         {subscription?.endDate ? (
           <View style={styles.dateRow}>
             <CalendarClock size={15} color="rgba(255,255,255,0.82)" />
@@ -125,7 +129,7 @@ export function SubscriptionSummarySection({
       {usageList.length > 0 ? (
         <View style={styles.usagePanel}>
           <View style={styles.usageHeader}>
-            <View style={styles.usageHeaderIcon}>
+            <View style={styles.iconMark}>
               <Gauge size={18} color={colors.teal} />
             </View>
             <View style={styles.usageHeaderCopy}>
@@ -182,17 +186,20 @@ const styles = StyleSheet.create({
   card: {
     gap: spacing.md,
   },
-  headerRow: {
+  headerBlock: {
+    gap: spacing.sm,
+  },
+  headerMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: spacing.md,
   },
-  headerTitle: {
+  headerMetaLeft: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    paddingRight: spacing.sm,
   },
   iconMark: {
     width: 36,
@@ -202,23 +209,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.mint,
   },
-  titleCopy: {
-    flex: 1,
-    gap: spacing.xs / 2,
+  headerTitleText: {
+    fontSize: 20,
+    lineHeight: 25,
   },
   planPanel: {
-    gap: spacing.sm,
+    gap: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: colors.teal,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xl,
   },
-  planIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.14)",
+  planContent: {
+    gap: spacing.xs,
+  },
+  planName: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   dateRow: {
     flexDirection: "row",
@@ -237,14 +244,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-  },
-  usageHeaderIcon: {
-    width: 38,
-    height: 38,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.md,
-    backgroundColor: colors.mint,
   },
   usageHeaderCopy: {
     flex: 1,
