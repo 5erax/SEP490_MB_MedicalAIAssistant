@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { CreditCard, Sparkles } from "lucide-react-native";
+import { ArrowUpRight, CalendarClock, CreditCard, Sparkles, WalletCards } from "lucide-react-native";
 
 import { AppText, Badge, Button, Card, LoadingState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -31,6 +31,20 @@ function formatSubscriptionStatus(statusName: unknown) {
   return SUBSCRIPTION_STATUS_LABELS[normalized.toLowerCase()] ?? normalized;
 }
 
+function formatCount(value: unknown) {
+  const count = Number(value);
+  if (!Number.isFinite(count)) return "—";
+  return count.toLocaleString("vi-VN");
+}
+
+function getUsagePercent(item: SubscriptionUsageQuota) {
+  const limit = Number(item.limitValue ?? item.grantedCount);
+  const used = Number(item.usedCount) || 0;
+  const reserved = Number(item.reservedCount) || 0;
+  if (!Number.isFinite(limit) || limit <= 0) return 0;
+  return Math.min(100, Math.max(0, ((used + reserved) / limit) * 100));
+}
+
 export function SubscriptionSummarySection({
   state,
   subscription,
@@ -58,6 +72,8 @@ export function SubscriptionSummarySection({
   }
 
   const active = isActiveSubscription(subscription);
+  const statusLabel = formatSubscriptionStatus(subscription?.statusName);
+  const planName = formatPlanName(subscription?.planName);
 
   return (
     <Card variant="soft" style={styles.card}>
@@ -66,44 +82,87 @@ export function SubscriptionSummarySection({
           <View style={styles.iconMark}>
             <CreditCard size={18} color={colors.teal} />
           </View>
-          <AppText variant="h3">Gói dịch vụ</AppText>
+          <View style={styles.titleCopy}>
+            <AppText variant="caption" color={colors.teal}>
+              Gói hiện tại
+            </AppText>
+            <AppText variant="h3">Quyền lợi MediMate</AppText>
+          </View>
         </View>
-        <Badge tone={active ? "success" : "neutral"}>{formatSubscriptionStatus(subscription?.statusName)}</Badge>
+        <Badge tone={active ? "success" : "neutral"}>{statusLabel}</Badge>
       </View>
 
-      <AppText variant="h2">{formatPlanName(subscription?.planName)}</AppText>
-
-      {subscription?.endDate ? (
-        <AppText color={colors.muted}>Hiệu lực đến {formatDateTime(subscription.endDate)}</AppText>
-      ) : (
-        <AppText color={colors.muted}>Bạn đang dùng các quyền lợi miễn phí của MediMate AI.</AppText>
-      )}
-
-      <Button onPress={() => router.push(ROUTES.PUBLIC.PRICING)}>
-        <View style={styles.upgradeInline}>
-          <Sparkles size={16} color={colors.ink} />
-          <AppText variant="bodyStrong">Nâng cấp MediMate+</AppText>
+      <View style={styles.planPanel}>
+        <View style={styles.planTopRow}>
+          <View style={styles.planIcon}>
+            <WalletCards size={20} color={colors.white} />
+          </View>
+          <Badge tone={active ? "success" : "neutral"}>{active ? "Đang dùng" : statusLabel}</Badge>
         </View>
+        <AppText variant="h2" color={colors.white} numberOfLines={2}>
+          {planName}
+        </AppText>
+        {subscription?.endDate ? (
+          <View style={styles.dateRow}>
+            <CalendarClock size={15} color="rgba(255,255,255,0.82)" />
+            <AppText color="rgba(255,255,255,0.86)">Hiệu lực đến {formatDateTime(subscription.endDate)}</AppText>
+          </View>
+        ) : (
+          <AppText color="rgba(255,255,255,0.86)">
+            Bạn đang dùng các quyền lợi miễn phí của MediMate AI.
+          </AppText>
+        )}
+      </View>
+
+      <Button
+        fullWidth
+        onPress={() => router.push(ROUTES.PUBLIC.PRICING)}
+        leftIcon={<Sparkles size={16} color={colors.white} />}
+        rightIcon={<ArrowUpRight size={16} color={colors.white} />}
+      >
+        Nâng cấp MediMate+
       </Button>
 
       {usageList.length > 0 ? (
         <View style={styles.usageGroup}>
-          <AppText variant="caption" color={colors.subtle}>
-            Hạn mức sử dụng
-          </AppText>
+          <View style={styles.usageHeader}>
+            <View>
+              <AppText variant="bodyStrong">Hạn mức sử dụng</AppText>
+              <AppText variant="caption" color={colors.subtle}>
+                Theo dõi số lượt còn lại trong chu kỳ hiện tại
+              </AppText>
+            </View>
+            <Badge tone="info">{usageList.length} quyền lợi</Badge>
+          </View>
           {usageList.map((item) => (
             <View key={item.quotaCode} style={styles.usageCard}>
-              <AppText variant="caption" color={colors.subtle}>
-                {item.quotaName || "Hạn mức sử dụng"}
-              </AppText>
-              <AppText variant="h3">
-                {item.remainingCount ?? "—"}/{item.limitValue ?? "—"}
-              </AppText>
-              <AppText variant="caption" color={colors.muted}>
-                Đã dùng {item.usedCount ?? 0}
-                {Number(item.reservedCount) > 0 ? ` · đang giữ chỗ ${item.reservedCount}` : ""}
-                {item.cycleEnd ? ` · làm mới vào ${formatDateTime(item.cycleEnd)}` : ""}
-              </AppText>
+              <View style={styles.usageTopRow}>
+                <View style={styles.usageTitleWrap}>
+                  <AppText variant="bodyStrong" numberOfLines={2}>
+                    {item.quotaName || "Hạn mức sử dụng"}
+                  </AppText>
+                  <AppText variant="caption" color={colors.subtle}>
+                    Đã dùng {formatCount(item.usedCount)}
+                    {Number(item.reservedCount) > 0 ? ` · đang giữ ${formatCount(item.reservedCount)}` : ""}
+                  </AppText>
+                </View>
+                <View style={styles.remainingPill}>
+                  <AppText variant="caption" color={colors.teal}>
+                    Còn lại
+                  </AppText>
+                  <AppText variant="bodyStrong" color={colors.teal}>
+                    {formatCount(item.remainingCount)}/{formatCount(item.limitValue ?? item.grantedCount)}
+                  </AppText>
+                </View>
+              </View>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${getUsagePercent(item)}%` }]} />
+              </View>
+              {item.cycleEnd ? (
+                <AppText variant="caption" color={colors.muted}>
+                  Làm mới vào {formatDateTime(item.cycleEnd)}
+                </AppText>
+              ) : null}
             </View>
           ))}
         </View>
@@ -126,6 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
+    paddingRight: spacing.sm,
   },
   iconMark: {
     width: 36,
@@ -135,7 +195,31 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.mint,
   },
-  upgradeInline: {
+  titleCopy: {
+    flex: 1,
+    gap: spacing.xs / 2,
+  },
+  planPanel: {
+    gap: spacing.sm,
+    borderRadius: radius.lg,
+    backgroundColor: colors.teal,
+    padding: spacing.lg,
+  },
+  planTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  planIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  dateRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -143,10 +227,47 @@ const styles = StyleSheet.create({
   usageGroup: {
     gap: spacing.sm,
   },
+  usageHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
   usageCard: {
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paper,
+    padding: spacing.md,
+  },
+  usageTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  usageTitleWrap: {
+    flex: 1,
+    gap: spacing.xs / 2,
+  },
+  remainingPill: {
+    alignItems: "flex-end",
     gap: spacing.xs / 2,
     borderRadius: radius.md,
+    backgroundColor: colors.mint,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  progressTrack: {
+    height: 7,
+    overflow: "hidden",
+    borderRadius: radius.pill,
     backgroundColor: colors.paperSoft,
-    padding: spacing.md,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: radius.pill,
+    backgroundColor: colors.teal,
   },
 });

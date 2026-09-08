@@ -9,7 +9,7 @@ export type ProfileTabId = "info" | "medical" | "package" | "transactions" | "se
 const TABS: { id: ProfileTabId; label: string; icon: LucideIcon }[] = [
   { id: "info", label: "Thông tin", icon: User },
   { id: "medical", label: "Hồ sơ y tế", icon: FileHeart },
-  { id: "package", label: "Gói dịch vụ", icon: CreditCard },
+  { id: "package", label: "Gói hiện tại", icon: CreditCard },
   { id: "transactions", label: "Giao dịch", icon: ReceiptText },
   { id: "security", label: "Bảo mật", icon: ShieldCheck },
 ];
