@@ -183,6 +183,7 @@ const styles = StyleSheet.create({
   },
   headerBlock: {
     gap: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   packageHeader: {
     flexDirection: "row",
@@ -206,7 +207,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
-    backgroundColor: colors.mint,
+    borderWidth: 1,
+    borderColor: "#bee5ea",
+    backgroundColor: "#dcf4f6",
   },
   planPanel: {
     gap: spacing.md,
