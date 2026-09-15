@@ -85,11 +85,8 @@ export function QuotaCard({ state, quota, message, needsSubscription, onRetry }:
           </AppText>
         </View>
         <View style={styles.remainingPill}>
-          <AppText variant="h3" color={colors.teal}>
-            {remaining}
-          </AppText>
-          <AppText variant="caption" color={colors.muted}>
-            /{limit}
+          <AppText variant="bodyStrong" color={colors.teal}>
+            {remaining} lượt còn lại
           </AppText>
         </View>
       </View>
@@ -160,14 +157,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   remainingPill: {
-    minWidth: 68,
-    minHeight: 44,
-    flexDirection: "row",
-    alignItems: "baseline",
+    minWidth: 118,
+    minHeight: 48,
+    alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.paper,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   progressTrack: {
     height: 10,

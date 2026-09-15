@@ -140,8 +140,8 @@ export function SubscriptionSummarySection({
               <AppText variant="caption" color={colors.teal}>
                 Còn lại
               </AppText>
-              <AppText variant="h2" color={colors.teal}>
-                {formatCount(usageSummary.remaining)}/{formatCount(usageSummary.limit)}
+              <AppText variant="h3" color={colors.teal}>
+                {formatCount(usageSummary.remaining)} lượt còn lại
               </AppText>
             </View>
             <View style={styles.usageMetric}>

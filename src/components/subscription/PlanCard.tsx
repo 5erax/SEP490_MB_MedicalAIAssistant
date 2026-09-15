@@ -4,7 +4,7 @@ import { Check, CircleDollarSign, Gift, ShieldCheck } from "lucide-react-native"
 
 import { AppText, Badge, Button, Card } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
-import { PUBLIC_ACCESS_BENEFITS, formatPrice, getDurationLabel, getPlanBenefits, getPlanDisplayName } from "@/src/utils/subscriptionPlanPresentation";
+import { PUBLIC_ACCESS_BENEFITS, formatPrice, getPlanBenefits, getPlanDisplayName } from "@/src/utils/subscriptionPlanPresentation";
 import { getPricingSnapshot } from "@/src/utils/subscriptionOffers";
 import { SubscriptionPlan, SubscriptionPlanOffer } from "@/src/types/subscription";
 
@@ -101,11 +101,6 @@ export function PaidPlanCard({
       ) : null}
       <View style={styles.priceRow}>
         {loading ? <ActivityIndicator color={colors.teal} /> : <AppText variant="h2" color={hasSale ? colors.teal : colors.ink}>{validSnapshot ? formatPrice(effectivePrice) : "Chưa có giá"}</AppText>}
-        {getDurationLabel(plan.durationInDays) ? (
-          <AppText variant="caption" color={colors.subtle}>
-            / {getDurationLabel(plan.durationInDays)}
-          </AppText>
-        ) : null}
       </View>
       {hasSale && offer.description ? <AppText color={colors.muted}>{offer.description}</AppText> : null}
       <View style={styles.creditSummary}>
