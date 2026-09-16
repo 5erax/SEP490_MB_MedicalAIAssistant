@@ -1,8 +1,9 @@
-import { Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ChevronRight, CreditCard, Pill, ReceiptText, ShieldPlus, UserRound } from "lucide-react-native";
+import { ChevronRight, CreditCard, LogOut, Pill, ReceiptText, ShieldPlus, UserRound } from "lucide-react-native";
 
 import { AppText, Screen } from "@/src/components/ui";
+import { useLogout } from "@/src/hooks";
 import { ROUTES } from "@/src/navigation/routes";
 import { useAuth } from "@/src/providers/AuthProvider";
 import { colors, radius, shadows, spacing } from "@/src/theme/tokens";
@@ -90,6 +91,7 @@ function MoreListItem({ item }: { item: MoreItem }) {
 
 export function MoreScreen() {
   const { session } = useAuth();
+  const { logout, loggingOut } = useLogout();
   const displayName = session?.displayName || session?.name || "MediMate AI";
   const email = session?.email || "";
 
@@ -135,6 +137,26 @@ export function MoreScreen() {
           <MoreListItem key={item.title} item={item} />
         ))}
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Đăng xuất"
+        disabled={loggingOut}
+        onPress={logout}
+        style={({ pressed }) => [styles.logoutButton, pressed && !loggingOut && styles.pressed, loggingOut && styles.logoutDisabled]}
+      >
+        <View style={styles.logoutIcon}>
+          {loggingOut ? <ActivityIndicator size="small" color={colors.danger} /> : <LogOut size={19} color={colors.danger} />}
+        </View>
+        <View style={styles.logoutCopy}>
+          <AppText variant="bodyStrong" color={colors.danger}>
+            {loggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+          </AppText>
+          <AppText variant="caption" color={colors.subtle}>
+            Thoát khỏi tài khoản trên thiết bị này.
+          </AppText>
+        </View>
+      </Pressable>
     </Screen>
   );
 }
@@ -232,5 +254,32 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.86,
     transform: [{ translateY: 1 }],
+  },
+  logoutButton: {
+    minHeight: 74,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: "rgba(180,35,24,0.18)",
+    borderRadius: radius.lg,
+    backgroundColor: colors.dangerBg,
+    padding: spacing.md,
+  },
+  logoutDisabled: {
+    opacity: 0.64,
+  },
+  logoutIcon: {
+    width: 46,
+    height: 46,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+  },
+  logoutCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
 });
