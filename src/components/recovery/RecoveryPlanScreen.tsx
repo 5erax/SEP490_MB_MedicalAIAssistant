@@ -6,7 +6,7 @@ import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clipbo
 import { AppText, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useRecoveryPlan, useToast } from "@/src/hooks";
-import { RecoveryPlan, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
+import { RecoveryPlan, RecoveryPlanPhase, RecoveryPlanRequest } from "@/src/types/recoveryPlan";
 import { CreateRequestSheet } from "./CreateRequestSheet";
 import { PlanCard } from "./PlanCard";
 import { PlanDetailSheet } from "./PlanDetailSheet";
@@ -37,7 +37,13 @@ const palette = {
 
 const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["waitingForDoctor", "assigned", "inReview", "needMoreInformation"]);
 const CURRENT_PLAN_STATUSES = new Set<RecoveryPlan["status"]>(["active", "readyToStart"]);
-const PHASE_COLORS = ["#0f8b8d", "#2e7d32", "#7c3aed", "#d97706", "#be123c"];
+const PHASE_COLORS = [
+  { bg: "#a4d8d2", text: "#14544f" },
+  { bg: "#9fcbe9", text: "#164969" },
+  { bg: "#9ed4bd", text: "#1f5a42" },
+  { bg: "#b8c0ea", text: "#343b7a" },
+  { bg: "#c9b3df", text: "#4c3067" },
+];
 
 function sameDate(left: Date, right: Date) {
   return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth() && left.getDate() === right.getDate();
@@ -62,13 +68,79 @@ function buildMonthDays(anchor: Date) {
   });
 }
 
-function getPhaseIndexForDay(plan: RecoveryPlan, dayNumber: number) {
-  const index = (plan.phases ?? []).findIndex((phase) => {
-    const start = phase.startDay ?? 1;
-    const end = phase.endDay ?? start;
-    return dayNumber >= start && dayNumber <= end;
-  });
-  return index >= 0 ? index : 0;
+function parsePlanDate(value: unknown) {
+  if (!value) return null;
+  const raw = String(value);
+  const date = new Date(raw.length === 10 ? `${raw}T00:00:00` : raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function addDays(date: Date, amount: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + amount);
+  return result;
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatShortDate(date: Date) {
+  return new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit" }).format(date);
+}
+
+function getPhaseColor(index: number) {
+  return PHASE_COLORS[index % PHASE_COLORS.length];
+}
+
+function getPhaseTimeline(plan: RecoveryPlan) {
+  const start = parsePlanDate(plan.startDate);
+  if (!start) return [];
+
+  return [...(plan.phases ?? [])]
+    .sort((left, right) => Number(left.sortOrder ?? 0) - Number(right.sortOrder ?? 0))
+    .map((phase, index) => {
+      const startDay = Math.max(1, Number(phase.startDay) || 1);
+      const endDay = Math.max(startDay, Number(phase.endDay) || startDay);
+      return {
+        phase,
+        index,
+        startDay,
+        endDay,
+        from: addDays(start, startDay - 1),
+        to: addDays(start, endDay - 1),
+        dayCount: endDay - startDay + 1,
+        color: getPhaseColor(index),
+      };
+    });
+}
+
+function getFallbackPhaseEntry(plan: RecoveryPlan, dayNumber: number, startDate: Date) {
+  const phase: RecoveryPlanPhase = {
+    id: "fallback",
+    startDay: 1,
+    endDay: Number(plan.durationDays) || dayNumber,
+    phaseName: "Lộ trình phục hồi",
+  };
+  const endDay = Math.max(1, Number(plan.durationDays) || dayNumber);
+  return {
+    phase,
+    index: 0,
+    startDay: 1,
+    endDay,
+    from: startDate,
+    to: addDays(startDate, endDay - 1),
+    dayCount: endDay,
+    color: getPhaseColor(0),
+  };
+}
+
+function findPhaseForDate(timeline: ReturnType<typeof getPhaseTimeline>, date: Date) {
+  const key = toDateKey(date);
+  return timeline.find((entry) => key >= toDateKey(entry.from) && key <= toDateKey(entry.to)) ?? null;
 }
 
 function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
@@ -182,10 +254,11 @@ function RecoveryTimelineCard({
 
   const duration = Math.max(1, Number(plan.durationDays || 1));
   const hasCalendar = Boolean(plan.startDate);
-  const startDate = hasCalendar ? new Date(plan.startDate as string) : null;
+  const startDate = hasCalendar ? parsePlanDate(plan.startDate) : null;
   const monthDays = startDate ? buildMonthDays(startDate) : [];
   const monthLabel = startDate ? new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(startDate) : "";
   const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const phaseTimeline = getPhaseTimeline(plan);
 
   return (
     <View style={styles.timelineCard}>
@@ -211,7 +284,7 @@ function RecoveryTimelineCard({
               {plan.planName}
             </AppText>
             <AppText variant="caption" color={palette.muted}>
-              {hasCalendar ? "Kế hoạch ở ngày nào thì ô ngày đó được tô màu." : "Bắt đầu kế hoạch để mở lịch theo từng ngày."}
+              {hasCalendar ? "Mỗi màu tương ứng với một giai đoạn trong kế hoạch của bạn." : "Bắt đầu kế hoạch để mở lịch theo từng ngày."}
             </AppText>
           </View>
 
@@ -234,8 +307,9 @@ function RecoveryTimelineCard({
                 {monthDays.map((date) => {
                   const dayNumber = diffCalendarDays(startDate, date);
                   const inPlan = dayNumber >= 1 && dayNumber <= duration;
-                  const phaseIndex = inPlan ? getPhaseIndexForDay(plan, dayNumber) : -1;
-                  const color = inPlan ? PHASE_COLORS[phaseIndex % PHASE_COLORS.length] : "transparent";
+                  const phaseEntry = inPlan
+                    ? findPhaseForDate(phaseTimeline, date) ?? getFallbackPhaseEntry(plan, dayNumber, startDate)
+                    : null;
                   const inMonth = date.getMonth() === startDate.getMonth();
                   const today = sameDate(date, new Date());
 
@@ -247,11 +321,11 @@ function RecoveryTimelineCard({
                       style={[
                         styles.calendarDay,
                         inPlan && styles.calendarPlanDay,
-                        inPlan && { backgroundColor: color, borderColor: color },
+                        phaseEntry && { backgroundColor: phaseEntry.color.bg, borderColor: phaseEntry.color.bg },
                         today && styles.calendarToday,
                       ]}
                     >
-                      <AppText variant="caption" color={inPlan ? palette.white : inMonth ? palette.ink : palette.faint}>
+                      <AppText variant="caption" color={phaseEntry ? phaseEntry.color.text : inMonth ? palette.ink : palette.faint}>
                         {date.getDate()}
                       </AppText>
                     </Pressable>
@@ -268,14 +342,27 @@ function RecoveryTimelineCard({
             </Pressable>
           )}
 
-          {(plan.phases ?? []).length > 0 ? (
+          {phaseTimeline.length > 0 ? (
             <View style={styles.timelineLegend}>
-              {(plan.phases ?? []).map((phase, index) => (
-                <View key={phase.id} style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: PHASE_COLORS[index % PHASE_COLORS.length] }]} />
-                  <AppText variant="caption" color={palette.muted} numberOfLines={1} style={styles.legendText}>
-                    Ngày {phase.startDay ?? 1}-{phase.endDay ?? phase.startDay ?? 1}: {phase.phaseName}
-                  </AppText>
+              <View style={styles.timelineLegendHeader}>
+                <AppText variant="bodyStrong" color={palette.ink}>
+                  Giai đoạn phục hồi
+                </AppText>
+                <AppText variant="caption" color={palette.faint}>
+                  {phaseTimeline.length} giai đoạn
+                </AppText>
+              </View>
+              {phaseTimeline.map((entry) => (
+                <View key={entry.phase.id} style={[styles.legendItem, { borderLeftColor: entry.color.bg }]}>
+                  <View style={[styles.legendSwatch, { backgroundColor: entry.color.bg }]} />
+                  <View style={styles.legendContent}>
+                    <AppText variant="bodyStrong" color={entry.color.text} numberOfLines={2}>
+                      Giai đoạn {entry.index + 1}{entry.phase.phaseName ? `: ${entry.phase.phaseName}` : ""}
+                    </AppText>
+                    <AppText variant="caption" color={palette.muted} numberOfLines={2}>
+                      {formatShortDate(entry.from)} - {formatShortDate(entry.to)} · Ngày {entry.startDay}-{entry.endDay} · {entry.dayCount} ngày
+                    </AppText>
+                  </View>
                 </View>
               ))}
             </View>
@@ -986,24 +1073,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   timelineLegend: {
-    gap: spacing.xs,
+    gap: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: palette.line,
     paddingTop: spacing.md,
   },
-  legendItem: {
-    minHeight: 26,
+  timelineLegendHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     gap: spacing.sm,
   },
-  legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.pill,
+  legendItem: {
+    minHeight: 62,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderLeftWidth: 5,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    backgroundColor: palette.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  legendText: {
+  legendSwatch: {
+    width: 18,
+    height: 18,
+    marginTop: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(17,20,18,0.08)",
+  },
+  legendContent: {
     flex: 1,
+    gap: spacing.xs / 2,
   },
   list: {
     gap: spacing.sm,
