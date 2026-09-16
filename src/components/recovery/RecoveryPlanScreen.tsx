@@ -250,15 +250,29 @@ function RecoveryTimelineCard({
   onToggle: () => void;
   onOpenPlan: (plan: RecoveryPlan) => void;
 }) {
+  const duration = Math.max(1, Number(plan?.durationDays || 1));
+  const hasCalendar = Boolean(plan?.startDate);
+  const startDate = hasCalendar ? parsePlanDate(plan?.startDate) : null;
+  const [monthCursor, setMonthCursor] = useState(() => {
+    const anchor = startDate ?? new Date();
+    return new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+  });
+  const monthDays = buildMonthDays(monthCursor);
+  const monthLabel = new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(monthCursor);
+  const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const phaseTimeline = plan ? getPhaseTimeline(plan) : [];
+
+  useEffect(() => {
+    const parsedStartDate = plan?.startDate ? parsePlanDate(plan.startDate) : null;
+    const anchor = parsedStartDate ?? new Date();
+    setMonthCursor(new Date(anchor.getFullYear(), anchor.getMonth(), 1));
+  }, [plan?.id, plan?.startDate]);
+
   if (!plan) return null;
 
-  const duration = Math.max(1, Number(plan.durationDays || 1));
-  const hasCalendar = Boolean(plan.startDate);
-  const startDate = hasCalendar ? parsePlanDate(plan.startDate) : null;
-  const monthDays = startDate ? buildMonthDays(startDate) : [];
-  const monthLabel = startDate ? new Intl.DateTimeFormat("vi-VN", { month: "long", year: "numeric" }).format(startDate) : "";
-  const weekdays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-  const phaseTimeline = getPhaseTimeline(plan);
+  function goToMonth(offset: number) {
+    setMonthCursor((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+  }
 
   return (
     <View style={styles.timelineCard}>
@@ -291,10 +305,28 @@ function RecoveryTimelineCard({
           {hasCalendar && startDate ? (
             <View style={styles.calendarPanel}>
               <View style={styles.calendarBar}>
-                <CalendarDays size={17} color={palette.white} />
-                <AppText variant="bodyStrong" color={palette.white} style={styles.calendarMonth}>
-                  {monthLabel}
-                </AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Tháng trước"
+                  onPress={() => goToMonth(-1)}
+                  style={({ pressed }) => [styles.calendarNavButton, pressed && styles.calendarNavButtonPressed]}
+                >
+                  <ChevronLeft size={17} color={palette.white} />
+                </Pressable>
+                <View style={styles.calendarMonthWrap}>
+                  <CalendarDays size={17} color={palette.white} />
+                  <AppText variant="bodyStrong" color={palette.white} style={styles.calendarMonth}>
+                    {monthLabel}
+                  </AppText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Tháng sau"
+                  onPress={() => goToMonth(1)}
+                  style={({ pressed }) => [styles.calendarNavButton, pressed && styles.calendarNavButtonPressed]}
+                >
+                  <ChevronRight size={17} color={palette.white} />
+                </Pressable>
               </View>
               <View style={styles.weekdayRow}>
                 {weekdays.map((weekday) => (
@@ -310,7 +342,7 @@ function RecoveryTimelineCard({
                   const phaseEntry = inPlan
                     ? findPhaseForDate(phaseTimeline, date) ?? getFallbackPhaseEntry(plan, dayNumber, startDate)
                     : null;
-                  const inMonth = date.getMonth() === startDate.getMonth();
+                  const inMonth = date.getMonth() === monthCursor.getMonth();
                   const today = sameDate(date, new Date());
 
                   return (
@@ -332,6 +364,24 @@ function RecoveryTimelineCard({
                   );
                 })}
               </View>
+
+              {phaseTimeline.length > 0 ? (
+                <View style={styles.calendarLegend}>
+                  {phaseTimeline.map((entry) => (
+                    <View key={entry.phase.id} style={styles.calendarLegendItem}>
+                      <View style={[styles.calendarLegendSwatch, { backgroundColor: entry.color.bg }]} />
+                      <View style={styles.calendarLegendCopy}>
+                        <AppText variant="caption" color={entry.color.text} numberOfLines={2}>
+                          Giai đoạn {entry.index + 1}: {entry.phase.phaseName || "Phục hồi"}
+                        </AppText>
+                        <AppText variant="caption" color={palette.faint} numberOfLines={1}>
+                          {formatShortDate(entry.from)} - {formatShortDate(entry.to)} · Ngày {entry.startDay}-{entry.endDay}
+                        </AppText>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
             </View>
           ) : (
             <Pressable accessibilityRole="button" onPress={() => onOpenPlan(plan)} style={styles.timelineStartHint}>
@@ -342,31 +392,6 @@ function RecoveryTimelineCard({
             </Pressable>
           )}
 
-          {phaseTimeline.length > 0 ? (
-            <View style={styles.timelineLegend}>
-              <View style={styles.timelineLegendHeader}>
-                <AppText variant="bodyStrong" color={palette.ink}>
-                  Giai đoạn phục hồi
-                </AppText>
-                <AppText variant="caption" color={palette.faint}>
-                  {phaseTimeline.length} giai đoạn
-                </AppText>
-              </View>
-              {phaseTimeline.map((entry) => (
-                <View key={entry.phase.id} style={[styles.legendItem, { borderLeftColor: entry.color.bg }]}>
-                  <View style={[styles.legendSwatch, { backgroundColor: entry.color.bg }]} />
-                  <View style={styles.legendContent}>
-                    <AppText variant="bodyStrong" color={entry.color.text} numberOfLines={2}>
-                      Giai đoạn {entry.index + 1}{entry.phase.phaseName ? `: ${entry.phase.phaseName}` : ""}
-                    </AppText>
-                    <AppText variant="caption" color={palette.muted} numberOfLines={2}>
-                      {formatShortDate(entry.from)} - {formatShortDate(entry.to)} · Ngày {entry.startDay}-{entry.endDay} · {entry.dayCount} ngày
-                    </AppText>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ) : null}
         </>
       ) : null}
     </View>
@@ -1017,10 +1042,30 @@ const styles = StyleSheet.create({
     minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
     gap: spacing.sm,
     backgroundColor: palette.primary,
     paddingHorizontal: spacing.md,
+  },
+  calendarNavButton: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.36)",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  calendarNavButtonPressed: {
+    backgroundColor: "rgba(255,255,255,0.28)",
+  },
+  calendarMonthWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
   calendarMonth: {
     textTransform: "capitalize",
@@ -1059,6 +1104,42 @@ const styles = StyleSheet.create({
   calendarToday: {
     borderColor: palette.primaryDark,
     borderWidth: 1.5,
+  },
+  calendarLegend: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: palette.line,
+    padding: spacing.sm,
+  },
+  calendarLegendItem: {
+    minWidth: "48%",
+    flexGrow: 1,
+    flexBasis: "48%",
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    backgroundColor: palette.surface,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  calendarLegendSwatch: {
+    width: 16,
+    height: 16,
+    marginTop: 2,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "rgba(17,20,18,0.08)",
+  },
+  calendarLegendCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   timelineStartHint: {
     minHeight: 52,
