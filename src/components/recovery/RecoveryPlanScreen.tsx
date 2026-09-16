@@ -345,7 +345,6 @@ function RecoveryTimelineCard({
                     : null;
                   const inMonth = date.getMonth() === monthCursor.getMonth();
                   const today = sameDate(date, new Date());
-                  const phaseStartsToday = Boolean(phaseEntry && sameDate(date, phaseEntry.from));
 
                   return (
                     <Pressable
@@ -359,11 +358,6 @@ function RecoveryTimelineCard({
                         today && styles.calendarToday,
                       ]}
                     >
-                      {phaseStartsToday ? (
-                        <AppText variant="caption" color={phaseEntry?.color.text ?? palette.ink} style={styles.calendarPhaseLabel}>
-                          GĐ {Number(phaseEntry?.index ?? 0) + 1}
-                        </AppText>
-                      ) : null}
                       <AppText variant="caption" color={phaseEntry ? phaseEntry.color.text : inMonth ? palette.ink : palette.faint}>
                         {date.getDate()}
                       </AppText>
@@ -1136,11 +1130,6 @@ const styles = StyleSheet.create({
     borderColor: palette.surface,
     borderRadius: radius.sm,
     backgroundColor: "rgba(248,251,247,0.96)",
-  },
-  calendarPhaseLabel: {
-    fontSize: 9,
-    lineHeight: 11,
-    fontWeight: "800",
   },
   calendarPlanDay: {
     borderRadius: radius.sm,
