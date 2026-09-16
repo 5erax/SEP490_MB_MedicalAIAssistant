@@ -15,6 +15,7 @@ import { QuotaCard } from "./QuotaCard";
 import { RequestCard } from "./RequestCard";
 import { RequestDetailSheet } from "./RequestDetailSheet";
 import { isRecoveryPushNotification, subscribePushNotificationData } from "@/src/services/pushNotificationEvents";
+import { recoveryPlansApi } from "@/src/services/recoveryPlanService";
 
 const palette = {
   bg: colors.bg,
@@ -38,11 +39,11 @@ const palette = {
 const IN_PROGRESS_REQUEST_STATUSES = new Set<RecoveryPlanRequest["status"]>(["waitingForDoctor", "assigned", "inReview", "needMoreInformation"]);
 const CURRENT_PLAN_STATUSES = new Set<RecoveryPlan["status"]>(["active", "readyToStart"]);
 const PHASE_COLORS = [
-  { bg: "#a4d8d2", text: "#14544f" },
-  { bg: "#9fcbe9", text: "#164969" },
-  { bg: "#9ed4bd", text: "#1f5a42" },
-  { bg: "#b8c0ea", text: "#343b7a" },
-  { bg: "#c9b3df", text: "#4c3067" },
+  { bg: "#86d7d0", text: "#064e49" },
+  { bg: "#89bde5", text: "#123f60" },
+  { bg: "#a9d978", text: "#33590e" },
+  { bg: "#c7a7ef", text: "#4c1d74" },
+  { bg: "#f2bd72", text: "#704000" },
 ];
 
 function sameDate(left: Date, right: Date) {
@@ -344,6 +345,7 @@ function RecoveryTimelineCard({
                     : null;
                   const inMonth = date.getMonth() === monthCursor.getMonth();
                   const today = sameDate(date, new Date());
+                  const phaseStartsToday = Boolean(phaseEntry && sameDate(date, phaseEntry.from));
 
                   return (
                     <Pressable
@@ -357,6 +359,11 @@ function RecoveryTimelineCard({
                         today && styles.calendarToday,
                       ]}
                     >
+                      {phaseStartsToday ? (
+                        <AppText variant="caption" color={phaseEntry?.color.text ?? palette.ink} style={styles.calendarPhaseLabel}>
+                          GĐ {Number(phaseEntry?.index ?? 0) + 1}
+                        </AppText>
+                      ) : null}
                       <AppText variant="caption" color={phaseEntry ? phaseEntry.color.text : inMonth ? palette.ink : palette.faint}>
                         {date.getDate()}
                       </AppText>
@@ -411,6 +418,7 @@ export function RecoveryPlanScreen() {
   const [requestsExpanded, setRequestsExpanded] = useState(false);
   const [plansExpanded, setPlansExpanded] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
+  const [timelinePlan, setTimelinePlan] = useState<RecoveryPlan | null>(null);
 
   const requestCreationDisabled =
     recovery.quotaState === "loading" ||
@@ -428,6 +436,37 @@ export function RecoveryPlanScreen() {
   const waitingRequests = Math.max(primaryRequest ? 1 : 0, recovery.requests.filter((request) => IN_PROGRESS_REQUEST_STATUSES.has(request.status)).length);
   const requestsCount = Math.max(0, (recovery.requestsInfo.totalCount || recovery.requests.length) - (primaryRequest ? 1 : 0));
   const plansCount = Math.max(0, (recovery.plansInfo.totalCount || recovery.plans.length) - (primaryPlan ? 1 : 0));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!primaryPlan) {
+      setTimelinePlan(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setTimelinePlan(primaryPlan);
+    if ((primaryPlan.phases?.length ?? 0) > 0) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    recoveryPlansApi
+      .get(primaryPlan.id)
+      .then((response) => {
+        if (!cancelled) setTimelinePlan(response.data ?? primaryPlan);
+      })
+      .catch(() => {
+        if (!cancelled) setTimelinePlan(primaryPlan);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [primaryPlan]);
   const createBlocker =
     waitingRequests > 0
       ? {
@@ -728,7 +767,7 @@ export function RecoveryPlanScreen() {
           ) : null}
         </View>
 
-        <RecoveryTimelineCard plan={primaryPlan} expanded={timelineExpanded} onToggle={() => setTimelineExpanded((current) => !current)} onOpenPlan={openPlan} />
+        <RecoveryTimelineCard plan={timelinePlan ?? primaryPlan} expanded={timelineExpanded} onToggle={() => setTimelineExpanded((current) => !current)} onOpenPlan={openPlan} />
 
         <AppText variant="caption" color={palette.faint} style={styles.disclaimer}>
           Thông tin hỗ trợ, không thay thế chăm sóc y tế. Trong tình huống khẩn cấp, hãy tìm trợ giúp y tế ngay.
@@ -1092,10 +1131,16 @@ const styles = StyleSheet.create({
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
+    gap: 1,
     borderWidth: 1,
     borderColor: palette.surface,
     borderRadius: radius.sm,
     backgroundColor: "rgba(248,251,247,0.96)",
+  },
+  calendarPhaseLabel: {
+    fontSize: 9,
+    lineHeight: 11,
+    fontWeight: "800",
   },
   calendarPlanDay: {
     borderRadius: radius.sm,
