@@ -44,10 +44,6 @@ export const labTestsApi = {
     return apiRequest<LabTestSession>(ENDPOINTS.LAB_TESTS.BY_SESSION(sessionId), { requiresAuth: true });
   },
 
-  summarize(sessionId: string) {
-    return apiRequest<string>(ENDPOINTS.LAB_TESTS.SUMMARY(sessionId), { method: "POST", requiresAuth: true });
-  },
-
   ocrExtracts(sessionId: string) {
     return apiRequest<LabOcrExtract[]>(ENDPOINTS.LAB_TESTS.OCR_EXTRACTS(sessionId), { requiresAuth: true });
   },

@@ -1,4 +1,5 @@
 export type LabSessionStatus = "processing" | "completed" | "failed";
+export type LabAiSummaryStatus = "processing" | "completed" | "failed" | null;
 export type LabResultStatus = "unknown" | "normal" | "high" | "low" | "criticalHigh" | "criticalLow";
 
 export type LabReferenceRange = {
@@ -58,6 +59,7 @@ export type LabTestSession = {
   createdAtUtc?: string;
   uploadedAt?: string;
   documentUrl?: string | null;
+  aiSummaryStatus?: LabAiSummaryStatus;
   aiSummary?: string | null;
   patientGenderAtTest?: "male" | "female";
   patientAgeAtTest?: number;

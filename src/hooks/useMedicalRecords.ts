@@ -1,8 +1,8 @@
 // Ported from the state/handlers in Web's MedicalRecordPage.jsx: profile
 // context load, upload-then-analyze submission (caching the Cloudinary
 // upload so resubmitting the same file skips re-uploading), paginated/
-// filterable session history, and a session detail panel that polls every
-// 3s while the selected session is still "processing".
+// filterable session history, and a session detail panel that polls while OCR
+// or the backend-generated AI summary is still processing.
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -18,11 +18,22 @@ type SectionState = "loading" | "ready" | "error";
 type SubmissionStatus = "idle" | "uploading" | "analyzing" | "success" | "error";
 
 const HISTORY_PAGE_SIZE = 8;
-const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_MS = 500;
+const POLL_TIMEOUT_MS = 3 * 60 * 1000;
+const SUMMARY_DEFAULT_ERROR = "Chưa thể tạo tóm tắt tổng quan. Vui lòng thử lại.";
+const SUMMARY_TIMEOUT_ERROR = "AI đang xử lí vui lòng quay lại sau";
 
 function documentIdentity(document: PickedDocument | null) {
   if (!document) return "";
   return `${document.uri}:${document.fileName || ""}:${document.fileSize || ""}`;
+}
+
+function shouldPollSession(session: LabTestSession | null): session is LabTestSession {
+  if (!session) return false;
+  if (session.status === "processing") return true;
+  if (session.status !== "completed") return false;
+  if (session.aiSummaryStatus === "completed" || session.aiSummaryStatus === "failed") return false;
+  return !session.aiSummary;
 }
 
 export function useMedicalRecords() {
@@ -52,6 +63,8 @@ export function useMedicalRecords() {
   const [summaryError, setSummaryError] = useState("");
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollSessionId = useRef<string | null>(null);
+  const pollStartedAt = useRef<number | null>(null);
 
   const loadProfile = useCallback(async () => {
     setProfileState("loading");
@@ -89,6 +102,44 @@ export function useMedicalRecords() {
     loadHistory(historyPage, historyFilter);
   }, [historyPage, historyFilter, loadHistory]);
 
+  const updateSummaryFromSession = useCallback((session: LabTestSession | null) => {
+    if (!session) {
+      setSummaryText("");
+      setSummaryState("idle");
+      setSummaryError("");
+      return;
+    }
+
+    if (session.aiSummary) {
+      setSummaryText(session.aiSummary);
+      setSummaryState("ready");
+      setSummaryError("");
+      return;
+    }
+
+    setSummaryText("");
+    if (session.status === "completed" && session.aiSummaryStatus === "failed") {
+      setSummaryState("error");
+      setSummaryError(SUMMARY_DEFAULT_ERROR);
+      return;
+    }
+
+    if (session.status === "completed" && (session.aiSummaryStatus === "processing" || session.aiSummaryStatus == null)) {
+      setSummaryState("loading");
+      setSummaryError("");
+      return;
+    }
+
+    if (session.status === "processing") {
+      setSummaryState("loading");
+      setSummaryError("");
+      return;
+    }
+
+    setSummaryState("idle");
+    setSummaryError("");
+  }, []);
+
   const loadSessionDetail = useCallback(async (sessionId: string, quiet = false) => {
     if (!quiet) setDetailState("loading");
     setDetailError("");
@@ -100,11 +151,7 @@ export function useMedicalRecords() {
       const session = response.data ?? null;
       setSelectedSession(session);
       setOcrExtracts(extractsResponse.data ?? []);
-      if (session?.aiSummary) {
-        setSummaryText(session.aiSummary);
-        setSummaryState("ready");
-        setSummaryError("");
-      }
+      updateSummaryFromSession(session);
       setDetailState("ready");
     } catch (error) {
       if (!quiet) {
@@ -112,50 +159,81 @@ export function useMedicalRecords() {
         setDetailError((error as Error)?.message || "Không thể tải chi tiết phiên phân tích. Vui lòng thử lại.");
       }
     }
-  }, []);
+  }, [updateSummaryFromSession]);
 
-  const loadSummary = useCallback(async (sessionId: string) => {
+  const retrySummary = useCallback(async (sessionId: string) => {
+    pollSessionId.current = sessionId;
+    pollStartedAt.current = Date.now();
     setSummaryState("loading");
     setSummaryError("");
     try {
-      const response = await labTestsApi.summarize(sessionId);
-      setSummaryText(response.data ?? "");
-      setSummaryState("ready");
+      const response = await labTestsApi.get(sessionId);
+      const session = response.data ?? null;
+      setSelectedSession(session);
+      updateSummaryFromSession(session);
     } catch (error) {
       setSummaryState("error");
       setSummaryError((error as Error)?.message || "Chưa thể tạo tóm tắt tổng quan. Vui lòng thử lại.");
     }
-  }, []);
+  }, [updateSummaryFromSession]);
 
-  useEffect(() => {
-    if (selectedSession?.status !== "completed" || !(selectedSession.results?.length) || selectedSession.aiSummary || summaryState !== "idle") return;
-    void loadSummary(selectedSession.sessionId);
-  }, [selectedSession, summaryState, loadSummary]);
-
-  // Poll every 3s while the selected session is still processing, matching
-  // Web's auto-refresh-on-processing behavior.
+  // Poll the session detail while OCR or the backend-generated AI summary is pending.
   useEffect(() => {
     if (pollTimer.current) {
       clearTimeout(pollTimer.current);
       pollTimer.current = null;
     }
-    if (selectedSession?.status === "processing") {
-      pollTimer.current = setTimeout(() => {
-        loadSessionDetail(selectedSession.sessionId, true);
-        loadHistory(historyPage, historyFilter, true);
-      }, POLL_INTERVAL_MS);
+
+    const pollingSession = selectedSession;
+
+    if (!shouldPollSession(pollingSession)) {
+      pollSessionId.current = null;
+      pollStartedAt.current = null;
+      return undefined;
     }
+
+    if (pollSessionId.current !== pollingSession.sessionId) {
+      pollSessionId.current = pollingSession.sessionId;
+      pollStartedAt.current = Date.now();
+    }
+
+    const startedAt = pollStartedAt.current ?? Date.now();
+    if (Date.now() - startedAt >= POLL_TIMEOUT_MS) {
+      setSummaryState("error");
+      setSummaryError(SUMMARY_TIMEOUT_ERROR);
+      return undefined;
+    }
+
+    pollTimer.current = setTimeout(async () => {
+      try {
+        const response = await labTestsApi.get(pollingSession.sessionId);
+        const session = response.data ?? null;
+        if (!session) return;
+
+        setSelectedSession(session);
+        updateSummaryFromSession(session);
+
+        if (pollingSession.status === "processing" && session.status !== "processing") {
+          loadHistory(historyPage, historyFilter, true);
+          labTestsApi
+            .ocrExtracts(session.sessionId)
+            .then((extractsResponse) => setOcrExtracts(extractsResponse.data ?? []))
+            .catch(() => undefined);
+        }
+      } catch {
+        setSelectedSession((current) => (current ? { ...current } : current));
+      }
+    }, POLL_INTERVAL_MS);
+
     return () => {
       if (pollTimer.current) clearTimeout(pollTimer.current);
     };
-  }, [selectedSession, loadSessionDetail, loadHistory, historyPage, historyFilter]);
+  }, [selectedSession, updateSummaryFromSession, loadHistory, historyPage, historyFilter]);
 
   function selectSession(session: LabTestSession) {
     setSelectedSession(session);
     setOcrExtracts([]);
-    setSummaryText(session.aiSummary ?? "");
-    setSummaryState(session.aiSummary ? "ready" : "idle");
-    setSummaryError("");
+    updateSummaryFromSession(session);
     loadSessionDetail(session.sessionId);
   }
 
@@ -280,9 +358,7 @@ export function useMedicalRecords() {
 
       setSelectedSession(response.data ?? null);
       setOcrExtracts([]);
-      setSummaryText(response.data?.aiSummary ?? "");
-      setSummaryState(response.data?.aiSummary ? "ready" : "idle");
-      setSummaryError("");
+      updateSummaryFromSession(response.data ?? null);
       setDetailState("ready");
       setSubmissionStatus("success");
       setSubmissionMessage("Đã gửi phiếu xét nghiệm để phân tích.");
@@ -332,6 +408,6 @@ export function useMedicalRecords() {
     selectSession,
     clearSelectedSession,
     retryDetail: () => selectedSession && loadSessionDetail(selectedSession.sessionId),
-    retrySummary: () => selectedSession && loadSummary(selectedSession.sessionId),
+    retrySummary: () => selectedSession && retrySummary(selectedSession.sessionId),
   };
 }
