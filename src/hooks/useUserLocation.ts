@@ -1,8 +1,8 @@
 // Native equivalent of Web's requestUserLocation() in DashboardPage.jsx
 // (browser Geolocation API). Same status contract: idle -> loading ->
 // ready | denied | unsupported.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AppState, Platform } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
 
 import { GeoPoint } from "@/src/utils/facilityRanking";
@@ -79,25 +79,6 @@ export function useUserLocation() {
       requesting.current = false;
     }
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    const syncGrantedLocation = async () => {
-      if (requesting.current || userLocation) return;
-      const { status } = await Location.getForegroundPermissionsAsync().catch(() => ({ status: Location.PermissionStatus.UNDETERMINED }));
-      if (!active || status !== Location.PermissionStatus.GRANTED) return;
-      void requestUserLocation();
-    };
-
-    void syncGrantedLocation();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void syncGrantedLocation();
-    });
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, [requestUserLocation, userLocation]);
 
   return { userLocation, locationStatus, requestUserLocation };
 }
