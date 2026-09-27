@@ -22,6 +22,7 @@ import {
 import { AppText, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import type { FacilityMapViewProps, MapLoadStatus } from "./FacilityMapView.types";
+import { FacilityMapViewFallback } from "./FacilityMapViewFallback";
 
 const WEB_ALIGNED_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const MAP_STYLE = process.env.EXPO_PUBLIC_MAP_STYLE_URL ?? WEB_ALIGNED_MAP_STYLE;
@@ -207,6 +208,20 @@ export function FacilityMapViewMapLibre({
 
   if (status === "error") {
     return (
+      <FacilityMapViewFallback
+        facilities={facilities}
+        selectedFacility={selectedFacility}
+        userLocation={userLocation}
+        onSelectFacility={onSelectFacility}
+        onStatusChange={onStatusChange}
+        retryKey={retryKey}
+        zoomAction={zoomAction}
+      />
+    );
+  }
+
+  if (false) {
+    return (
       <View style={styles.fallback}>
         <AppText variant="bodyStrong" center>
           Không thể hiển thị bản đồ lúc này
@@ -227,7 +242,7 @@ export function FacilityMapViewMapLibre({
         ref={mapRef}
         style={styles.map}
         mapStyle={MAP_STYLE}
-        onDidFinishLoadingMap={() => updateStatus("ready")}
+        onDidFinishRenderingMapFully={() => updateStatus("ready")}
         onDidFailLoadingMap={() => updateStatus("error")}
         preferredFramesPerSecond={60}
         androidView="surface"
