@@ -96,7 +96,9 @@ export function QuestionFlow({
                   </AppText>
                 </View>
               ) : (
-                "Xem gợi ý"
+                <AppText variant="bodyStrong" color={colors.white}>
+                  Xem gợi ý
+                </AppText>
               )}
             </Button>
           ) : (
