@@ -223,11 +223,13 @@ export function MapScreen() {
   const selectHospitalFilter = useCallback((mode: Exclude<HospitalFilterMode, "none">) => {
     setHospitalFilterMode(mode);
     setSelectedFacility(null);
+    setHospitalFilterVisible(false);
   }, []);
   const clearHospitalFilter = useCallback(() => {
     setHospitalFilterMode("none");
     setRadiusKm(DEFAULT_HOSPITAL_FILTER_RADIUS_KM);
     setSelectedFacility(null);
+    setHospitalFilterVisible(false);
   }, []);
   const requestLocationForFilter = useCallback(() => {
     setSelectedFacility(null);
@@ -874,13 +876,15 @@ const styles = StyleSheet.create({
   },
   radiusChipRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     gap: spacing.xs,
     paddingTop: spacing.sm,
   },
   radiusChip: {
+    flex: 1,
+    flexBasis: 0,
     minHeight: 34,
-    minWidth: 58,
+    minWidth: 0,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.pill,
