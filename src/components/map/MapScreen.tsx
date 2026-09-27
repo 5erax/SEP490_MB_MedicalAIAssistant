@@ -772,8 +772,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hospitalFilterButton: {
-    minWidth: 158,
-    maxWidth: 172,
+    flex: 1,
+    minWidth: 0,
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
@@ -793,6 +793,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
   },
   hospitalFilterButtonLabel: {
+    flex: 1,
     minWidth: 0,
     flexShrink: 1,
   },
