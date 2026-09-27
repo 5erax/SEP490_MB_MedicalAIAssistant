@@ -57,7 +57,6 @@ export function MapScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
-  const autoListOpenedRef = useRef(false);
   const hasManualDepartmentFilter = selectedDepartmentId !== null;
   const clinicalDepartmentId = clinical.isClinicalFlow
     ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
@@ -199,12 +198,6 @@ export function MapScreen() {
     const match = visibleFacilities.find((facility) => facility.facilityId === params.facilityId) ?? visibleFacilities[0];
     setSelectedFacility(match);
   }, [clinical.isClinicalFlow, clinical.status, params.facilityId, visibleFacilities]);
-
-  useEffect(() => {
-    if (!clinical.isClinicalFlow || clinical.status !== "ready" || autoListOpenedRef.current) return;
-    autoListOpenedRef.current = true;
-    setListVisible(true);
-  }, [clinical.isClinicalFlow, clinical.status]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
