@@ -773,6 +773,7 @@ const styles = StyleSheet.create({
   },
   hospitalFilterButton: {
     flex: 1,
+    flexBasis: 0,
     minWidth: 0,
     minHeight: 48,
     flexDirection: "row",
@@ -917,6 +918,7 @@ const styles = StyleSheet.create({
   },
   departmentMenuButton: {
     flex: 1,
+    flexBasis: 0,
     minWidth: 0,
     minHeight: 48,
     flexDirection: "row",
