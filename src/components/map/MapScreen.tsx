@@ -10,7 +10,7 @@ import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/compon
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { useClinicalRecommendation } from "@/src/hooks/useClinicalRecommendation";
 import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
-import { useFacilities } from "@/src/hooks/useFacilities";
+import { useDepartmentFacilities, useFacilities } from "@/src/hooks/useFacilities";
 import { useNearbyFacilities } from "@/src/hooks/useNearbyFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
 import { DEFAULT_NEARBY_RADIUS_KM, NEARBY_FACILITY_LIMIT } from "@/src/services/facilityService";
@@ -58,18 +58,23 @@ export function MapScreen() {
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
   const autoListOpenedRef = useRef(false);
+  const hasManualDepartmentFilter = selectedDepartmentId !== null;
+  const clinicalDepartmentId = clinical.isClinicalFlow
+    ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
+    : "";
+  const clinicalDepartmentFacilities = useDepartmentFacilities(clinicalDepartmentId);
   const effectiveDepartmentId = selectedDepartmentId ?? (clinical.isClinicalFlow
     ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
     : params.departmentId ?? "");
   const nearby = useNearbyFacilities(userLocation, radiusKm, effectiveDepartmentId);
   const reloadNearby = nearby.reload;
   const updateNearbyRating = nearby.updateRating;
+  const reloadClinicalDepartmentFacilities = clinicalDepartmentFacilities.reload;
   const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
     updateCatalogRating(facilityId, summary);
     updateNearbyRating(facilityId, summary);
-  }, [updateCatalogRating, updateNearbyRating]);
-  const loading = userLocation ? nearby.loading : catalogLoading;
-  const apiNotice = userLocation ? nearby.error : catalogNotice;
+    clinicalDepartmentFacilities.updateRating(facilityId, summary);
+  }, [clinicalDepartmentFacilities, updateCatalogRating, updateNearbyRating]);
 
   const { facilities: recommendedFacilities, unavailableCount } = useMemo(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || !clinical.context) {
@@ -78,9 +83,14 @@ export function MapScreen() {
     return buildRecommendedFacilities(clinical.context.recommendedFacilities, facilities);
   }, [clinical.context, clinical.isClinicalFlow, clinical.status, facilities]);
 
-  const hasManualDepartmentFilter = selectedDepartmentId !== null;
+  const shouldUseClinicalDepartmentFacilities = Boolean(
+    clinical.isClinicalFlow && !hasManualDepartmentFilter && !userLocation && clinicalDepartmentId,
+  );
+  const loading = userLocation ? nearby.loading : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.loading : catalogLoading;
+  const apiNotice = userLocation ? nearby.error : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.apiNotice || catalogNotice : catalogNotice;
   const baseFacilities = userLocation ? nearby.facilities
-    : clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
+    : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.facilities
+      : clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
@@ -199,9 +209,10 @@ export function MapScreen() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     if (userLocation) reloadNearby();
+    else if (shouldUseClinicalDepartmentFacilities) await reloadClinicalDepartmentFacilities();
     else await reload();
     setRefreshing(false);
-  }, [reloadNearby, reload, userLocation]);
+  }, [reloadClinicalDepartmentFacilities, reloadNearby, reload, shouldUseClinicalDepartmentFacilities, userLocation]);
 
   return (
     <Screen padded={false} style={styles.screen}>

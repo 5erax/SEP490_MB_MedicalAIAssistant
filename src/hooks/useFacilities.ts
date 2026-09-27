@@ -61,3 +61,47 @@ export function useFacilities() {
 
   return { facilities, loading, apiNotice, reload: load, updateRating };
 }
+
+export function useDepartmentFacilities(departmentId: string) {
+  const [facilities, setFacilities] = useState<NormalizedFacility[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [apiNotice, setApiNotice] = useState("");
+
+  const load = useCallback(async () => {
+    if (!departmentId) {
+      setFacilities([]);
+      setApiNotice("");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setApiNotice("");
+
+    try {
+      const response = await medicalFacilitiesApi.active({ departmentId });
+      const normalized = getArrayData(response)
+        .map((facility) => normalizeFacility(facility))
+        .filter((facility) => facility.isActive);
+      setFacilities(normalized);
+      if (normalized.length === 0) {
+        setApiNotice("Chưa có cơ sở y tế đang hoạt động cho chuyên khoa này.");
+      }
+    } catch {
+      setFacilities([]);
+      setApiNotice("Chưa thể tải danh sách cơ sở y tế theo chuyên khoa. Vui lòng thử lại.");
+    } finally {
+      setLoading(false);
+    }
+  }, [departmentId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const updateRating = useCallback((facilityId: string, summary: FacilityRatingSummary) => {
+    setFacilities((current) => current.map((facility) => facility.facilityId === facilityId ? { ...facility, ...summary } : facility));
+  }, []);
+
+  return { facilities, loading, apiNotice, reload: load, updateRating };
+}

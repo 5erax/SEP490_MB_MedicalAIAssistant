@@ -256,14 +256,7 @@ export const symptomAnalysisApi = {
       data: { sessionId, answers: Array.isArray(answers) ? answers : [] },
       requiresAuth: true,
     });
-    const data = unwrapApiData<Record<string, unknown>>(response) ?? {};
-    const resolvedSessionId = String(data.sessionId ?? sessionId ?? "").trim();
-    const analysis = createClinicalMapSnapshot(data.analysis ?? data.result ?? null, resolvedSessionId);
-
     await clearStoredClinicalMapSnapshot();
-    if (resolvedSessionId && analysis) {
-      await cacheClinicalMapSnapshot(analysis);
-    }
 
     return response;
   },
@@ -334,9 +327,10 @@ export const symptomAnalysisApi = {
     });
   },
 
-  get(sessionId: string) {
+  get(sessionId: string, options: { signal?: AbortSignal } = {}) {
     return apiRequest(ENDPOINTS.SYMPTOM_ANALYSIS.BY_SESSION(sessionId), {
       requiresAuth: true,
+      signal: options.signal,
     });
   },
 
