@@ -1,12 +1,45 @@
 // Native equivalent of Web's requestUserLocation() in DashboardPage.jsx
 // (browser Geolocation API). Same status contract: idle -> loading ->
 // ready | denied | unsupported.
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, Platform } from "react-native";
 import * as Location from "expo-location";
 
 import { GeoPoint } from "@/src/utils/facilityRanking";
 
 export type LocationStatus = "idle" | "loading" | "ready" | "denied" | "unsupported";
+
+const LOCATION_TIMEOUT_MS = 12000;
+const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error("Location timeout")), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
+async function readDevicePosition() {
+  const quickPosition = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(() => null);
+  if (quickPosition) return quickPosition;
+
+  const accuracyAttempts = [Location.Accuracy.Balanced, Location.Accuracy.Low, Location.Accuracy.High];
+  for (const accuracy of accuracyAttempts) {
+    const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy }), LOCATION_TIMEOUT_MS).catch(() => null);
+    if (position) return position;
+  }
+
+  const relaxedLastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+  if (relaxedLastKnown) return relaxedLastKnown;
+  throw new Error("Location unavailable");
+}
 
 export function useUserLocation() {
   const [userLocation, setUserLocation] = useState<GeoPoint | null>(null);
@@ -17,7 +50,6 @@ export function useUserLocation() {
     if (requesting.current) return;
     requesting.current = true;
     setLocationStatus("loading");
-    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== Location.PermissionStatus.GRANTED) {
@@ -26,31 +58,46 @@ export function useUserLocation() {
         return;
       }
 
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      let servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled && Platform.OS === "android") {
+        await Location.enableNetworkProviderAsync().catch(() => undefined);
+        servicesEnabled = await Location.hasServicesEnabledAsync();
+      }
       if (!servicesEnabled) {
         setUserLocation(null);
         setLocationStatus("unsupported");
         return;
       }
 
-      const position = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Location timeout")), 20000); }),
-      ]).catch(async () => {
-        const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: 5 * 60 * 1000, requiredAccuracy: 5000 });
-        if (!lastKnown) throw new Error("Location unavailable");
-        return lastKnown;
-      });
+      const position = await readDevicePosition();
       setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
       setLocationStatus("ready");
     } catch {
       setUserLocation(null);
       setLocationStatus("unsupported");
     } finally {
-      if (timeout) clearTimeout(timeout);
       requesting.current = false;
     }
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const syncGrantedLocation = async () => {
+      if (requesting.current || userLocation) return;
+      const { status } = await Location.getForegroundPermissionsAsync().catch(() => ({ status: Location.PermissionStatus.UNDETERMINED }));
+      if (!active || status !== Location.PermissionStatus.GRANTED) return;
+      void requestUserLocation();
+    };
+
+    void syncGrantedLocation();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void syncGrantedLocation();
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [requestUserLocation, userLocation]);
 
   return { userLocation, locationStatus, requestUserLocation };
 }
