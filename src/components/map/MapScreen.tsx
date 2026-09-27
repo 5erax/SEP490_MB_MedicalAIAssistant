@@ -766,12 +766,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
   },
   departmentControlRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    flexWrap: "wrap",
   },
   hospitalFilterButton: {
+    minWidth: 158,
+    maxWidth: 172,
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
@@ -779,7 +781,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.teal,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     backgroundColor: "rgba(255,255,255,0.96)",
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 8 },
@@ -791,6 +793,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
   },
   hospitalFilterButtonLabel: {
+    minWidth: 0,
     flexShrink: 1,
   },
   hospitalFilterBadge: {
@@ -912,12 +915,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   departmentMenuButton: {
-    minWidth: 178,
-    maxWidth: 220,
+    flex: 1,
+    minWidth: 0,
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     gap: spacing.xs,
     borderWidth: 1,
     borderColor: colors.teal,
@@ -934,8 +937,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mint,
   },
   departmentMenuLabel: {
+    flex: 1,
+    minWidth: 0,
     flexShrink: 1,
-    maxWidth: 150,
   },
   departmentMenu: {
     alignSelf: "flex-start",
