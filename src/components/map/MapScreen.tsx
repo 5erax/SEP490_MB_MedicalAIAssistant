@@ -4,7 +4,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { ChevronDown, ListFilter, MapPin, Minus, Plus, Search, Stethoscope, X } from "lucide-react-native";
+import { ChevronDown, ListFilter, MapPin, Minus, Plus, Search, SlidersHorizontal, Star, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -13,7 +13,7 @@ import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
 import { useDepartmentFacilities, useFacilities } from "@/src/hooks/useFacilities";
 import { useNearbyFacilities } from "@/src/hooks/useNearbyFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
-import { DEFAULT_NEARBY_RADIUS_KM, NEARBY_FACILITY_LIMIT } from "@/src/services/facilityService";
+import { NEARBY_FACILITY_LIMIT } from "@/src/services/facilityService";
 import { FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
 import { buildRecommendedFacilities } from "@/src/utils/clinicalFacilityMerge";
 import { normalizeSearchText } from "@/src/utils/facilityNormalize";
@@ -32,6 +32,12 @@ type MapQueryParams = {
   sessionId?: string;
 };
 
+type HospitalFilterMode = "none" | "top" | "nearest" | "radius";
+
+const DEFAULT_HOSPITAL_FILTER_RADIUS_KM = 5;
+const HOSPITAL_FILTER_RADIUS_OPTIONS = [5, 10, 15, 20, 25];
+const TOP_HOSPITAL_LIMIT = 5;
+
 export function MapScreen() {
   const params = useLocalSearchParams<MapQueryParams>();
   const { facilities, loading: catalogLoading, apiNotice: catalogNotice, reload, updateRating: updateCatalogRating } = useFacilities();
@@ -44,8 +50,9 @@ export function MapScreen() {
   const debouncedSearch = useDebouncedValue(searchText, 400);
   const [departmentSearchText, setDepartmentSearchText] = useState("");
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
-  const [radiusKm, setRadiusKm] = useState(DEFAULT_NEARBY_RADIUS_KM);
-  const [radiusMenuVisible, setRadiusMenuVisible] = useState(false);
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_HOSPITAL_FILTER_RADIUS_KM);
+  const [hospitalFilterVisible, setHospitalFilterVisible] = useState(false);
+  const [hospitalFilterMode, setHospitalFilterMode] = useState<HospitalFilterMode>("none");
   const [departmentMenuVisible, setDepartmentMenuVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<FacilityTypeKey | "all">("all");
   const [selectedFacility, setSelectedFacility] = useState<NormalizedFacility | null>(null);
@@ -65,7 +72,9 @@ export function MapScreen() {
   const effectiveDepartmentId = selectedDepartmentId ?? (clinical.isClinicalFlow
     ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
     : params.departmentId ?? "");
-  const nearby = useNearbyFacilities(userLocation, radiusKm, effectiveDepartmentId);
+  const wantsNearbyHospitalFilter = hospitalFilterMode === "radius" || hospitalFilterMode === "nearest";
+  const usesNearbyHospitalFilter = Boolean(userLocation && wantsNearbyHospitalFilter);
+  const nearby = useNearbyFacilities(usesNearbyHospitalFilter ? userLocation : null, radiusKm, effectiveDepartmentId);
   const reloadNearby = nearby.reload;
   const updateNearbyRating = nearby.updateRating;
   const reloadClinicalDepartmentFacilities = clinicalDepartmentFacilities.reload;
@@ -83,13 +92,13 @@ export function MapScreen() {
   }, [clinical.context, clinical.isClinicalFlow, clinical.status, facilities]);
 
   const shouldUseClinicalDepartmentFacilities = Boolean(
-    clinical.isClinicalFlow && !hasManualDepartmentFilter && !userLocation && clinicalDepartmentId,
+    clinical.isClinicalFlow && !hasManualDepartmentFilter && !usesNearbyHospitalFilter && hospitalFilterMode !== "top" && clinicalDepartmentId,
   );
-  const loading = userLocation ? nearby.loading : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.loading : catalogLoading;
-  const apiNotice = userLocation ? nearby.error : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.apiNotice || catalogNotice : catalogNotice;
-  const baseFacilities = userLocation ? nearby.facilities
+  const loading = usesNearbyHospitalFilter ? nearby.loading : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.loading : catalogLoading;
+  const apiNotice = usesNearbyHospitalFilter ? nearby.error : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.apiNotice || catalogNotice : catalogNotice;
+  const baseFacilities = usesNearbyHospitalFilter ? nearby.facilities
     : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.facilities
-      : clinical.isClinicalFlow && !hasManualDepartmentFilter ? recommendedFacilities : facilities;
+      : clinical.isClinicalFlow && !hasManualDepartmentFilter && hospitalFilterMode !== "top" ? recommendedFacilities : facilities;
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
@@ -110,7 +119,7 @@ export function MapScreen() {
 
       // Nearby already applies departmentId on the server; do not drop valid
       // matches if a facility's optional department metadata is missing.
-      if (!userLocation && effectiveDepartmentId && (!clinical.isClinicalFlow || hasManualDepartmentFilter)) {
+      if (!usesNearbyHospitalFilter && effectiveDepartmentId && (!clinical.isClinicalFlow || hasManualDepartmentFilter)) {
         if (!facility.departmentIds.includes(effectiveDepartmentId)) return false;
       }
 
@@ -118,16 +127,34 @@ export function MapScreen() {
 
       return true;
     });
-  }, [baseFacilities, clinical.isClinicalFlow, debouncedSearch, effectiveDepartmentId, hasManualDepartmentFilter, selectedType, userLocation]);
+  }, [baseFacilities, clinical.isClinicalFlow, debouncedSearch, effectiveDepartmentId, hasManualDepartmentFilter, selectedType, usesNearbyHospitalFilter]);
 
-  const visibleFacilities = useMemo(
-    () =>
-      filteredFacilities.map((facility) => ({
+  const visibleFacilities = useMemo(() => {
+    const normalizedFacilities = filteredFacilities.map((facility) => ({
         ...facility,
-        distanceKm: userLocation ? facility.distanceKm : null,
-      })),
-    [filteredFacilities, userLocation],
-  );
+        distanceKm: usesNearbyHospitalFilter ? facility.distanceKm : null,
+      }));
+
+    if (hospitalFilterMode === "top") {
+      return [...normalizedFacilities]
+        .sort((left, right) => {
+          const ratingDelta = (right.averageRating ?? 0) - (left.averageRating ?? 0);
+          if (ratingDelta !== 0) return ratingDelta;
+          const reviewDelta = (right.reviewCount ?? 0) - (left.reviewCount ?? 0);
+          if (reviewDelta !== 0) return reviewDelta;
+          return left.facilityName.localeCompare(right.facilityName, "vi");
+        })
+        .slice(0, TOP_HOSPITAL_LIMIT);
+    }
+
+    if (hospitalFilterMode === "nearest" && usesNearbyHospitalFilter) {
+      return [...normalizedFacilities]
+        .sort((left, right) => (left.distanceKm ?? Infinity) - (right.distanceKm ?? Infinity))
+        .slice(0, 1);
+    }
+
+    return normalizedFacilities;
+  }, [filteredFacilities, hospitalFilterMode, usesNearbyHospitalFilter]);
 
   useEffect(() => {
     if (!selectedFacility) return;
@@ -152,13 +179,24 @@ export function MapScreen() {
     return Array.from(departments, ([id, name]) => ({ id, name })).sort((first, second) => first.name.localeCompare(second.name, "vi"));
   }, [facilities]);
 
-  const hasActiveFacilitiesWithoutMapData = baseFacilities.length > 0 && baseFacilities.every((facility) => !facility.hasValidCoordinates);
+  const hasActiveFacilitiesWithoutMapData = visibleFacilities.length > 0 && visibleFacilities.every((facility) => !facility.hasValidCoordinates);
   const activeDepartmentLabel = effectiveDepartmentId
     ? departmentOptions.find((department) => department.id === effectiveDepartmentId)?.name || recommendedDepartmentName || "Khoa đã chọn"
     : "Tất cả các khoa";
-  const nearbySummary = userLocation
-    ? loading ? `Đang tìm trong ${radiusKm} km…` : `Trong ${radiusKm} km · ${visibleFacilities.length} cơ sở${nearby.facilities.length >= NEARBY_FACILITY_LIMIT ? ` (tối đa ${NEARBY_FACILITY_LIMIT})` : ""}`
-    : "Định vị để tìm cơ sở y tế quanh bạn.";
+  const hospitalFilterBadge = hospitalFilterMode === "radius" && userLocation
+    ? `${radiusKm} km`
+    : hospitalFilterMode === "top"
+      ? "Top 5"
+      : hospitalFilterMode === "nearest" && userLocation
+        ? "Gần nhất"
+        : "";
+  const nearbySummary = usesNearbyHospitalFilter
+    ? hospitalFilterMode === "nearest"
+      ? loading ? "Đang tìm bệnh viện gần bạn nhất…" : `${visibleFacilities.length} bệnh viện gần vị trí hiện tại nhất`
+      : loading ? `Đang tìm trong ${radiusKm} km…` : `Trong ${radiusKm} km · ${visibleFacilities.length} cơ sở${nearby.facilities.length >= NEARBY_FACILITY_LIMIT ? ` (tối đa ${NEARBY_FACILITY_LIMIT})` : ""}`
+    : hospitalFilterMode === "top"
+      ? `Top ${visibleFacilities.length} bệnh viện theo đánh giá toàn hệ thống.`
+      : "Mở bộ lọc bệnh viện để chọn top, gần nhất hoặc theo bán kính.";
 
   const openDetail = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
@@ -182,6 +220,19 @@ export function MapScreen() {
     setSelectedFacility(null);
     setDepartmentMenuVisible(false);
   }, []);
+  const selectHospitalFilter = useCallback((mode: Exclude<HospitalFilterMode, "none">) => {
+    setHospitalFilterMode(mode);
+    setSelectedFacility(null);
+  }, []);
+  const clearHospitalFilter = useCallback(() => {
+    setHospitalFilterMode("none");
+    setRadiusKm(DEFAULT_HOSPITAL_FILTER_RADIUS_KM);
+    setSelectedFacility(null);
+  }, []);
+  const requestLocationForFilter = useCallback(() => {
+    setSelectedFacility(null);
+    void requestUserLocation();
+  }, [requestUserLocation]);
 
   useEffect(() => {
     if (clinical.isClinicalFlow || loading || autoOpenedRef.current || !params.facilityId) return;
@@ -201,11 +252,11 @@ export function MapScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    if (userLocation) reloadNearby();
+    if (usesNearbyHospitalFilter) reloadNearby();
     else if (shouldUseClinicalDepartmentFacilities) await reloadClinicalDepartmentFacilities();
     else await reload();
     setRefreshing(false);
-  }, [reloadClinicalDepartmentFacilities, reloadNearby, reload, shouldUseClinicalDepartmentFacilities, userLocation]);
+  }, [reloadClinicalDepartmentFacilities, reloadNearby, reload, shouldUseClinicalDepartmentFacilities, usesNearbyHospitalFilter]);
 
   return (
     <Screen padded={false} style={styles.screen}>
@@ -247,7 +298,7 @@ export function MapScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Lọc theo chuyên khoa"
-            onPress={() => { setRadiusMenuVisible(false); setDepartmentMenuVisible((current) => !current); }}
+            onPress={() => { setHospitalFilterVisible(false); setDepartmentMenuVisible((current) => !current); }}
             style={[styles.departmentMenuButton, effectiveDepartmentId ? styles.departmentMenuButtonActive : null]}
           >
             <Stethoscope size={17} color={colors.teal} />
@@ -258,25 +309,123 @@ export function MapScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Bán kính tìm kiếm ${radiusKm} km`}
-            accessibilityState={{ expanded: radiusMenuVisible }}
-            onPress={() => { setDepartmentMenuVisible(false); setRadiusMenuVisible((current) => !current); }}
-            style={styles.radiusButton}
+            accessibilityLabel="Bộ lọc bệnh viện"
+            accessibilityState={{ expanded: hospitalFilterVisible }}
+            onPress={() => { setDepartmentMenuVisible(false); setHospitalFilterVisible((current) => !current); }}
+            style={[styles.hospitalFilterButton, hospitalFilterMode !== "none" && styles.hospitalFilterButtonActive]}
           >
-            <AppText variant="bodyStrong" color={colors.teal}>{radiusKm} km</AppText>
-            <ChevronDown size={16} color={colors.teal} />
+            <SlidersHorizontal size={17} color={hospitalFilterMode !== "none" ? colors.white : colors.teal} />
+            <AppText
+              variant="bodyStrong"
+              color={hospitalFilterMode !== "none" ? colors.white : colors.teal}
+              numberOfLines={1}
+              style={styles.hospitalFilterButtonLabel}
+            >
+              Bộ lọc bệnh viện
+            </AppText>
+            {hospitalFilterBadge ? (
+              <View style={styles.hospitalFilterBadge}>
+                <AppText variant="caption" color={hospitalFilterMode !== "none" ? colors.teal : colors.white}>
+                  {hospitalFilterBadge}
+                </AppText>
+              </View>
+            ) : null}
+            <ChevronDown size={16} color={hospitalFilterMode !== "none" ? colors.white : colors.teal} />
           </Pressable>
         </View>
 
-        {radiusMenuVisible ? (
-          <View style={styles.radiusOptions}>
-            {[5, 7, 10, 20].map((value) => (
-              <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: value === radiusKm }}
-                onPress={() => { setRadiusKm(value); setSelectedFacility(null); setRadiusMenuVisible(false); }}
-                style={[styles.radiusOption, value === radiusKm && styles.departmentOptionActive]}>
-                <AppText variant="bodyStrong" color={colors.teal}>{value} km</AppText>
-              </Pressable>
-            ))}
+        {hospitalFilterVisible ? (
+          <View style={styles.hospitalFilterPanel}>
+            {!userLocation ? (
+              <View style={styles.hospitalFilterPrompt}>
+                <View style={styles.filterOptionIcon}>
+                  <MapPin size={19} color={colors.teal} />
+                </View>
+                <View style={styles.filterOptionContent}>
+                  <AppText variant="bodyStrong">Bật vị trí để dùng bộ lọc</AppText>
+                  <AppText variant="caption" color={colors.muted}>
+                    Bộ lọc cần vị trí hiện tại để so sánh bệnh viện tốt nhất và bán kính quanh bạn.
+                  </AppText>
+                  <Button disabled={locationStatus === "loading"} onPress={requestLocationForFilter} style={styles.useLocationButton}>
+                    {locationStatus === "loading" ? "Đang lấy vị trí…" : "Dùng vị trí của tôi"}
+                  </Button>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: hospitalFilterMode === "top" }}
+                  onPress={() => selectHospitalFilter("top")}
+                  style={[styles.hospitalFilterOption, hospitalFilterMode === "top" && styles.hospitalFilterOptionActive]}
+                >
+                  <View style={styles.filterOptionIcon}>
+                    <Star size={18} color={colors.teal} />
+                  </View>
+                  <View style={styles.filterOptionContent}>
+                    <AppText variant="bodyStrong">Top bệnh viện</AppText>
+                    <AppText variant="caption" color={colors.muted}>Top 5 theo đánh giá toàn hệ thống.</AppText>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: hospitalFilterMode === "nearest" }}
+                  onPress={() => selectHospitalFilter("nearest")}
+                  style={[styles.hospitalFilterOption, hospitalFilterMode === "nearest" && styles.hospitalFilterOptionActive]}
+                >
+                  <View style={styles.filterOptionIcon}>
+                    <MapPin size={18} color={colors.teal} />
+                  </View>
+                  <View style={styles.filterOptionContent}>
+                    <AppText variant="bodyStrong">Bệnh viện gần tôi nhất</AppText>
+                    <AppText variant="caption" color={colors.muted}>
+                      Hiển thị 1 bệnh viện gần vị trí hiện tại nhất trong bán kính đã chọn.
+                    </AppText>
+                  </View>
+                </Pressable>
+
+                <View style={[styles.hospitalFilterOption, styles.hospitalFilterRadiusOption, hospitalFilterMode === "radius" && styles.hospitalFilterOptionActive]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: hospitalFilterMode === "radius" }}
+                    onPress={() => selectHospitalFilter("radius")}
+                    style={styles.hospitalFilterOptionHeader}
+                  >
+                    <View style={[styles.filterOptionIcon, hospitalFilterMode === "radius" && styles.filterOptionIconActive]}>
+                      <SlidersHorizontal size={18} color={hospitalFilterMode === "radius" ? colors.white : colors.teal} />
+                    </View>
+                    <View style={styles.filterOptionContent}>
+                      <AppText variant="bodyStrong">Theo bán kính</AppText>
+                      <AppText variant="caption" color={colors.muted}>Tìm bệnh viện gần bạn trong bán kính đã chọn.</AppText>
+                    </View>
+                  </Pressable>
+                  <View style={styles.radiusChipRow}>
+                    {HOSPITAL_FILTER_RADIUS_OPTIONS.map((value) => {
+                      const selected = hospitalFilterMode === "radius" && value === radiusKm;
+                      return (
+                        <Pressable
+                          key={value}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          onPress={() => { setRadiusKm(value); selectHospitalFilter("radius"); }}
+                          style={[styles.radiusChip, selected && styles.radiusChipActive]}
+                        >
+                          <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>{value} km</AppText>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {hospitalFilterMode !== "none" ? (
+                  <Pressable accessibilityRole="button" onPress={clearHospitalFilter} style={styles.clearHospitalFilterButton}>
+                    <X size={17} color={colors.warning} />
+                    <AppText variant="bodyStrong" color={colors.warning}>Xóa lọc</AppText>
+                  </Pressable>
+                ) : null}
+              </>
+            )}
           </View>
         ) : null}
 
@@ -337,24 +486,11 @@ export function MapScreen() {
         ) : null}
 
         <View style={styles.mapQuickActions}>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={locationStatus === "loading"}
-          onPress={() => { setSelectedFacility(null); void requestUserLocation(); }}
-          style={styles.locateButton}
-        >
-          <View style={styles.inlineButton}>
-            <MapPin size={16} color={colors.ink} />
-            <AppText variant="bodyStrong">{locationStatus === "loading" ? "Đang định vị…" : userLocation ? "Định vị lại" : "Định vị"}</AppText>
-          </View>
-        </Button>
-
         <Button onPress={openList} style={styles.nearbyButton}>
           <View style={styles.nearbyInline}>
             <ListFilter size={17} color={colors.white} />
             <AppText variant="bodyStrong" color={colors.white}>
-              {userLocation ? "Gần bạn" : "Danh sách"}
+              {usesNearbyHospitalFilter ? "Gần bạn" : "Danh sách"}
             </AppText>
             <View style={styles.countPill}>
               <AppText variant="caption" color={colors.teal}>
@@ -365,13 +501,13 @@ export function MapScreen() {
         </Button>
         </View>
         <View style={styles.nearbyStatus} accessibilityLiveRegion="polite">
-          <AppText variant="caption" color={nearby.error ? colors.warning : colors.muted}>{nearby.error || nearbySummary}</AppText>
+          <AppText variant="caption" color={apiNotice ? colors.warning : colors.muted}>{apiNotice || nearbySummary}</AppText>
           {locationStatus === "denied" || locationStatus === "unsupported" ? (
             <AppText variant="caption" color={colors.warning}>
               {locationStatus === "denied" ? "Chưa được cấp quyền vị trí. Hãy bật quyền vị trí rồi thử lại." : "Chưa lấy được vị trí. Hãy kiểm tra GPS/quyền vị trí rồi thử lại."}
             </AppText>
           ) : null}
-          {nearby.error ? <Button size="sm" variant="ghost" onPress={nearby.reload}>Thử tìm lại</Button> : null}
+          {usesNearbyHospitalFilter && nearby.error ? <Button size="sm" variant="ghost" onPress={nearby.reload}>Thử tìm lại</Button> : null}
         </View>
       </View>
 
@@ -395,7 +531,7 @@ export function MapScreen() {
           facilities={visibleFacilities}
           hasActiveFacilitiesWithoutMapData={hasActiveFacilitiesWithoutMapData}
           loading={loading}
-          nearbyRadiusKm={userLocation ? radiusKm : null}
+          nearbyRadiusKm={usesNearbyHospitalFilter ? radiusKm : null}
           locationDenied={locationStatus === "denied"}
           onChangeSearchText={setSearchText}
           onChangeType={setSelectedType}
@@ -407,7 +543,7 @@ export function MapScreen() {
           selectedFacilityId={selectedFacility?.facilityId ?? ""}
           selectedType={selectedType}
           sessionId={clinical.context?.sessionId}
-          isClinicalFlow={clinical.isClinicalFlow && !hasManualDepartmentFilter && !userLocation}
+          isClinicalFlow={clinical.isClinicalFlow && !hasManualDepartmentFilter && !usesNearbyHospitalFilter && hospitalFilterMode !== "top"}
           unavailableCount={unavailableCount}
         />
       ) : null}
@@ -650,7 +786,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     flexWrap: "wrap",
   },
-  radiusButton: {
+  hospitalFilterButton: {
     minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
@@ -659,23 +795,121 @@ const styles = StyleSheet.create({
     borderColor: colors.teal,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.paper,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 2,
   },
-  radiusOptions: {
+  hospitalFilterButtonActive: {
+    backgroundColor: colors.teal,
+  },
+  hospitalFilterButtonLabel: {
+    flexShrink: 1,
+  },
+  hospitalFilterBadge: {
+    minWidth: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+  },
+  hospitalFilterPanel: {
     alignSelf: "flex-start",
+    width: "100%",
+    maxWidth: 360,
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.xl,
+    backgroundColor: "rgba(255,255,255,0.98)",
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.2)",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    elevation: 4,
+  },
+  hospitalFilterPrompt: {
     flexDirection: "row",
-    gap: spacing.xs,
-    padding: spacing.xs,
+    gap: spacing.md,
+    alignItems: "flex-start",
+  },
+  hospitalFilterOption: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    minHeight: 72,
+    borderWidth: 1,
+    borderColor: "rgba(8,127,140,0.18)",
     borderRadius: radius.lg,
     backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+    padding: spacing.md,
   },
-  radiusOption: {
-    minHeight: 44,
+  hospitalFilterRadiusOption: {
+    flexDirection: "column",
+  },
+  hospitalFilterOptionHeader: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+  },
+  hospitalFilterOptionActive: {
+    borderColor: colors.teal,
+    backgroundColor: colors.mint,
+  },
+  filterOptionIcon: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
+    backgroundColor: "rgba(8,127,140,0.1)",
+  },
+  filterOptionIconActive: {
+    backgroundColor: colors.teal,
+  },
+  filterOptionContent: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.xs / 2,
+  },
+  useLocationButton: {
+    marginTop: spacing.sm,
+    alignSelf: "stretch",
+  },
+  radiusChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+  radiusChip: {
+    minHeight: 34,
+    minWidth: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.82)",
+    paddingHorizontal: spacing.sm,
+  },
+  radiusChipActive: {
+    backgroundColor: colors.teal,
+  },
+  clearHospitalFilterButton: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: "rgba(220,38,38,0.28)",
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(254,242,242,0.96)",
   },
   departmentOptionSearch: {
     minHeight: 44,
