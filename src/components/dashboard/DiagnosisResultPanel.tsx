@@ -33,7 +33,7 @@ function DiagnosisRow({ diagnosis, index }: { diagnosis: ClinicalDiagnosis; inde
       <View style={styles.diagnosisText}>
         <AppText variant="bodyStrong">{diagnosis.diseaseName || "Chưa xác định"}</AppText>
         {diagnosis.icd10Code ? (
-          <AppText variant="caption" color={colors.subtle}>
+          <AppText variant="bodyStrong" color={colors.ink}>
             ICD-10: {diagnosis.icd10Code}
           </AppText>
         ) : null}
@@ -70,7 +70,7 @@ export function DiagnosisResultPanel({ result, onNewSymptom }: DiagnosisResultPa
           {primary.clinicalReasoning ? <AppText color={colors.muted}>{primary.clinicalReasoning}</AppText> : null}
           <View style={styles.metaRow}>
             {primary.icd10Code ? (
-              <AppText variant="caption" color={colors.subtle}>
+              <AppText variant="bodyStrong" color={colors.ink}>
                 ICD-10: {primary.icd10Code}
               </AppText>
             ) : null}

@@ -91,7 +91,7 @@ function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
               {expanded ? (
                 <View style={styles.diagnosisDetail}>
                   {diagnosis.icd10Code ? (
-                    <AppText variant="caption" color={colors.subtle}>
+                    <AppText variant="bodyStrong" color={colors.ink}>
                       ICD-10: {diagnosis.icd10Code}
                     </AppText>
                   ) : null}
