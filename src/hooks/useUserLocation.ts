@@ -26,10 +26,21 @@ export function useUserLocation() {
         return;
       }
 
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setUserLocation(null);
+        setLocationStatus("unsupported");
+        return;
+      }
+
       const position = await Promise.race([
         Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
         new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Location timeout")), 20000); }),
-      ]);
+      ]).catch(async () => {
+        const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: 5 * 60 * 1000, requiredAccuracy: 5000 });
+        if (!lastKnown) throw new Error("Location unavailable");
+        return lastKnown;
+      });
       setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
       setLocationStatus("ready");
     } catch {

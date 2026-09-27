@@ -4,7 +4,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import { ChevronDown, ListFilter, MapPin, Minus, Plus, Search, SlidersHorizontal, Star, Stethoscope, X } from "lucide-react-native";
+import { ChevronDown, MapPin, Minus, Plus, Search, SlidersHorizontal, Star, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -485,21 +485,6 @@ export function MapScreen() {
           </View>
         ) : null}
 
-        <View style={styles.mapQuickActions}>
-        <Button onPress={openList} style={styles.nearbyButton}>
-          <View style={styles.nearbyInline}>
-            <ListFilter size={17} color={colors.white} />
-            <AppText variant="bodyStrong" color={colors.white}>
-              {usesNearbyHospitalFilter ? "Gần bạn" : "Danh sách"}
-            </AppText>
-            <View style={styles.countPill}>
-              <AppText variant="caption" color={colors.teal}>
-                {visibleFacilities.length}
-              </AppText>
-            </View>
-          </View>
-        </Button>
-        </View>
         <View style={styles.nearbyStatus} accessibilityLiveRegion="polite">
           <AppText variant="caption" color={apiNotice ? colors.warning : colors.muted}>{apiNotice || nearbySummary}</AppText>
           {locationStatus === "denied" || locationStatus === "unsupported" ? (
@@ -989,12 +974,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.mint,
   },
-  mapQuickActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
   clinicalContextChip: {
     flexDirection: "row",
     alignItems: "center",
@@ -1021,27 +1000,6 @@ const styles = StyleSheet.create({
   clinicalChipText: {
     flex: 1,
     gap: spacing.xs / 2,
-  },
-  locateButton: {
-    flexShrink: 0,
-    backgroundColor: "rgba(255,255,255,0.94)",
-  },
-  nearbyButton: {
-    flex: 1,
-    minHeight: 42,
-  },
-  inlineButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    minWidth: 0,
-  },
-  nearbyInline: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    minWidth: 0,
   },
   mapZoomControls: {
     position: "absolute",
@@ -1071,15 +1029,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 1,
     backgroundColor: "rgba(8,127,140,0.18)",
-  },
-  countPill: {
-    minWidth: 26,
-    height: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.pill,
-    backgroundColor: colors.white,
-    paddingHorizontal: spacing.sm,
   },
   sheetOverlay: {
     ...StyleSheet.absoluteFillObject,
