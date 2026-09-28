@@ -420,7 +420,16 @@ export function MapScreen() {
                           onPress={() => { setRadiusKm(value); selectHospitalFilter("radius"); }}
                           style={[styles.radiusChip, selected && styles.radiusChipActive]}
                         >
-                          <AppText variant="bodyStrong" color={selected ? colors.white : colors.muted}>{value} km</AppText>
+                          <AppText
+                            variant="bodyStrong"
+                            color={selected ? colors.white : colors.muted}
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.85}
+                            style={styles.radiusChipText}
+                          >
+                            {value} km
+                          </AppText>
                         </Pressable>
                       );
                     })}
@@ -896,7 +905,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill,
     backgroundColor: "rgba(255,255,255,0.82)",
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  radiusChipText: {
+    textAlign: "center",
   },
   radiusChipActive: {
     backgroundColor: colors.teal,
