@@ -241,8 +241,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
       longitude: facility.longitude as number,
       latitude: facility.latitude as number,
     }));
-    const points = userLocation ? [...facilityPoints, userLocation] : facilityPoints;
-    return createBounds(points);
+    return createBounds(facilityPoints.length > 0 ? facilityPoints : userLocation ? [userLocation] : []);
   }, [mappableFacilities, userLocation]);
 
   const projectedFacilities = useMemo<ProjectedFacility[]>(() => {

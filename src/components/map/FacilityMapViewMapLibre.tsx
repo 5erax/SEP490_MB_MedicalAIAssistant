@@ -138,16 +138,12 @@ export function FacilityMapViewMapLibre({
       return;
     }
 
-    if (mappableFacilities.length > 1 || (userLocation && mappableFacilities.length > 0)) {
+    if (mappableFacilities.length > 1) {
       const longitudes = mappableFacilities.map((facility) => facility.longitude as number);
       const latitudes = mappableFacilities.map((facility) => facility.latitude as number);
-      if (userLocation) {
-        longitudes.push(userLocation.longitude);
-        latitudes.push(userLocation.latitude);
-      }
       cameraRef.current?.fitBounds(
         [Math.min(...longitudes), Math.min(...latitudes), Math.max(...longitudes), Math.max(...latitudes)],
-        { padding: { top: 250, bottom: 100, left: 48, right: 48 }, duration },
+        { padding: { top: 210, bottom: 120, left: 54, right: 54 }, duration },
       );
     }
   }, [mappableFacilities, selectedFacility, userLocation]);
@@ -339,7 +335,7 @@ export function FacilityMapViewMapLibre({
           <Layer
             id="facility-point-label"
             type="symbol"
-            minzoom={14}
+            minzoom={12.5}
             filter={["!", ["has", "point_count"]]}
             layout={{
               "text-field": ["get", "title"],
