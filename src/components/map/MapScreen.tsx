@@ -826,9 +826,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs / 2,
   },
   hospitalFilterPanel: {
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
     width: "100%",
-    maxWidth: 360,
     gap: spacing.sm,
     padding: spacing.md,
     borderRadius: radius.xl,
