@@ -99,6 +99,10 @@ export function MapScreen() {
   const baseFacilities = usesNearbyHospitalFilter ? nearby.facilities
     : shouldUseClinicalDepartmentFacilities ? clinicalDepartmentFacilities.facilities
       : clinical.isClinicalFlow && !hasManualDepartmentFilter && hospitalFilterMode !== "top" ? recommendedFacilities : facilities;
+  const catalogByFacilityId = useMemo(
+    () => new Map(facilities.map((facility) => [facility.facilityId, facility])),
+    [facilities],
+  );
 
   const filteredFacilities = useMemo(() => {
     const normalizedSearch = normalizeSearchText(debouncedSearch);
@@ -117,17 +121,20 @@ export function MapScreen() {
         ].some((field) => normalizeSearchText(field).includes(normalizedSearch));
       if (!matchSearch) return false;
 
-      // Nearby already applies departmentId on the server; do not drop valid
-      // matches if a facility's optional department metadata is missing.
-      if (!usesNearbyHospitalFilter && effectiveDepartmentId && (!clinical.isClinicalFlow || hasManualDepartmentFilter)) {
-        if (!facility.departmentIds.includes(effectiveDepartmentId)) return false;
+      if (effectiveDepartmentId && (!clinical.isClinicalFlow || hasManualDepartmentFilter || usesNearbyHospitalFilter)) {
+        const catalogFacility = catalogByFacilityId.get(facility.facilityId);
+        const departmentIds = new Set([
+          ...facility.departmentIds,
+          ...(catalogFacility?.departmentIds ?? []),
+        ]);
+        if (!departmentIds.has(effectiveDepartmentId)) return false;
       }
 
       if (selectedType !== "all" && facility.facilityTypeKey !== selectedType) return false;
 
       return true;
     });
-  }, [baseFacilities, clinical.isClinicalFlow, debouncedSearch, effectiveDepartmentId, hasManualDepartmentFilter, selectedType, usesNearbyHospitalFilter]);
+  }, [baseFacilities, catalogByFacilityId, clinical.isClinicalFlow, debouncedSearch, effectiveDepartmentId, hasManualDepartmentFilter, selectedType, usesNearbyHospitalFilter]);
 
   const visibleFacilities = useMemo(() => {
     const normalizedFacilities = filteredFacilities.map((facility) => ({
