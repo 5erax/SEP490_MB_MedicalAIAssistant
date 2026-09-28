@@ -29,7 +29,7 @@ export function ReviewForm({
   onSubmit,
   onCancel,
 }: ReviewFormProps) {
-  const rating = Number(form.rating) || 5;
+  const rating = Number(form.rating) || 0;
 
   return (
     <View style={styles.group}>
@@ -38,7 +38,7 @@ export function ReviewForm({
       <View style={styles.ratingRow}>
         <StarRatingInput value={rating} onChange={(value) => onChange({ ...form, rating: String(value) })} />
         <AppText variant="caption" color={colors.subtle}>
-          {RATING_LABELS[rating]}
+          {rating > 0 ? RATING_LABELS[rating] : "Chưa chọn"}
         </AppText>
       </View>
 
@@ -80,7 +80,7 @@ export function ReviewForm({
             Hủy
           </Button>
         ) : null}
-        <Button onPress={onSubmit} disabled={submitting} style={styles.submitButton}>
+        <Button onPress={onSubmit} disabled={submitting || rating < 1} style={styles.submitButton}>
           {submitting ? "Đang gửi..." : editing ? "Cập nhật đánh giá" : "Gửi đánh giá"}
         </Button>
       </View>

@@ -19,7 +19,7 @@ import {
 
 export type ReviewForm = { rating: string; comment: string; imageUrls: string[] };
 
-const INITIAL_FORM: ReviewForm = { rating: "5", comment: "", imageUrls: [] };
+const INITIAL_FORM: ReviewForm = { rating: "", comment: "", imageUrls: [] };
 const UNKNOWN_RATING: FacilityRatingSummary = { averageRating: null, reviewCount: null };
 type ReviewPage = { items: FeedbackReview[]; totalPages: number; totalCount: number };
 export type RatingChangeHandler = (facilityId: string, summary: FacilityRatingSummary) => void;

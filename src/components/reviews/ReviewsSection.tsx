@@ -26,7 +26,6 @@ export function ReviewsSection({ facilityId, onRatingChange }: { facilityId: str
     loadingMore,
     hasMore,
     loadMore,
-    reload,
     form,
     setForm,
     editing,
@@ -69,7 +68,6 @@ export function ReviewsSection({ facilityId, onRatingChange }: { facilityId: str
       </View>
 
       {loadError ? <AppText variant="caption" color={colors.warning}>{loadError}</AppText> : null}
-      <Button size="sm" variant="ghost" disabled={loading || submitting} onPress={reload}>Tải lại đánh giá</Button>
 
       {message ? (
         <View style={styles.notice}>
