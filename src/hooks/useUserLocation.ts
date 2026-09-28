@@ -13,6 +13,8 @@ const LOCATION_TIMEOUT_MS = 5000;
 const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
 const MOCK_LOCATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CURRENT_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
+const STUDENT_CULTURAL_HOUSE_LOCATION: GeoPoint = { latitude: 10.8751312, longitude: 106.8007233 };
+const EMULATOR_DEFAULT_LOCATION: GeoPoint = { latitude: 37.421998, longitude: -122.084 };
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -93,6 +95,15 @@ async function readDevicePosition() {
   throw new Error("Location unavailable");
 }
 
+function normalizeDevelopmentLocation(position: GeoPoint) {
+  if (!__DEV__ || Platform.OS !== "android") return position;
+  const isAndroidEmulatorDefault =
+    Math.abs(position.latitude - EMULATOR_DEFAULT_LOCATION.latitude) < 0.001 &&
+    Math.abs(position.longitude - EMULATOR_DEFAULT_LOCATION.longitude) < 0.001;
+
+  return isAndroidEmulatorDefault ? STUDENT_CULTURAL_HOUSE_LOCATION : position;
+}
+
 export function useUserLocation() {
   const [userLocation, setUserLocation] = useState<GeoPoint | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
@@ -122,7 +133,7 @@ export function useUserLocation() {
       }
 
       const position = await readDevicePosition();
-      setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      setUserLocation(normalizeDevelopmentLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }));
       setLocationStatus("ready");
     } catch {
       setUserLocation(null);
