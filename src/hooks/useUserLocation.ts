@@ -9,8 +9,9 @@ import { GeoPoint } from "@/src/utils/facilityRanking";
 
 export type LocationStatus = "idle" | "loading" | "ready" | "denied" | "unsupported";
 
-const LOCATION_TIMEOUT_MS = 12000;
+const LOCATION_TIMEOUT_MS = 5000;
 const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
+const MOCK_LOCATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const CURRENT_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
@@ -31,6 +32,17 @@ function isFreshPosition(position: Location.LocationObject, maxAgeMs: number) {
   return Date.now() - position.timestamp <= maxAgeMs;
 }
 
+function hasUsableCoordinates(position: Location.LocationObject | null) {
+  if (!position) return false;
+  const { latitude, longitude } = position.coords;
+  return Number.isFinite(latitude) && latitude >= -90 && latitude <= 90
+    && Number.isFinite(longitude) && longitude >= -180 && longitude <= 180;
+}
+
+function isUsablePosition(position: Location.LocationObject | null, maxAgeMs: number) {
+  return hasUsableCoordinates(position) && (position?.mocked || isFreshPosition(position as Location.LocationObject, maxAgeMs));
+}
+
 async function waitForFreshPosition(accuracy: Location.Accuracy) {
   let resolvedBeforeSubscription = false;
   let subscription: Location.LocationSubscription | undefined;
@@ -40,7 +52,7 @@ async function waitForFreshPosition(accuracy: Location.Accuracy) {
       Location.watchPositionAsync(
         { accuracy, distanceInterval: 0, timeInterval: 500 },
         (nextPosition) => {
-          if (!isFreshPosition(nextPosition, CURRENT_LOCATION_MAX_AGE_MS)) return;
+          if (!isUsablePosition(nextPosition, CURRENT_LOCATION_MAX_AGE_MS)) return;
           if (subscription) subscription.remove();
           else resolvedBeforeSubscription = true;
           resolve(nextPosition);
@@ -58,17 +70,26 @@ async function waitForFreshPosition(accuracy: Location.Accuracy) {
 }
 
 async function readDevicePosition() {
-  const accuracyAttempts = [Location.Accuracy.High, Location.Accuracy.Balanced, Location.Accuracy.Low];
-  for (const accuracy of accuracyAttempts) {
-    const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy }), LOCATION_TIMEOUT_MS).catch(() => null);
-    if (position && isFreshPosition(position, CURRENT_LOCATION_MAX_AGE_MS)) return position;
+  const cached = await Location.getLastKnownPositionAsync({
+    maxAge: MOCK_LOCATION_MAX_AGE_MS,
+    requiredAccuracy: 100,
+  }).catch(() => null);
+  if (isUsablePosition(cached, LAST_KNOWN_MAX_AGE_MS)) return cached as Location.LocationObject;
 
-    const watchedPosition = await waitForFreshPosition(accuracy).catch(() => null);
-    if (watchedPosition) return watchedPosition;
+  const accuracyAttempts = [Location.Accuracy.Balanced, Location.Accuracy.Low, Location.Accuracy.High];
+  for (const accuracy of accuracyAttempts) {
+    const position = await withTimeout(
+      Location.getCurrentPositionAsync({ accuracy, mayShowUserSettingsDialog: false }),
+      LOCATION_TIMEOUT_MS,
+    ).catch(() => null);
+    if (isUsablePosition(position, CURRENT_LOCATION_MAX_AGE_MS)) return position as Location.LocationObject;
   }
 
-  const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(() => null);
-  if (lastKnown && Date.now() - lastKnown.timestamp <= LAST_KNOWN_MAX_AGE_MS) return lastKnown;
+  const watchedPosition = await waitForFreshPosition(Location.Accuracy.Balanced).catch(() => null);
+  if (isUsablePosition(watchedPosition, CURRENT_LOCATION_MAX_AGE_MS)) return watchedPosition as Location.LocationObject;
+
+  const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS, requiredAccuracy: 250 }).catch(() => null);
+  if (isUsablePosition(lastKnown, LAST_KNOWN_MAX_AGE_MS)) return lastKnown as Location.LocationObject;
   throw new Error("Location unavailable");
 }
 
