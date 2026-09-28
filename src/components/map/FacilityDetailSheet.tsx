@@ -28,7 +28,11 @@ export function FacilityDetailSheet({ facility, visible, onClose, onRatingChange
   const [detail, setDetail] = useState<NormalizedFacility | null>(facility);
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
-    setDetail((current) => current?.facilityId === facilityId ? { ...current, ...summary } : current);
+    setDetail((current) => {
+      if (current?.facilityId !== facilityId) return current;
+      if (current.averageRating === summary.averageRating && current.reviewCount === summary.reviewCount) return current;
+      return { ...current, ...summary };
+    });
     onRatingChange?.(facilityId, summary);
   }, [onRatingChange]);
 

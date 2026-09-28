@@ -78,11 +78,12 @@ export function MapScreen() {
   const reloadNearby = nearby.reload;
   const updateNearbyRating = nearby.updateRating;
   const reloadClinicalDepartmentFacilities = clinicalDepartmentFacilities.reload;
+  const updateClinicalDepartmentRating = clinicalDepartmentFacilities.updateRating;
   const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
     updateCatalogRating(facilityId, summary);
     updateNearbyRating(facilityId, summary);
-    clinicalDepartmentFacilities.updateRating(facilityId, summary);
-  }, [clinicalDepartmentFacilities, updateCatalogRating, updateNearbyRating]);
+    updateClinicalDepartmentRating(facilityId, summary);
+  }, [updateCatalogRating, updateClinicalDepartmentRating, updateNearbyRating]);
 
   const { facilities: recommendedFacilities, unavailableCount } = useMemo(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || !clinical.context) {

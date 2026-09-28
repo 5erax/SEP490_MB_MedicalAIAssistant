@@ -36,6 +36,7 @@ export function useFacilityReviews(facilityId: string | undefined, onRatingChang
   const [loadingMore, setLoadingMore] = useState(false);
   const requestId = useRef(0);
   const activeFacility = useRef<string | undefined>(facilityId);
+  const onRatingChangeRef = useRef(onRatingChange);
   const saving = useRef(false);
   const paging = useRef(false);
   const [form, setForm] = useState<ReviewForm>(INITIAL_FORM);
@@ -46,6 +47,10 @@ export function useFacilityReviews(facilityId: string | undefined, onRatingChang
   const [submittedReview, setSubmittedReview] = useState<FeedbackReview | null>(null);
 
   const currentUserReview = submittedReview || reviews.find((review) => isReviewByCurrentUser(review, session));
+
+  useEffect(() => {
+    onRatingChangeRef.current = onRatingChange;
+  }, [onRatingChange]);
 
   const load = useCallback(async () => {
     if (!facilityId) return false;
@@ -70,19 +75,19 @@ export function useFacilityReviews(facilityId: string | undefined, onRatingChang
     if (facilityResult.status === "fulfilled") {
       const summary = normalizeFacilityRating(getObjectData(facilityResult.value));
       setRatingSummary(summary);
-      onRatingChange?.(facilityId, summary);
+      onRatingChangeRef.current?.(facilityId, summary);
       if (summary.reviewCount == null || (summary.reviewCount > 0 && summary.averageRating == null)) {
         problems.push("Chưa thể xác định điểm tổng hợp của cơ sở.");
       }
     } else {
       setRatingSummary(UNKNOWN_RATING);
-      onRatingChange?.(facilityId, UNKNOWN_RATING);
+      onRatingChangeRef.current?.(facilityId, UNKNOWN_RATING);
       problems.push("Chưa thể cập nhật điểm trung bình của cơ sở.");
     }
     setLoadError(problems.join(" "));
     setLoading(false);
     return problems.length === 0;
-  }, [facilityId, onRatingChange]);
+  }, [facilityId]);
 
   useEffect(() => {
     activeFacility.current = facilityId;
@@ -226,7 +231,7 @@ export function useFacilityReviews(facilityId: string | undefined, onRatingChang
       // Persisted review is already successful. A failed refresh must never
       // report the POST/PUT as failed or encourage sending it again.
       setRatingSummary(UNKNOWN_RATING);
-      onRatingChange?.(facilityId, UNKNOWN_RATING);
+      onRatingChangeRef.current?.(facilityId, UNKNOWN_RATING);
       const refreshed = await load();
       if (!refreshed && activeFacility.current === facilityId) {
         setMessage("Đã lưu đánh giá. Chưa thể đồng bộ đủ dữ liệu mới; hãy bấm Tải lại đánh giá.");
