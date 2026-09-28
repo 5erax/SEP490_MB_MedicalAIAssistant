@@ -35,7 +35,7 @@ type MapQueryParams = {
 type HospitalFilterMode = "none" | "top" | "nearest" | "radius";
 
 const DEFAULT_HOSPITAL_FILTER_RADIUS_KM = 5;
-const HOSPITAL_FILTER_RADIUS_OPTIONS = [5, 10, 15, 20, 25];
+const HOSPITAL_FILTER_RADIUS_OPTIONS = [5, 10, 15];
 const TOP_HOSPITAL_LIMIT = 5;
 
 export function MapScreen() {
