@@ -65,7 +65,7 @@ const HCM_BOUNDS: Bounds = {
 
 const MIN_SPAN = 0.015;
 const MAP_PADDING = 28;
-const CLUSTER_DISTANCE = 34;
+const CLUSTER_DISTANCE = 26;
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 

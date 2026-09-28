@@ -30,6 +30,7 @@ const MAP_LOAD_TIMEOUT_MS = 12_000;
 const MIN_ZOOM = 9;
 const MAX_ZOOM = 18;
 const CLUSTER_MAX_ZOOM = 14;
+const CLUSTER_RADIUS = 30;
 const CAMERA_ANIMATION_MS = 420;
 const DEFAULT_CENTER: [number, number] = [106.700424, 10.775658];
 
@@ -265,7 +266,7 @@ export function FacilityMapViewMapLibre({
           ref={facilitySourceRef}
           data={facilityFeatureCollection}
           cluster
-          clusterRadius={46}
+          clusterRadius={CLUSTER_RADIUS}
           clusterMaxZoom={CLUSTER_MAX_ZOOM}
           clusterMinPoints={3}
           maxzoom={MAX_ZOOM}
