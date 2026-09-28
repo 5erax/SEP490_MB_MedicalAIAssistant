@@ -11,6 +11,7 @@ export type LocationStatus = "idle" | "loading" | "ready" | "denied" | "unsuppor
 
 const LOCATION_TIMEOUT_MS = 12000;
 const LAST_KNOWN_MAX_AGE_MS = 10 * 60 * 1000;
+const CURRENT_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -26,11 +27,44 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
   }
 }
 
+function isFreshPosition(position: Location.LocationObject, maxAgeMs: number) {
+  return Date.now() - position.timestamp <= maxAgeMs;
+}
+
+async function waitForFreshPosition(accuracy: Location.Accuracy) {
+  let resolvedBeforeSubscription = false;
+  let subscription: Location.LocationSubscription | undefined;
+
+  const position = await withTimeout(
+    new Promise<Location.LocationObject>((resolve, reject) => {
+      Location.watchPositionAsync(
+        { accuracy, distanceInterval: 0, timeInterval: 500 },
+        (nextPosition) => {
+          if (!isFreshPosition(nextPosition, CURRENT_LOCATION_MAX_AGE_MS)) return;
+          if (subscription) subscription.remove();
+          else resolvedBeforeSubscription = true;
+          resolve(nextPosition);
+        },
+      ).then((nextSubscription) => {
+        subscription = nextSubscription;
+        if (resolvedBeforeSubscription) subscription.remove();
+      }).catch(reject);
+    }),
+    LOCATION_TIMEOUT_MS,
+  );
+
+  subscription?.remove();
+  return position;
+}
+
 async function readDevicePosition() {
   const accuracyAttempts = [Location.Accuracy.High, Location.Accuracy.Balanced, Location.Accuracy.Low];
   for (const accuracy of accuracyAttempts) {
     const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy }), LOCATION_TIMEOUT_MS).catch(() => null);
-    if (position) return position;
+    if (position && isFreshPosition(position, CURRENT_LOCATION_MAX_AGE_MS)) return position;
+
+    const watchedPosition = await waitForFreshPosition(accuracy).catch(() => null);
+    if (watchedPosition) return watchedPosition;
   }
 
   const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(() => null);
