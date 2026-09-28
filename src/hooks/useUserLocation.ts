@@ -27,17 +27,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number) {
 }
 
 async function readDevicePosition() {
-  const quickPosition = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(() => null);
-  if (quickPosition) return quickPosition;
-
-  const accuracyAttempts = [Location.Accuracy.Balanced, Location.Accuracy.Low, Location.Accuracy.High];
+  const accuracyAttempts = [Location.Accuracy.High, Location.Accuracy.Balanced, Location.Accuracy.Low];
   for (const accuracy of accuracyAttempts) {
     const position = await withTimeout(Location.getCurrentPositionAsync({ accuracy }), LOCATION_TIMEOUT_MS).catch(() => null);
     if (position) return position;
   }
 
-  const relaxedLastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
-  if (relaxedLastKnown) return relaxedLastKnown;
+  const lastKnown = await Location.getLastKnownPositionAsync({ maxAge: LAST_KNOWN_MAX_AGE_MS }).catch(() => null);
+  if (lastKnown && Date.now() - lastKnown.timestamp <= LAST_KNOWN_MAX_AGE_MS) return lastKnown;
   throw new Error("Location unavailable");
 }
 
