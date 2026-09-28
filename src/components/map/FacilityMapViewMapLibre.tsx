@@ -132,7 +132,7 @@ export function FacilityMapViewMapLibre({
       return;
     }
 
-    if (mappableFacilities.length === 1 && !userLocation) {
+    if (mappableFacilities.length === 1) {
       const only = mappableFacilities[0];
       cameraRef.current?.flyTo({ center: [only.longitude as number, only.latitude as number], zoom: 14, duration });
       return;

@@ -162,6 +162,13 @@ export function MapScreen() {
     setSelectedFacility(visibleFacilities[0] ?? null);
   }, [selectedFacility, visibleFacilities]);
 
+  useEffect(() => {
+    if (hospitalFilterMode !== "nearest" || loading || visibleFacilities.length === 0) return;
+    const nearestFacility = visibleFacilities[0];
+    if (selectedFacility?.facilityId === nearestFacility.facilityId) return;
+    setSelectedFacility(nearestFacility);
+  }, [hospitalFilterMode, loading, selectedFacility?.facilityId, visibleFacilities]);
+
   const availableTypes = useMemo(
     () => Array.from(new Set(facilities.map((facility) => facility.facilityTypeKey))),
     [facilities],
