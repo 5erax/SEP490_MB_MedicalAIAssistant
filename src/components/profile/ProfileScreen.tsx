@@ -3,8 +3,9 @@
 // of Web's sidebar tab list. "Giao dịch" reuses the existing
 // PaymentHistoryScreen (Module 9) exactly as Web nests PaymentHistoryPanel
 // inside this same page, rather than duplicating that list.
-import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { LogOut } from "lucide-react-native";
 
 import { AppText, Screen } from "@/src/components/ui";
@@ -36,7 +37,33 @@ export function ProfileScreen() {
   const { logout, loggingOut } = useLogout();
   const [activeTab, setActiveTab] = useState<ProfileTabId>("info");
   const profile = useProfile();
+  const appStateRef = useRef(AppState.currentState);
   const userId = String(session?.userId || (session as Record<string, unknown> | null)?.id || "");
+  const reloadProfile = profile.reload;
+
+  const refreshPackageTab = useCallback(() => {
+    if (activeTab !== "package") return;
+    void reloadProfile();
+  }, [activeTab, reloadProfile]);
+
+  useEffect(() => {
+    refreshPackageTab();
+  }, [refreshPackageTab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshPackageTab();
+    }, [refreshPackageTab]),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasInactive = appStateRef.current.match(/inactive|background/);
+      appStateRef.current = nextState;
+      if (wasInactive && nextState === "active") refreshPackageTab();
+    });
+    return () => subscription.remove();
+  }, [refreshPackageTab]);
 
   return (
     <Screen padded={false} style={styles.screen}>
