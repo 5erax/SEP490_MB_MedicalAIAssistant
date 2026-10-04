@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { checklistItemsApi, consultationSessionsApi } from "@/src/services/consultationSessionService";
 import { medicalDepartmentsService } from "@/src/services/domainServices";
+import { medicalFacilitiesApi } from "@/src/services/facilityService";
 import { symptomAnalysisApi, unwrapApiData } from "@/src/services/symptomAnalysisService";
 import {
   ChecklistItem,
@@ -18,6 +19,7 @@ import {
   SuggestedConsultationFacility,
 } from "@/src/types/consultation";
 import { SymptomAnalysisSession } from "@/src/types/symptomAnalysis";
+import { getArrayData } from "@/src/utils/facilityNormalize";
 
 export type WizardStep = 0 | 1 | 2 | 3 | 4;
 type SectionState = "idle" | "loading" | "ready" | "error";
@@ -56,12 +58,22 @@ function normalizeSuggestedFacilities(list: unknown): SuggestedConsultationFacil
     .map((item) => {
       const facility = item as Record<string, unknown>;
       return {
-        facilityId: String(facility?.facilityId ?? facility?.FacilityId ?? facility?.id ?? "").trim(),
+        facilityId: String(facility?.facilityId ?? facility?.FacilityId ?? facility?.medicalFacilityId ?? facility?.MedicalFacilityId ?? facility?.id ?? "").trim(),
         facilityName: (facility?.facilityName ?? facility?.FacilityName ?? facility?.name ?? "Cơ sở y tế") as string,
         address: (facility?.address ?? facility?.Address ?? "") as string,
       };
     })
     .filter((facility) => facility.facilityId);
+}
+
+async function loadFacilitiesByDepartment(departmentId: string) {
+  if (!departmentId) return [];
+  try {
+    const response = await medicalFacilitiesApi.active({ departmentId });
+    return normalizeSuggestedFacilities(getArrayData(response));
+  } catch {
+    return [];
+  }
 }
 
 function extractSessionRecommendation(response: unknown) {
@@ -180,6 +192,7 @@ export function useConsultationWizard() {
     try {
       const response = await symptomAnalysisApi.get(sessionId);
       const { departmentId, departmentName, symptomText, facilities } = extractSessionRecommendation(response);
+      const nextFacilities = facilities.length > 0 ? facilities : await loadFacilitiesByDepartment(departmentId);
       setForm((current) => ({
         ...current,
         departmentId: departmentId || current.departmentId,
@@ -189,7 +202,7 @@ export function useConsultationWizard() {
         facilityName: "",
       }));
       setFormErrors((current) => ({ ...current, departmentId: undefined, symptoms: undefined }));
-      setSuggestedFacilities(facilities);
+      setSuggestedFacilities(nextFacilities);
       setAppliedSessionTitle(getSuggestedSessionTitle(unwrapApiData(response), "Phiên gợi ý đã chọn"));
       return true;
     } catch (requestError) {
