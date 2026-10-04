@@ -24,6 +24,7 @@ export const ROUTES = {
     SYMPTOM: "/(patient)/symptom",
     SYMPTOM_RESULT: "/(patient)/symptom/result",
     PRE_CONSULTATION: "/(patient)/pre-consultation",
+    PRE_CONSULTATION_DETAIL: "/(patient)/pre-consultation-detail",
     FACILITY_DETAIL: "/(patient)/facilities/[id]",
     MEDICATION: "/(patient)/medication",
     MY_MEDICATIONS: "/(patient)/my-medications",

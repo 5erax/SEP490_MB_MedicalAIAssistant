@@ -63,6 +63,7 @@ export default function PatientLayout() {
       <Tabs.Screen name="settings" options={{ href: null }} />
       <Tabs.Screen name="symptom" options={{ href: null }} />
       <Tabs.Screen name="medication" options={{ href: null }} />
+      <Tabs.Screen name="pre-consultation-detail" options={{ href: null }} />
     </Tabs>
   );
 }

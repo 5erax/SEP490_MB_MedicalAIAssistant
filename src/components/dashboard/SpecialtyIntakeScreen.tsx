@@ -8,9 +8,9 @@
 // the current flow). The destination (Nearby Clinics/Map, same query
 // params: source/facilityId/departmentId/sessionId) is unchanged.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
-import { ClipboardPlus, Clock3, History, MessageCircle, ShieldCheck, Stethoscope } from "lucide-react-native";
+import { ClipboardPlus, Clock3, ShieldCheck, Stethoscope } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
@@ -28,8 +28,6 @@ import { QuestionFlow } from "./QuestionFlow";
 import { ResultPanel } from "./ResultPanel";
 
 const STEP_LABELS = ["Mô tả", "Làm rõ", "Kết quả"];
-const SEGMENT_WIDTH = 92;
-const SEGMENT_HEIGHT = 30;
 
 function IntroPanel({ activeStep }: { activeStep: number }) {
   return (
@@ -174,7 +172,6 @@ export function SpecialtyIntakeScreen() {
   const [profileNudgeVisible, setProfileNudgeVisible] = useState(
     shouldSetupPatientProfile(session) && !isProfileNudgeDismissed(),
   );
-  const segmentTranslate = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView | null>(null);
   const questionFlowYRef = useRef(0);
   const historyLoadedRef = useRef(false);
@@ -240,16 +237,10 @@ export function SpecialtyIntakeScreen() {
   }, [historyDetailLoadingId]);
 
   useEffect(() => {
-    Animated.spring(segmentTranslate, {
-      toValue: activeTab === "chat" ? 0 : SEGMENT_WIDTH,
-      useNativeDriver: true,
-      tension: 110,
-      friction: 12,
-    }).start();
     if (activeTab === "history" && !historyLoadedRef.current && !historyLoading) {
       loadHistory();
     }
-  }, [activeTab, historyLoading, loadHistory, segmentTranslate]);
+  }, [activeTab, historyLoading, loadHistory]);
 
   useEffect(() => {
     if (activeTab !== "chat" || !["questions", "submitting"].includes(status)) return;
@@ -267,18 +258,23 @@ export function SpecialtyIntakeScreen() {
         />
       ) : null}
 
-      <View style={styles.segmentedControl}>
-        <Animated.View style={[styles.segmentIndicator, { transform: [{ translateX: segmentTranslate }] }]} />
-        <Pressable accessibilityRole="button" onPress={() => setActiveTab("chat")} style={styles.segmentItem}>
-          <MessageCircle size={14} color={activeTab === "chat" ? colors.teal : colors.subtle} />
-          <AppText variant="caption" color={colors.ink} numberOfLines={1}>
-            Trò chuyện
+      <View style={styles.tabs}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setActiveTab("chat")}
+          style={[styles.tabItem, activeTab === "chat" && styles.tabItemActive]}
+        >
+          <AppText variant="bodyStrong" color={activeTab === "chat" ? colors.white : colors.ink}>
+            Tư vấn mới
           </AppText>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setActiveTab("history")} style={({ pressed }) => [styles.segmentItem, pressed && styles.pressed]}>
-          <History size={14} color={activeTab === "history" ? colors.teal : colors.subtle} />
-          <AppText variant="caption" color={colors.ink} numberOfLines={1}>
-            Lịch sử
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setActiveTab("history")}
+          style={[styles.tabItem, activeTab === "history" && styles.tabItemActive]}
+        >
+          <AppText variant="bodyStrong" color={activeTab === "history" ? colors.white : colors.ink}>
+            Lịch sử tư vấn
           </AppText>
         </Pressable>
       </View>
@@ -465,47 +461,22 @@ const styles = StyleSheet.create({
     opacity: 0.86,
     transform: [{ translateY: 1 }],
   },
-  segmentedControl: {
-    alignSelf: "center",
-    minHeight: 38,
+  tabs: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    backgroundColor: colors.mint,
-    borderWidth: 1,
-    borderColor: "rgba(8,127,140,0.16)",
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.paperSoft,
     padding: spacing.xs,
-    position: "relative",
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 1,
   },
-  segmentIndicator: {
-    position: "absolute",
-    left: spacing.xs,
-    top: spacing.xs,
-    width: SEGMENT_WIDTH,
-    height: SEGMENT_HEIGHT,
-    borderRadius: radius.pill,
-    backgroundColor: colors.paper,
-    shadowColor: colors.teal,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 1,
-  },
-  segmentItem: {
-    minHeight: SEGMENT_HEIGHT,
-    width: SEGMENT_WIDTH,
-    flexDirection: "row",
+  tabItem: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: spacing.xs,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
+    minHeight: 40,
+    borderRadius: radius.sm,
+  },
+  tabItemActive: {
+    backgroundColor: colors.teal,
   },
   introPanel: {
     gap: spacing.md,

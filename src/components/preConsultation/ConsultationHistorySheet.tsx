@@ -1,25 +1,19 @@
 // Ported from src/components/preConsultation/PreConsultationHistory.jsx (Web).
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { ChevronRight } from "lucide-react-native";
 
 import { AppText, Badge, Button, EmptyState } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { consultationSessionsApi } from "@/src/services/consultationSessionService";
-import { unwrapApiData } from "@/src/services/symptomAnalysisService";
-import { ConsultationSession } from "@/src/types/consultation";
-
-const STATUS_LABELS: Record<string, { label: string; tone: "warning" | "success" | "danger" }> = {
-  processing: { label: "Đang phân tích", tone: "warning" },
-  completed: { label: "Đã hoàn tất", tone: "success" },
-  failed: { label: "Không thành công", tone: "danger" },
-};
-
-function formatDateTime(value?: string) {
-  if (!value) return "Chưa có thời gian";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Chưa có thời gian";
-  return date.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" });
-}
+import { ROUTES } from "@/src/navigation/routes";
+import {
+  CONSULTATION_STATUS_LABELS,
+  ConsultationHistorySession,
+  formatConsultationDateTime,
+  readConsultationSessionList,
+} from "@/src/utils/consultationHistory";
 
 type ConsultationHistorySheetProps = {
   embedded?: boolean;
@@ -27,20 +21,16 @@ type ConsultationHistorySheetProps = {
 };
 
 export function ConsultationHistorySheet({ onStartNew }: ConsultationHistorySheetProps) {
-  const [sessions, setSessions] = useState<ConsultationSession[]>([]);
+  const [sessions, setSessions] = useState<ConsultationHistorySession[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedId, setSelectedId] = useState("");
-  const [selectedDetail, setSelectedDetail] = useState<ConsultationSession | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
     try {
       const response = await consultationSessionsApi.mySessions(1, 20);
-      const data = unwrapApiData<{ items?: ConsultationSession[] }>(response);
-      setSessions(data?.items ?? []);
+      setSessions(readConsultationSessionList(response));
       setState("ready");
     } catch (requestError) {
       setError((requestError as Error)?.message || "Chưa thể tải lịch sử tư vấn. Vui lòng thử lại.");
@@ -59,17 +49,11 @@ export function ConsultationHistorySheet({ onStartNew }: ConsultationHistoryShee
     setRefreshing(false);
   }
 
-  async function openDetail(sessionId: string) {
-    setSelectedId(sessionId);
-    setDetailLoading(true);
-    try {
-      const response = await consultationSessionsApi.get(sessionId);
-      setSelectedDetail(unwrapApiData<ConsultationSession>(response) ?? null);
-    } catch {
-      setSelectedDetail(null);
-    } finally {
-      setDetailLoading(false);
-    }
+  function openDetail(session: ConsultationHistorySession) {
+    router.push({
+      pathname: ROUTES.PATIENT.PRE_CONSULTATION_DETAIL as never,
+      params: { sessionId: session.sessionId },
+    });
   }
 
   if (state === "loading") {
@@ -99,39 +83,23 @@ export function ConsultationHistorySheet({ onStartNew }: ConsultationHistoryShee
         <EmptyState title="Chưa có phiên tư vấn nào" description="Phiên mới sẽ xuất hiện ở đây sau khi bạn bắt đầu tư vấn trước khám." />
       ) : (
         sessions.map((session) => {
-          const status = STATUS_LABELS[String(session.status ?? "").toLowerCase()] || { label: "Đang cập nhật", tone: "warning" as const };
-          const isActive = session.sessionId === selectedId;
+          const status = CONSULTATION_STATUS_LABELS[String(session.status ?? "").toLowerCase()] || { label: "Đang cập nhật", tone: "warning" as const };
           return (
-            <Pressable key={session.sessionId} onPress={() => openDetail(session.sessionId)} style={[styles.row, isActive && styles.rowActive]}>
-              <View style={styles.rowText}>
-                <AppText variant="bodyStrong">{session.departmentName || session.symptoms || "Phiên tư vấn"}</AppText>
-                <AppText variant="caption" color={colors.subtle}>
-                  {formatDateTime(session.appointmentTime)}
-                </AppText>
-              </View>
-              <Badge tone={status.tone}>{status.label}</Badge>
-            </Pressable>
+            <View key={session.sessionId} style={styles.sessionGroup}>
+              <Pressable onPress={() => openDetail(session)} style={styles.row}>
+                <View style={styles.rowText}>
+                  <AppText variant="bodyStrong">{session.departmentName || session.symptoms || "Phiên tư vấn"}</AppText>
+                  <AppText variant="caption" color={colors.subtle}>
+                    {formatConsultationDateTime(session.appointmentTime)}
+                  </AppText>
+                </View>
+                <Badge tone={status.tone}>{status.label}</Badge>
+                <ChevronRight size={18} color={colors.teal} />
+              </Pressable>
+            </View>
           );
         })
       )}
-
-      {selectedId ? (
-        <View style={styles.detailCard}>
-          {detailLoading ? (
-            <ActivityIndicator color={colors.teal} />
-          ) : selectedDetail ? (
-            <>
-              <AppText variant="bodyStrong">{selectedDetail.departmentName || "Chi tiết phiên"}</AppText>
-              <AppText color={colors.muted}>{selectedDetail.symptoms || "Không có mô tả triệu chứng."}</AppText>
-              <AppText variant="caption" color={colors.subtle}>
-                {selectedDetail.facilityName || "Chưa chọn bệnh viện"}
-              </AppText>
-            </>
-          ) : (
-            <AppText color={colors.danger}>Không thể tải chi tiết phiên này.</AppText>
-          )}
-        </View>
-      ) : null}
     </ScrollView>
   );
 }
@@ -160,20 +128,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     padding: spacing.lg,
   },
-  rowActive: {
-    borderColor: colors.teal,
-    backgroundColor: colors.mint,
-  },
   rowText: {
     flex: 1,
     gap: spacing.xs / 2,
   },
-  detailCard: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: radius.md,
-    backgroundColor: colors.paperSoft,
-    padding: spacing.lg,
+  sessionGroup: {
+    gap: spacing.xs,
   },
 });
