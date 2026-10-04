@@ -3,7 +3,7 @@
 // from a bottom sheet so Expo Go stays smooth.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { ChevronDown, MapPin, Minus, Plus, Search, SlidersHorizontal, Star, Stethoscope, X } from "lucide-react-native";
 
 import { AppText, Button, EmptyState, Screen, SkeletonGroup } from "@/src/components/ui";
@@ -13,6 +13,7 @@ import { useDebouncedValue } from "@/src/hooks/useDebouncedValue";
 import { useDepartmentFacilities, useFacilities } from "@/src/hooks/useFacilities";
 import { useNearbyFacilities } from "@/src/hooks/useNearbyFacilities";
 import { useUserLocation } from "@/src/hooks/useUserLocation";
+import { ROUTES } from "@/src/navigation/routes";
 import { NEARBY_FACILITY_LIMIT } from "@/src/services/facilityService";
 import { FacilityTypeKey, NormalizedFacility } from "@/src/types/facility";
 import { buildRecommendedFacilities } from "@/src/utils/clinicalFacilityMerge";
@@ -22,7 +23,7 @@ import { FacilityDetailSheet } from "./FacilityDetailSheet";
 import { FacilityFilters } from "./FacilityFilters";
 import { FacilityListItem } from "./FacilityListItem";
 import { FacilityMapView } from "./FacilityMapView";
-import type { MapLoadStatus, MapZoomDirection, MapZoomAction } from "./FacilityMapView.types";
+import type { MapFocusUserLocationAction, MapLoadStatus, MapZoomDirection, MapZoomAction } from "./FacilityMapView.types";
 import { RatingChangeHandler } from "@/src/hooks/useFacilityReviews";
 
 type MapQueryParams = {
@@ -30,6 +31,8 @@ type MapQueryParams = {
   facilityId?: string;
   departmentId?: string;
   sessionId?: string;
+  hospitalFilter?: HospitalFilterMode;
+  hospitalFilterRequest?: string;
 };
 
 type HospitalFilterMode = "none" | "top" | "nearest" | "radius";
@@ -37,6 +40,22 @@ type HospitalFilterMode = "none" | "top" | "nearest" | "radius";
 const DEFAULT_HOSPITAL_FILTER_RADIUS_KM = 5;
 const HOSPITAL_FILTER_RADIUS_OPTIONS = [5, 10, 15];
 const TOP_HOSPITAL_LIMIT = 5;
+
+function facilityMatchesDepartment(facility: NormalizedFacility | null, departmentId: string, departmentName: string) {
+  if (!facility) return false;
+  if (departmentId && facility.departmentIds.includes(departmentId)) return true;
+
+  const normalizedDepartmentName = normalizeSearchText(departmentName);
+  if (!normalizedDepartmentName) return false;
+
+  return [
+    ...facility.departments,
+    ...facility.consultationDepartments.map((department) => department.name),
+  ].some((department) => {
+    const normalized = normalizeSearchText(department);
+    return normalized.includes(normalizedDepartmentName) || normalizedDepartmentName.includes(normalized);
+  });
+}
 
 export function MapScreen() {
   const params = useLocalSearchParams<MapQueryParams>();
@@ -52,7 +71,8 @@ export function MapScreen() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState(DEFAULT_HOSPITAL_FILTER_RADIUS_KM);
   const [hospitalFilterVisible, setHospitalFilterVisible] = useState(false);
-  const [hospitalFilterMode, setHospitalFilterMode] = useState<HospitalFilterMode>("none");
+  const initialHospitalFilterMode = params.hospitalFilter === "nearest" ? "nearest" : "none";
+  const [hospitalFilterMode, setHospitalFilterMode] = useState<HospitalFilterMode>(initialHospitalFilterMode);
   const [departmentMenuVisible, setDepartmentMenuVisible] = useState(false);
   const [selectedType, setSelectedType] = useState<FacilityTypeKey | "all">("all");
   const [selectedFacility, setSelectedFacility] = useState<NormalizedFacility | null>(null);
@@ -61,9 +81,13 @@ export function MapScreen() {
   const [listVisible, setListVisible] = useState(false);
   const [, setMapStatus] = useState<MapLoadStatus>("loading");
   const [zoomAction, setZoomAction] = useState<MapZoomAction>();
+  const [focusUserLocationAction, setFocusUserLocationAction] = useState<MapFocusUserLocationAction>();
   const [refreshing, setRefreshing] = useState(false);
   const autoSelectedRef = useRef(false);
   const autoOpenedRef = useRef(false);
+  const autoRequestedNearestLocationRef = useRef(false);
+  const handledHospitalFilterRequestRef = useRef("");
+  const pendingUserLocationFocusRef = useRef(false);
   const hasManualDepartmentFilter = selectedDepartmentId !== null;
   const clinicalDepartmentId = clinical.isClinicalFlow
     ? clinical.context?.recommendedDepartment?.departmentId ?? params.departmentId ?? ""
@@ -150,8 +174,7 @@ export function MapScreen() {
 
     if (hospitalFilterMode === "nearest" && usesNearbyHospitalFilter) {
       return [...normalizedFacilities]
-        .sort((left, right) => (left.distanceKm ?? Infinity) - (right.distanceKm ?? Infinity))
-        .slice(0, 1);
+        .sort((left, right) => (left.distanceKm ?? Infinity) - (right.distanceKm ?? Infinity));
     }
 
     return normalizedFacilities;
@@ -200,11 +223,16 @@ export function MapScreen() {
         : "";
   const nearbySummary = usesNearbyHospitalFilter
     ? hospitalFilterMode === "nearest"
-      ? loading ? "Đang tìm bệnh viện gần bạn nhất…" : `${visibleFacilities.length} bệnh viện gần vị trí hiện tại nhất`
+      ? loading ? "Đang tìm bệnh viện gần bạn nhất…" : `${visibleFacilities.length} bệnh viện theo chuyên khoa · gần nhất trước`
       : loading ? `Đang tìm trong ${radiusKm} km…` : `Trong ${radiusKm} km · ${visibleFacilities.length} cơ sở${nearby.facilities.length >= NEARBY_FACILITY_LIMIT ? ` (tối đa ${NEARBY_FACILITY_LIMIT})` : ""}`
     : hospitalFilterMode === "top"
       ? `Top ${visibleFacilities.length} bệnh viện theo đánh giá toàn hệ thống.`
       : "Mở bộ lọc bệnh viện để chọn top, gần nhất hoặc theo bán kính.";
+  const canOpenPreConsultationFromDetail = Boolean(
+    clinical.isClinicalFlow
+      && params.sessionId
+      && facilityMatchesDepartment(detailFacility, clinicalDepartmentId, recommendedDepartmentName),
+  );
 
   const openDetail = useCallback((facility: NormalizedFacility) => {
     setSelectedFacility(facility);
@@ -241,8 +269,22 @@ export function MapScreen() {
   }, []);
   const requestLocationForFilter = useCallback(() => {
     setSelectedFacility(null);
+    pendingUserLocationFocusRef.current = true;
     void requestUserLocation();
   }, [requestUserLocation]);
+  const openPreConsultationForFacility = useCallback((facility: NormalizedFacility) => {
+    if (!clinical.isClinicalFlow || !params.sessionId) return;
+    setDetailVisible(false);
+    router.push({
+      pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,
+      params: {
+        sessionId: String(params.sessionId),
+        facilityId: facility.facilityId,
+        facilityName: facility.facilityName,
+        facilityAddress: facility.address,
+      },
+    });
+  }, [clinical.isClinicalFlow, params.sessionId]);
 
   useEffect(() => {
     if (clinical.isClinicalFlow || loading || autoOpenedRef.current || !params.facilityId) return;
@@ -252,6 +294,32 @@ export function MapScreen() {
       openDetail(match);
     }
   }, [clinical.isClinicalFlow, facilities, loading, openDetail, params.facilityId]);
+
+  useEffect(() => {
+    if (params.hospitalFilter !== "nearest") return;
+    const requestId = String(params.hospitalFilterRequest || "initial");
+    if (handledHospitalFilterRequestRef.current === requestId) return;
+    handledHospitalFilterRequestRef.current = requestId;
+    autoRequestedNearestLocationRef.current = false;
+    setSelectedDepartmentId(null);
+    setDepartmentSearchText("");
+    setHospitalFilterMode("nearest");
+    setHospitalFilterVisible(false);
+    setSelectedFacility(null);
+  }, [params.hospitalFilter, params.hospitalFilterRequest]);
+
+  useEffect(() => {
+    if (params.hospitalFilter !== "nearest" || autoRequestedNearestLocationRef.current || userLocation || locationStatus === "loading") return;
+    autoRequestedNearestLocationRef.current = true;
+    pendingUserLocationFocusRef.current = true;
+    void requestUserLocation();
+  }, [locationStatus, params.hospitalFilter, requestUserLocation, userLocation]);
+
+  useEffect(() => {
+    if (!pendingUserLocationFocusRef.current || !userLocation) return;
+    pendingUserLocationFocusRef.current = false;
+    setFocusUserLocationAction((current) => ({ id: (current?.id ?? 0) + 1 }));
+  }, [userLocation]);
 
   useEffect(() => {
     if (!clinical.isClinicalFlow || clinical.status !== "ready" || autoSelectedRef.current || visibleFacilities.length === 0) return;
@@ -278,6 +346,7 @@ export function MapScreen() {
           onSelectFacility={openDetail}
           onStatusChange={setMapStatus}
           zoomAction={zoomAction}
+          focusUserLocationAction={focusUserLocationAction}
         />
       </View>
 
@@ -552,7 +621,15 @@ export function MapScreen() {
         />
       ) : null}
 
-      {detailVisible ? <FacilityDetailSheet facility={detailFacility} visible onClose={() => setDetailVisible(false)} onRatingChange={handleRatingChange} /> : null}
+      {detailVisible ? (
+        <FacilityDetailSheet
+          facility={detailFacility}
+          visible
+          onClose={() => setDetailVisible(false)}
+          onRatingChange={handleRatingChange}
+          onOpenPreConsultation={canOpenPreConsultationFromDetail ? openPreConsultationForFacility : undefined}
+        />
+      ) : null}
     </Screen>
   );
 }

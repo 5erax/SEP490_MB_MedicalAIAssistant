@@ -220,6 +220,7 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
   onSelectFacility,
   onStatusChange,
   zoomAction,
+  focusUserLocationAction,
 }: FacilityMapViewProps) {
   const [layout, setLayout] = useState<LayoutSize>({ width: 0, height: 0 });
 
@@ -295,6 +296,14 @@ export const FacilityMapViewFallback = memo(function FacilityMapViewFallback({
       translateY.value = withTiming(0, { duration: 180 });
     }
   }, [scale, translateX, translateY, zoomAction]);
+
+  useEffect(() => {
+    if (!focusUserLocationAction || focusUserLocationAction.id === 0 || !projectedUserLocation || layout.width <= 0 || layout.height <= 0) return;
+    const nextScale = Math.max(scale.value, 2.2);
+    scale.value = withTiming(nextScale, { duration: 260 });
+    translateX.value = withTiming(layout.width / 2 - projectedUserLocation.x * nextScale, { duration: 260 });
+    translateY.value = withTiming(layout.height / 2 - projectedUserLocation.y * nextScale, { duration: 260 });
+  }, [focusUserLocationAction, layout.height, layout.width, projectedUserLocation, scale, translateX, translateY]);
 
   const pan = Gesture.Pan()
     .onBegin(() => {
@@ -422,6 +431,7 @@ function areMapPropsEqual(prev: FacilityMapViewProps, next: FacilityMapViewProps
   if (prev.selectedFacility?.facilityId !== next.selectedFacility?.facilityId) return false;
   if (prev.userLocation?.latitude !== next.userLocation?.latitude || prev.userLocation?.longitude !== next.userLocation?.longitude) return false;
   if (prev.zoomAction?.id !== next.zoomAction?.id || prev.zoomAction?.direction !== next.zoomAction?.direction) return false;
+  if (prev.focusUserLocationAction?.id !== next.focusUserLocationAction?.id) return false;
   if (prev.facilities.length !== next.facilities.length) return false;
 
   for (let index = 0; index < prev.facilities.length; index += 1) {

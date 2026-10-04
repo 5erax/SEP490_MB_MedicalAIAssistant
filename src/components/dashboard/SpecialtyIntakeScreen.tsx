@@ -124,7 +124,7 @@ function formatHistoryStatus(value?: string) {
   return "Đang cập nhật";
 }
 
-function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string) {
+function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string, options?: { hospitalFilter?: "nearest" }) {
   const department = getRecommendedDepartment(result);
   const topFacility = result?.recommendedFacilities?.[0] ?? null;
   const facilityId = getFacilityId(topFacility);
@@ -136,6 +136,8 @@ function openFacilities(result: ClinicalAnalysisResult | null, sessionId: string
       ...(facilityId ? { facilityId } : {}),
       ...(department?.departmentId ? { departmentId: department.departmentId } : {}),
       ...(sessionId ? { sessionId } : {}),
+      ...(options?.hospitalFilter ? { hospitalFilter: options.hospitalFilter } : {}),
+      ...(options?.hospitalFilter ? { hospitalFilterRequest: String(Date.now()) } : {}),
     },
   });
 }
@@ -303,7 +305,7 @@ export function SpecialtyIntakeScreen() {
             userLocation={userLocation}
             locationStatus={locationStatus}
             onRequestLocation={requestUserLocation}
-            onOpenMap={() => openFacilities(historyResultView.result, historyResultView.sessionId)}
+            onOpenMap={(options) => openFacilities(historyResultView.result, historyResultView.sessionId, options)}
             onOpenPreConsultation={() =>
               router.push({
                 pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,
@@ -440,7 +442,7 @@ export function SpecialtyIntakeScreen() {
           userLocation={userLocation}
           locationStatus={locationStatus}
           onRequestLocation={requestUserLocation}
-          onOpenMap={() => openFacilities(result, sessionId)}
+          onOpenMap={(options) => openFacilities(result, sessionId, options)}
           onOpenPreConsultation={() =>
             router.push({
               pathname: ROUTES.PATIENT.PRE_CONSULTATION as never,

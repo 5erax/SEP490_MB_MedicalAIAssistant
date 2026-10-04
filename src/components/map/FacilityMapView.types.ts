@@ -9,6 +9,10 @@ export type MapZoomAction = {
   direction: MapZoomDirection;
 };
 
+export type MapFocusUserLocationAction = {
+  id: number;
+};
+
 export type FacilityMapViewProps = {
   facilities: NormalizedFacility[];
   selectedFacility: NormalizedFacility | null;
@@ -17,4 +21,5 @@ export type FacilityMapViewProps = {
   onStatusChange?: (status: MapLoadStatus) => void;
   retryKey?: number;
   zoomAction?: MapZoomAction;
+  focusUserLocationAction?: MapFocusUserLocationAction;
 };

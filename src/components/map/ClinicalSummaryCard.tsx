@@ -24,10 +24,25 @@ function confidencePercent(value: number | undefined) {
   return Math.max(0, Math.min(100, Math.round(numeric <= 1 ? numeric * 100 : numeric)));
 }
 
+function probabilitySummary(percent: number) {
+  if (percent <= 0) {
+    return {
+      label: "Khả năng mắc thấp",
+      color: colors.warning,
+    };
+  }
+
+  return {
+    label: `${percent}%`,
+    color: colors.teal,
+  };
+}
+
 export function ClinicalSummaryCard({ status, notice, department, unavailableCount, recommendedCount }: ClinicalSummaryCardProps) {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   if (status === "idle") return null;
   const confidence = confidencePercent(department?.confidenceScore);
+  const probability = probabilitySummary(confidence);
   const departmentDescription = department?.description || department?.reason || "";
 
   return (
@@ -75,10 +90,10 @@ export function ClinicalSummaryCard({ status, notice, department, unavailableCou
           <View style={styles.metricsRow}>
             <View style={styles.metricBox}>
               <AppText variant="caption" color={colors.subtle}>
-                Độ phù hợp
+                Khả năng mắc
               </AppText>
-              <AppText variant="bodyStrong" color={colors.teal}>
-                {confidence > 0 ? `${confidence}%` : "Đang cập nhật"}
+              <AppText variant="bodyStrong" color={probability.color}>
+                {probability.label}
               </AppText>
             </View>
             <View style={styles.metricBox}>

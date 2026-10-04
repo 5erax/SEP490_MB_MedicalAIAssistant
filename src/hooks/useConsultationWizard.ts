@@ -185,23 +185,34 @@ export function useConsultationWizard() {
     }
   }
 
-  async function applySuggestedSession(sessionId: string) {
+  async function applySuggestedSession(sessionId: string, preselectedFacility?: SuggestedConsultationFacility) {
     if (!sessionId) return;
     setApplyingSessionId(sessionId);
     setError("");
     try {
       const response = await symptomAnalysisApi.get(sessionId);
       const { departmentId, departmentName, symptomText, facilities } = extractSessionRecommendation(response);
-      const nextFacilities = facilities.length > 0 ? facilities : await loadFacilitiesByDepartment(departmentId);
+      const loadedFacilities = facilities.length > 0 ? facilities : await loadFacilitiesByDepartment(departmentId);
+      const nextFacilities = preselectedFacility?.facilityId && !loadedFacilities.some((facility) => facility.facilityId === preselectedFacility.facilityId)
+        ? [preselectedFacility, ...loadedFacilities]
+        : loadedFacilities;
+      const selectedFacility = preselectedFacility?.facilityId
+        ? nextFacilities.find((facility) => facility.facilityId === preselectedFacility.facilityId)
+        : null;
       setForm((current) => ({
         ...current,
         departmentId: departmentId || current.departmentId,
         departmentName: departmentName || current.departmentName,
         symptoms: symptomText || current.symptoms,
-        facilityId: "",
-        facilityName: "",
+        facilityId: selectedFacility?.facilityId ?? "",
+        facilityName: selectedFacility?.facilityName ?? "",
       }));
-      setFormErrors((current) => ({ ...current, departmentId: undefined, symptoms: undefined }));
+      setFormErrors((current) => ({
+        ...current,
+        departmentId: undefined,
+        symptoms: undefined,
+        facilityId: selectedFacility ? undefined : current.facilityId,
+      }));
       setSuggestedFacilities(nextFacilities);
       setAppliedSessionTitle(getSuggestedSessionTitle(unwrapApiData(response), "Phiên gợi ý đã chọn"));
       return true;

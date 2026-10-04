@@ -12,8 +12,8 @@ type ResultPanelProps = {
   result: ClinicalAnalysisResult | null;
   userLocation: GeoPoint | null;
   locationStatus: LocationStatus;
-  onRequestLocation: () => void;
-  onOpenMap: () => void;
+  onRequestLocation: () => void | Promise<void>;
+  onOpenMap: (options?: { hospitalFilter?: "nearest" }) => void;
   onOpenPreConsultation: () => void;
   onNewSymptom: () => void;
 };
@@ -22,6 +22,10 @@ function confidencePercent(value: number | undefined) {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(0, Math.min(100, Math.round(numeric <= 1 ? numeric * 100 : numeric)));
+}
+
+function probabilityLabel(percent: number) {
+  return percent > 0 ? `Khả năng mắc: ${percent}%` : "Khả năng mắc thấp";
 }
 
 function FacilityRow({ facility, index, department, userLocation }: { facility: ClinicalFacility; index: number; department: ReturnType<typeof getRecommendedDepartment>; userLocation: GeoPoint | null }) {
@@ -45,7 +49,7 @@ function FacilityRow({ facility, index, department, userLocation }: { facility: 
 
 function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
   const [openId, setOpenId] = useState("");
-  const visibleDiagnoses = diagnoses.slice(0, 5);
+  const visibleDiagnoses = diagnoses;
 
   if (visibleDiagnoses.length === 0) return null;
 
@@ -79,8 +83,8 @@ function DiagnosisDropdown({ diagnoses }: { diagnoses: ClinicalDiagnosis[] }) {
                   <AppText variant="bodyStrong" numberOfLines={1}>
                     {diagnosis.diseaseName || "Chưa xác định"}
                   </AppText>
-                  <AppText variant="caption" color={colors.teal}>
-                    {percent > 0 ? `Độ phù hợp: ${percent}%` : "Đang cập nhật độ phù hợp"}
+                  <AppText variant="caption" color={percent > 0 ? colors.teal : colors.warning}>
+                    {probabilityLabel(percent)}
                   </AppText>
                 </View>
                 <View style={styles.diagnosisChevron}>
@@ -113,6 +117,16 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
   const facilities = sortRecommendedFacilities(result, userLocation);
   const confidence = confidencePercent(department?.confidenceScore);
   const topFacilities = facilities.slice(0, 3);
+  const [openingNearbyMap, setOpeningNearbyMap] = useState(false);
+  const openNearbyMap = async () => {
+    setOpeningNearbyMap(true);
+    try {
+      await onRequestLocation();
+      onOpenMap({ hospitalFilter: "nearest" });
+    } finally {
+      setOpeningNearbyMap(false);
+    }
+  };
 
   return (
     <View style={styles.group}>
@@ -133,7 +147,7 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
             <View style={styles.confidenceTrack}>
               <View style={[styles.confidenceFill, { width: `${confidence}%` }]} />
             </View>
-            <Badge tone="success">{confidence}% phù hợp</Badge>
+            <Badge tone="success">{confidence}% khả năng mắc</Badge>
           </View>
         ) : null}
         <AppText color={colors.muted}>
@@ -193,31 +207,23 @@ export function ResultPanel({ result, userLocation, locationStatus, onRequestLoc
         </AppText>
 
         <View style={styles.locationActions}>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={locationStatus === "ready" || locationStatus === "loading"}
-            onPress={onRequestLocation}
-          >
-            {locationStatus === "loading" ? (
+          <Button fullWidth disabled={locationStatus === "loading" || openingNearbyMap} onPress={openNearbyMap} style={styles.mapButton}>
+            {locationStatus === "loading" || openingNearbyMap ? (
               <View style={styles.loadingLabel}>
-                <ActivityIndicator color={colors.ink} size="small" />
-                <AppText variant="bodyStrong">Đang lấy vị trí...</AppText>
+                <ActivityIndicator color={colors.white} size="small" />
+                <AppText variant="bodyStrong" color={colors.white}>
+                  Đang lấy vị trí...
+                </AppText>
               </View>
             ) : (
               <View style={styles.buttonInline}>
-                <MapPin size={16} color={colors.ink} />
-                <AppText variant="bodyStrong">{locationStatus === "ready" ? "Đã có vị trí" : "Dùng vị trí của tôi"}</AppText>
+                <MapPin size={16} color={colors.white} />
+                <AppText variant="bodyStrong" color={colors.white} style={styles.mapButtonText} numberOfLines={1}>
+                  Tìm bệnh viện gần bạn
+                </AppText>
+                <ArrowRight size={16} color={colors.white} />
               </View>
             )}
-          </Button>
-          <Button size="sm" onPress={onOpenMap} style={styles.mapButton}>
-            <View style={styles.buttonInline}>
-              <ArrowRight size={16} color={colors.white} />
-              <AppText variant="bodyStrong" color={colors.white} style={styles.mapButtonText} numberOfLines={1}>
-                Tìm cơ sở
-              </AppText>
-            </View>
           </Button>
         </View>
 
@@ -336,16 +342,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.mint,
   },
   locationActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: spacing.sm,
   },
   mapButton: {
-    flexGrow: 1,
-    minWidth: 150,
+    alignSelf: "stretch",
   },
   mapButtonText: {
-    flexShrink: 0,
+    flexShrink: 1,
   },
   buttonInline: {
     flexDirection: "row",

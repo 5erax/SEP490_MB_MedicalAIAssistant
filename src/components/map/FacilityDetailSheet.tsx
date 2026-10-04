@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { Globe, MapPin, Phone, Stethoscope, X } from "lucide-react-native";
+import { ArrowRight, ClipboardCheck, Globe, MapPin, Phone, Stethoscope, X } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AppText, Badge } from "@/src/components/ui";
+import { AppText, Badge, Button } from "@/src/components/ui";
 import { colors, radius, spacing } from "@/src/theme/tokens";
 import { NormalizedFacility } from "@/src/types/facility";
 import { ReviewsSection } from "@/src/components/reviews";
@@ -22,9 +22,10 @@ type FacilityDetailSheetProps = {
   visible: boolean;
   onClose: () => void;
   onRatingChange?: RatingChangeHandler;
+  onOpenPreConsultation?: (facility: NormalizedFacility) => void;
 };
 
-export function FacilityDetailSheet({ facility, visible, onClose, onRatingChange }: FacilityDetailSheetProps) {
+export function FacilityDetailSheet({ facility, visible, onClose, onRatingChange, onOpenPreConsultation }: FacilityDetailSheetProps) {
   const [detail, setDetail] = useState<NormalizedFacility | null>(facility);
   const [activeTab, setActiveTab] = useState<DetailTab>("overview");
   const handleRatingChange = useCallback<RatingChangeHandler>((facilityId, summary) => {
@@ -109,6 +110,17 @@ export function FacilityDetailSheet({ facility, visible, onClose, onRatingChange
               <AppText variant="caption" color={colors.subtle}>
                 Giờ mở cửa: {current.openingHours}
               </AppText>
+              {onOpenPreConsultation ? (
+                <Button fullWidth onPress={() => onOpenPreConsultation(current)} style={styles.preConsultationButton}>
+                  <View style={styles.preConsultationContent}>
+                    <ClipboardCheck size={17} color={colors.white} />
+                    <AppText variant="bodyStrong" color={colors.white}>
+                      Tư vấn trước khám
+                    </AppText>
+                    <ArrowRight size={17} color={colors.white} />
+                  </View>
+                </Button>
+              ) : null}
             </>
           ) : (
             <ReviewsSection key={current.facilityId} facilityId={current.facilityId} onRatingChange={handleRatingChange} />
@@ -174,5 +186,14 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
+  },
+  preConsultationButton: {
+    marginTop: spacing.sm,
+  },
+  preConsultationContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
   },
 });

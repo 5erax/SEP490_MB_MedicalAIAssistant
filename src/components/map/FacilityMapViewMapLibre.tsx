@@ -60,6 +60,7 @@ export function FacilityMapViewMapLibre({
   onStatusChange,
   retryKey = 0,
   zoomAction,
+  focusUserLocationAction,
 }: FacilityMapViewProps) {
   const [status, setStatus] = useState<MapLoadStatus>("loading");
   const mapRef = useRef<MapRef>(null);
@@ -167,6 +168,15 @@ export function FacilityMapViewMapLibre({
     void applyZoomAction();
   }, [applyZoomAction, status, zoomAction]);
 
+  useEffect(() => {
+    if (status !== "ready" || !focusUserLocationAction || focusUserLocationAction.id === 0 || !userLocation) return;
+    cameraRef.current?.flyTo({
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 15.5,
+      duration: 650,
+    });
+  }, [focusUserLocationAction, status, userLocation]);
+
   const handleFacilitySourcePress = useCallback(
     async (event: { nativeEvent?: { features?: GeoJSON.Feature[] }; stopPropagation?: () => void }) => {
       event.stopPropagation?.();
@@ -213,6 +223,7 @@ export function FacilityMapViewMapLibre({
         onStatusChange={onStatusChange}
         retryKey={retryKey}
         zoomAction={zoomAction}
+        focusUserLocationAction={focusUserLocationAction}
       />
     );
   }

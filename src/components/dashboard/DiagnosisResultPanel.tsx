@@ -21,8 +21,23 @@ function diagnosisRank(diagnosis: ClinicalDiagnosis, index: number) {
   return Number(diagnosis.rank) || index + 1;
 }
 
+function probabilityBadge(percent: number) {
+  if (percent <= 0) {
+    return {
+      label: "Khả năng mắc thấp",
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: `${percent}% khả năng mắc`,
+    tone: "info" as const,
+  };
+}
+
 function DiagnosisRow({ diagnosis, index }: { diagnosis: ClinicalDiagnosis; index: number }) {
   const percent = confidencePercent(diagnosis.paGivenB);
+  const probability = probabilityBadge(percent);
   return (
     <View style={styles.diagnosisRow}>
       <View style={styles.diagnosisRank}>
@@ -38,7 +53,7 @@ function DiagnosisRow({ diagnosis, index }: { diagnosis: ClinicalDiagnosis; inde
           </AppText>
         ) : null}
       </View>
-      <Badge tone="info">{`${percent}%`}</Badge>
+      <Badge tone={probability.tone}>{probability.label}</Badge>
     </View>
   );
 }
@@ -46,6 +61,7 @@ function DiagnosisRow({ diagnosis, index }: { diagnosis: ClinicalDiagnosis; inde
 export function DiagnosisResultPanel({ result, onNewSymptom }: DiagnosisResultPanelProps) {
   const diagnoses = result?.diagnoses ?? [];
   const primary = diagnoses[0] ?? null;
+  const primaryProbability = primary ? probabilityBadge(confidencePercent(primary.paGivenB)) : null;
   const isEmergency = Boolean(result?.recommendedDepartment?.isEmergencySuggested);
 
   return (
@@ -74,7 +90,7 @@ export function DiagnosisResultPanel({ result, onNewSymptom }: DiagnosisResultPa
                 ICD-10: {primary.icd10Code}
               </AppText>
             ) : null}
-            <Badge tone="success">{`${confidencePercent(primary.paGivenB)}% phù hợp tham khảo`}</Badge>
+            {primaryProbability ? <Badge tone={primaryProbability.tone}>{primaryProbability.label}</Badge> : null}
           </View>
         </Card>
       ) : null}

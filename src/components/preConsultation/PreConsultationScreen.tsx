@@ -79,21 +79,33 @@ function SectionHead({ step, title, description }: { step: number; title: string
 }
 
 export function PreConsultationScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; facilityId?: string; facilityName?: string; facilityAddress?: string }>();
   const wizard = useConsultationWizard();
   const [tab, setTab] = useState<"new" | "history">("new");
   const [sessionPickerVisible, setSessionPickerVisible] = useState(false);
   const [facilityPickerVisible, setFacilityPickerVisible] = useState(false);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [timePickerVisible, setTimePickerVisible] = useState(false);
-  const [autoApplied, setAutoApplied] = useState(false);
+  const [autoAppliedKey, setAutoAppliedKey] = useState("");
 
   useEffect(() => {
-    if (!params.sessionId || autoApplied) return;
-    setAutoApplied(true);
-    void wizard.applySuggestedSession(String(params.sessionId));
+    if (!params.sessionId) return;
+    const nextAutoAppliedKey = `${params.sessionId}:${params.facilityId || ""}`;
+    if (autoAppliedKey === nextAutoAppliedKey) return;
+    setAutoAppliedKey(nextAutoAppliedKey);
+    const facilityId = String(params.facilityId || "").trim();
+    void wizard.applySuggestedSession(
+      String(params.sessionId),
+      facilityId
+        ? {
+          facilityId,
+          facilityName: String(params.facilityName || "Cơ sở y tế"),
+          address: String(params.facilityAddress || ""),
+        }
+        : undefined,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.sessionId, autoApplied]);
+  }, [params.sessionId, params.facilityId, params.facilityName, params.facilityAddress, autoAppliedKey]);
 
   async function openSessionPicker() {
     setSessionPickerVisible(true);
